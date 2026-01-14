@@ -1,0 +1,18 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- Background -->
+    <rect width="200" height="200" fill="#0F172A" />
+
+    <!-- Plimsoll Mark - Extended Line -->
+
+    <!-- Horizontal Line (Extended) -->
+    <line x1="10" y1="100" x2="190" y2="100"
+        stroke="#FFFFFF"
+        stroke-width="12"
+        stroke-linecap="round" />
+
+    <!-- Circle -->
+    <circle cx="100" cy="100" r="60"
+        stroke="#FFFFFF"
+        stroke-width="12"
+        fill="none" />
+</svg>

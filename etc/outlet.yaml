@@ -1,0 +1,91 @@
+Name: outlet
+Host: 0.0.0.0
+Port: 9888
+
+# Platform Branding
+Platform:
+  Name: ${PLATFORM_NAME:My Platform}
+
+# App Configuration
+App:
+  BaseURL: ${APP_BASE_URL}
+  Domain: ${APP_DOMAIN}
+  ProductionMode: ${PRODUCTION_MODE}
+
+# WebSocket Configuration
+WebSocket:
+  URL: ${WEBSOCKET_URL}
+
+# Database Configuration (SQLite)
+Database:
+  Path: ${DATABASE_PATH}
+
+# JWT Configuration
+Auth:
+  AccessSecret: ${JWT_SECRET}
+  AccessExpire: 86400 # 24 hours
+  RefreshSecret: ${JWT_REFRESH_SECRET}
+  RefreshExpire: 604800 # 7 days
+
+# Super Admin Seeding (creates admin user on first startup if not exists)
+Admin:
+  Email: "${ADMIN_EMAIL}"
+  Password: "${ADMIN_PASSWORD}"
+
+# Google OAuth & Calendar
+Google:
+  ClientID: ${GOOGLE_CLIENT_ID}
+  ClientSecret: ${GOOGLE_CLIENT_SECRET}
+  RefreshToken: ${GOOGLE_REFRESH_TOKEN}
+  RedirectURL: ${GOOGLE_REDIRECT_URL}
+
+# Claude AI
+Claude:
+  APIKey: ${ANTHROPIC_API_KEY}
+
+# Email Dispatcher Settings (per-org SMTP config is in database)
+# Email:
+#   WorkerCount: 10   # Concurrent workers (default: 10)
+#   RateLimit: 14     # Emails/sec (default: 14 for SES)
+#   RateBurst: 50     # Max burst (default: 50)
+#   BatchSize: 100    # Per batch (default: 100)
+
+# Sales Agent
+SalesAgent:
+  Email: ${SALES_AGENT_EMAIL}
+
+# Zoom Configuration (optional)
+Zoom:
+  APIKey: ${ZOOM_API_KEY}
+  APISecret: ${ZOOM_API_SECRET}
+  AccountID: ${ZOOM_ACCOUNT_ID}
+
+# Report Generation Configuration
+Reports:
+  OutputDir: generated_reports
+  PublicURL: /api/downloads/reports
+  UploadToS3: false
+  S3Bucket:
+
+# Stripe Payment Processing
+Stripe:
+  SecretKey: ${STRIPE_SECRET_KEY}
+  WebhookSecret: ${STRIPE_WEBHOOK_SECRET}
+  BaseURL: ${STRIPE_BASE_URL}
+  SuccessURL: ${STRIPE_SUCCESS_URL}
+  CancelURL: ${STRIPE_CANCEL_URL}
+
+# Encryption for org credentials (32-byte key as 64 hex chars)
+Encryption:
+  Key: ${ENCRYPTION_KEY}
+
+# gRPC Configuration (LLM streaming)
+GRPC:
+  Port: 9889
+
+# SMTP Ingress Server (optional, disabled by default)
+# Allows sending emails via SMTP protocol with API key authentication
+SMTP:
+  Enabled: ${SMTP_ENABLED}
+  TLSCert: ${SMTP_TLS_CERT}
+  TLSKey: ${SMTP_TLS_KEY}

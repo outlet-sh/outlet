@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+
+PLAN.md
+
+# Database data
+data/
+
+# Environment files (keep .env.example)
+.env
+.env.local
+.env.production
+
+# Certificates
+certs/
+bin/
+app/bin/
+
+# Binary in root (built by air)
+outlet
+
+# Local dev tools
+.godevtools/
+tmp/
+
+# local non-passed on items
+keys.txt
+

@@ -1,0 +1,2148 @@
+syntax = "v1"
+
+info (
+	title:   "Outlet API"
+	desc:    "API for outlet.sh - Self hosted email newsletter software for managing email campaigns and subscriber lists."
+	author:  "Alma Tuck"
+	version: "v1.0"
+)
+
+// ============================================================================
+// Type Definitions
+// ============================================================================
+type (
+	// ========== Auth Types ==========
+	// ========== Auth & Session Types ==========
+	LoginRequest {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	LoginResponse {
+		Token        string   `json:"token"`
+		RefreshToken string   `json:"refresh_token"`
+		ExpiresAt    string   `json:"expires_at"`
+		User         UserInfo `json:"user"`
+	}
+	RegisterRequest {
+		Email     string `json:"email"`
+		Password  string `json:"password"`
+		FirstName string `json:"first_name"`
+		LastName  string `json:"last_name"`
+		Phone     string `json:"phone,optional"`
+		Token     string `json:"token,optional"` // Optional invitation token
+	}
+	RegisterResponse {
+		Token string   `json:"token"`
+		User  UserInfo `json:"user"`
+	}
+	ForgotPasswordRequest {
+		Email string `json:"email"`
+	}
+	ForgotPasswordResponse {
+		Message string `json:"message"`
+	}
+	ResetPasswordRequest {
+		Token           string `json:"token"`
+		NewPassword     string `json:"new_password"`
+		ConfirmPassword string `json:"confirm_password"`
+	}
+	ResetPasswordResponse {
+		Message string `json:"message"`
+	}
+	VerifyEmailRequest {
+		Token string `form:"token"`
+	}
+	VerifyEmailResponse {
+		Message string `json:"message"`
+	}
+	ValidateInvitationRequest {
+		Token string `form:"token"`
+	}
+	ValidateInvitationResponse {
+		Email     string `json:"email"`
+		FirstName string `json:"first_name"`
+		LastName  string `json:"last_name"`
+		Phone     string `json:"phone"`
+		Role      string `json:"role"`
+		Valid     bool   `json:"valid"`
+		Message   string `json:"message,omitempty"`
+	}
+	RefreshTokenRequest {
+		RefreshToken string `json:"refresh_token"`
+	}
+	UserInfo {
+		Id        string `json:"id"`
+		Email     string `json:"email"`
+		Name      string `json:"name"`
+		Role      string `json:"role"`
+		Active    bool   `json:"active"`
+		CreatedAt string `json:"created_at"`
+	}
+	// ========== User Management Types ==========
+	UserListResponse {
+		Users []UserInfo `json:"users"`
+		Total int        `json:"total"`
+	}
+	GetUserRequest {
+		Id string `path:"id"`
+	}
+	CreateUserRequest {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+		Name     string `json:"name"`
+		Role     string `json:"role,optional"`
+	}
+	CreateUserResponse {
+		User UserInfo `json:"user"`
+	}
+	UpdateUserRequest {
+		Id       string `path:"id"`
+		Email    string `json:"email,optional"`
+		Name     string `json:"name,optional"`
+		Role     string `json:"role,optional"`
+		Password string `json:"password,optional"`
+	}
+	DeleteUserRequest {
+		Id string `path:"id"`
+	}
+	// ========== MCP API Key Types ==========
+	MCPAPIKeyInfo {
+		Id        string `json:"id"`
+		Name      string `json:"name"`
+		KeyPrefix string `json:"key_prefix"` // First 8 chars for identification
+		Scopes    string `json:"scopes"`
+		LastUsed  string `json:"last_used,omitempty"`
+		ExpiresAt string `json:"expires_at,omitempty"`
+		CreatedAt string `json:"created_at"`
+	}
+	ListMCPAPIKeysResponse {
+		Keys  []MCPAPIKeyInfo `json:"keys"`
+		Total int             `json:"total"`
+	}
+	CreateMCPAPIKeyRequest {
+		Name      string `json:"name"`
+		ExpiresAt string `json:"expires_at,optional"` // ISO 8601 date or empty for no expiry
+	}
+	CreateMCPAPIKeyResponse {
+		Id        string `json:"id"`
+		Name      string `json:"name"`
+		Key       string `json:"key"` // Full key - ONLY returned on creation
+		KeyPrefix string `json:"key_prefix"`
+		CreatedAt string `json:"created_at"`
+	}
+	RevokeMCPAPIKeyRequest {
+		Id string `path:"id"`
+	}
+	RevokeMCPAPIKeyResponse {
+		Success bool   `json:"success"`
+		Message string `json:"message"`
+	}
+	// ========== Analytics Types ==========
+	AnalyticsResponse {
+		Success bool   `json:"success"`
+		Message string `json:"message,optional"`
+	}
+	// ========== Health Check ==========
+	HealthResponse {
+		Status  string `json:"status"`
+		Version string `json:"version,optional"`
+	}
+	// ========== Newsletter Types ==========
+	NewsletterSubscribeRequest {
+		Email     string `json:"email"`
+		Name      string `json:"name,optional"`
+		Source    string `json:"source,optional"`
+		Interests string `json:"interests,optional"`
+	}
+	NewsletterResponse {
+		Success bool   `json:"success"`
+		Message string `json:"message"`
+	}
+	// ========== Admin Contact Types (for contact form) ==========
+	AdminStatsResponse {
+		TotalContacts    int64 `json:"totalContacts"`
+		UnreadContacts   int64 `json:"unreadContacts"`
+		TotalSubscribers int64 `json:"totalSubscribers"`
+		PageViewsToday   int64 `json:"pageViewsToday"`
+		PageViewsWeek    int64 `json:"pageViewsWeek"`
+	}
+	AdminContact {
+		ID        int64  `json:"id"`
+		Name      string `json:"name"`
+		Email     string `json:"email"`
+		Subject   string `json:"subject"`
+		Message   string `json:"message"`
+		Source    string `json:"source"`
+		CreatedAt string `json:"createdAt"`
+		Read      bool   `json:"read"`
+	}
+	AdminContactsResponse {
+		Contacts []AdminContact `json:"contacts"`
+		Total    int64          `json:"total"`
+	}
+	AdminTopPage {
+		Page  string `json:"page"`
+		Views int64  `json:"views"`
+	}
+	AdminTopReferrer {
+		Referrer string `json:"referrer"`
+		Views    int64  `json:"views"`
+	}
+	AdminAnalyticsResponse {
+		TopPages     []AdminTopPage     `json:"topPages"`
+		TopReferrers []AdminTopReferrer `json:"topReferrers"`
+	}
+	MarkContactReadRequest {
+		ID int64 `path:"id"`
+	}
+	MarkContactReadResponse {
+		Success bool `json:"success"`
+	}
+	// ========== List Admin Types ==========
+	ListInfo {
+		Id                   string `json:"id"`
+		OrgId                string `json:"org_id"`
+		Name                 string `json:"name"`
+		Slug                 string `json:"slug"`
+		Description          string `json:"description"`
+		DoubleOptin          bool   `json:"double_optin"`
+		ConfirmationSubject  string `json:"confirmation_subject,optional"`
+		ConfirmationBody     string `json:"confirmation_body,optional"`
+		ConfirmationDesignId string `json:"confirmation_design_id,optional"`
+		SubscriberCount      int    `json:"subscriber_count"`
+		CreatedAt            string `json:"created_at"`
+		UpdatedAt            string `json:"updated_at"`
+	}
+	ListListsResponse {
+		Lists []ListInfo `json:"lists"`
+	}
+	GetListRequest {
+		Id string `path:"id"`
+	}
+	CreateListRequest {
+		Name        string `json:"name"`
+		Slug        string `json:"slug"`
+		Description string `json:"description,optional"`
+		DoubleOptin bool   `json:"double_optin,optional,default=true"`
+	}
+	UpdateListRequest {
+		Id                   string  `path:"id"`
+		Name                 string  `json:"name,optional"`
+		Description          string  `json:"description,optional"`
+		DoubleOptin          *bool   `json:"double_optin,optional"`
+		ConfirmationSubject  string  `json:"confirmation_subject,optional"`
+		ConfirmationBody     string  `json:"confirmation_body,optional"`
+		ConfirmationDesignId *string `json:"confirmation_design_id,optional"`
+	}
+	DeleteListRequest {
+		Id string `path:"id"`
+	}
+	ListStatsResponse {
+		TotalSubscribers  int `json:"total_subscribers"`
+		ActiveSubscribers int `json:"active_subscribers"`
+		Unsubscribed      int `json:"unsubscribed"`
+		Bounced           int `json:"bounced"`
+		Complained        int `json:"complained"`
+	}
+	ListSubscribersRequest {
+		Id     string `path:"id"`
+		Page   int    `form:"page,optional,default=1"`
+		Limit  int    `form:"limit,optional,default=50"`
+		Status string `form:"status,optional"`
+	}
+	ListSubscriberInfo {
+		ContactId      string `json:"contact_id"`
+		Email          string `json:"email"`
+		Name           string `json:"name"`
+		Status         string `json:"status"`
+		SubscribedAt   string `json:"subscribed_at"`
+		UnsubscribedAt string `json:"unsubscribed_at,omitempty"`
+	}
+	ListSubscribersResponse {
+		Subscribers []ListSubscriberInfo `json:"subscribers"`
+		Total       int                  `json:"total"`
+		Page        int                  `json:"page"`
+		Limit       int                  `json:"limit"`
+	}
+	RemoveSubscriberRequest {
+		Id           string `path:"id"`
+		SubscriberId string `path:"subscriberId"`
+	}
+	// Embed Code for public subscribe forms
+	GetEmbedCodeRequest {
+		Id string `path:"id"`
+	}
+	EmbedCodeResponse {
+		Html    string `json:"html"`
+		ListId  string `json:"list_id"`
+		Slug    string `json:"slug"`
+		BaseUrl string `json:"base_url"`
+	}
+	// Email Dashboard Stats
+	EmailDashboardStatsRequest {
+		From string `form:"from,optional"`
+		To   string `form:"to,optional"`
+	}
+	EmailDashboardStatsResponse {
+		TotalSent         int     `json:"total_sent"`
+		TotalOpened       int     `json:"total_opened"`
+		TotalClicked      int     `json:"total_clicked"`
+		TotalBounced      int     `json:"total_bounced"`
+		TotalComplaints   int     `json:"total_complaints"`
+		TotalUnsubscribed int     `json:"total_unsubscribed"`
+		OpenRate          float64 `json:"open_rate"`
+		ClickRate         float64 `json:"click_rate"`
+	}
+	// ========== Subscriber Types ==========
+	SubscriberInfo {
+		Id             string `json:"id"`
+		Name           string `json:"name"`
+		Email          string `json:"email"`
+		Status         string `json:"status"`
+		EmailVerified  bool   `json:"email_verified"`
+		Source         string `json:"source"`
+		CreatedAt      string `json:"created_at"`
+		VerifiedAt     string `json:"verified_at,optional"`
+		UnsubscribedAt string `json:"unsubscribed_at,optional"`
+		BlockedAt      string `json:"blocked_at,optional"`
+	}
+	SubscriberActionRequest {
+		Id string `path:"id"`
+	}
+	// ========== Email Sequence Admin Types ==========
+	SequenceInfo {
+		Id           string          `json:"id"`
+		ListId       string          `json:"list_id,optional"`
+		ListSlug     string          `json:"list_slug,optional"`
+		ListName     string          `json:"list_name,optional"`
+		Slug         string          `json:"slug"`
+		Name         string          `json:"name"`
+		TriggerEvent string          `json:"trigger_event"`
+		SequenceType string          `json:"sequence_type"` // lifecycle or transactional
+		IsActive     bool            `json:"is_active"`
+		SendHour     *int            `json:"send_hour"` // Hour of day (0-23) to send emails, null = use delay from opt-in
+		SendTimezone string          `json:"send_timezone"` // Timezone for send_hour (e.g., America/New_York)
+		EntryRules   []EntryRuleInfo `json:"entry_rules,optional"`
+		CreatedAt    string          `json:"created_at"`
+	}
+	EntryRuleInfo {
+		Id          string `json:"id"`
+		SequenceId  string `json:"sequence_id"`
+		TriggerType string `json:"trigger_type"` // list_join, sequence_complete, tag_added, manual
+		SourceId    string `json:"source_id,optional"`
+		SourceName  string `json:"source_name,optional"` // list name or sequence name
+		Priority    int    `json:"priority"`
+		IsActive    bool   `json:"is_active"`
+		CreatedAt   string `json:"created_at"`
+	}
+	SequenceListResponse {
+		Sequences []SequenceInfo `json:"sequences"`
+	}
+	GetSequenceRequest {
+		Id string `path:"id"`
+	}
+	SequenceDetailResponse {
+		Sequence  SequenceInfo   `json:"sequence"`
+		Templates []TemplateInfo `json:"templates"`
+	}
+	TemplateInfo {
+		Id           string  `json:"id"`
+		SequenceId   string  `json:"sequence_id"`
+		Position     int     `json:"position"`
+		DelayHours   int     `json:"delay_hours"`
+		Subject      string  `json:"subject"`
+		HtmlBody     string  `json:"html_body"`
+		PlainText    string  `json:"plain_text,optional"`
+		TemplateType string  `json:"template_type"` // none, simple, branded
+		IsActive     bool    `json:"is_active"`
+		DesignId     *string `json:"design_id,optional"` // Optional reference to email design
+		CreatedAt    string  `json:"created_at"`
+	}
+	CreateSequenceRequest {
+		ListId       string `json:"list_id,optional"` // Optional - use entry rules instead
+		Slug         string `json:"slug"`
+		Name         string `json:"name"`
+		TriggerEvent string `json:"trigger_event,optional,default=manual"`
+		SequenceType string `json:"sequence_type,optional,default=lifecycle"` // lifecycle or transactional
+	}
+	UpdateSequenceRequest {
+		Id           string `path:"id"`
+		Name         string `json:"name,optional"`
+		TriggerEvent string `json:"trigger_event,optional"`
+		SequenceType string `json:"sequence_type,optional"` // lifecycle or transactional
+		IsActive     bool   `json:"is_active,optional"`
+		SendHour     *int   `json:"send_hour,optional"` // Hour of day (0-23) to send emails
+		SendTimezone string `json:"send_timezone,optional"` // Timezone for send_hour
+	}
+	// Entry Rule management
+	CreateEntryRuleRequest {
+		SequenceId  string `json:"sequence_id"`
+		TriggerType string `json:"trigger_type"` // list_join, sequence_complete, tag_added, manual
+		SourceId    string `json:"source_id,optional"`
+		Priority    int    `json:"priority,optional,default=0"`
+	}
+	UpdateEntryRuleRequest {
+		Id       string `path:"id"`
+		Priority int    `json:"priority,optional"`
+		IsActive bool   `json:"is_active,optional"`
+	}
+	DeleteEntryRuleRequest {
+		Id string `path:"id"`
+	}
+	EntryRuleResponse {
+		EntryRule EntryRuleInfo `json:"entry_rule"`
+	}
+	SequenceStatsRequest {
+		Id string `path:"id"`
+	}
+	SequenceStatsResponse {
+		TotalSubscribers int `json:"total_subscribers"`
+		Completed        int `json:"completed"`
+		Unsubscribed     int `json:"unsubscribed"`
+		EmailsSent       int `json:"emails_sent"`
+		EmailsPending    int `json:"emails_pending"`
+	}
+	// ========== Email Template Admin Types (Sequence Emails) ==========
+	CreateTemplateRequest {
+		SequenceId   string  `json:"sequence_id"`
+		Position     int     `json:"position"`
+		DelayHours   int     `json:"delay_hours"`
+		Subject      string  `json:"subject"`
+		HtmlBody     string  `json:"html_body"`
+		PlainText    string  `json:"plain_text,optional"`
+		TemplateType string  `json:"template_type,optional,default=simple"` // none, simple, branded
+		IsActive     bool    `json:"is_active,optional,default=true"`
+		DesignId     *string `json:"design_id,optional"` // Optional reference to email design
+	}
+	UpdateTemplateRequest {
+		Id           string  `path:"id"`
+		Position     int     `json:"position,optional"`
+		DelayHours   int     `json:"delay_hours,optional"`
+		Subject      string  `json:"subject,optional"`
+		HtmlBody     string  `json:"html_body,optional"`
+		PlainText    string  `json:"plain_text,optional"`
+		TemplateType string  `json:"template_type,optional"` // none, simple, branded
+		IsActive     bool    `json:"is_active,optional"`
+		DesignId     *string `json:"design_id,optional"` // Optional reference to email design
+	}
+	DeleteTemplateRequest {
+		Id string `path:"id"`
+	}
+	// ========== Email Designs (Global Templates) ==========
+	EmailDesignInfo {
+		Id          string `json:"id"`
+		OrgId       string `json:"org_id"`
+		Name        string `json:"name"`
+		Slug        string `json:"slug"`
+		Description string `json:"description,optional"`
+		Category    string `json:"category"` // general, newsletter, promotional, transactional
+		HtmlBody    string `json:"html_body"`
+		PlainText   string `json:"plain_text,optional"`
+		IsActive    bool   `json:"is_active"`
+		CreatedAt   string `json:"created_at"`
+		UpdatedAt   string `json:"updated_at"`
+	}
+	ListEmailDesignsRequest {
+		Category string `form:"category,optional"`
+	}
+	ListEmailDesignsResponse {
+		Designs []EmailDesignInfo `json:"designs"`
+		Total   int               `json:"total"`
+	}
+	GetEmailDesignRequest {
+		Id string `path:"id"`
+	}
+	CreateEmailDesignRequest {
+		Name        string `json:"name"`
+		Slug        string `json:"slug"`
+		Description string `json:"description,optional"`
+		Category    string `json:"category,optional,default=general"` // general, newsletter, promotional, transactional
+		HtmlBody    string `json:"html_body"`
+		PlainText   string `json:"plain_text,optional"`
+		IsActive    bool   `json:"is_active,optional,default=true"`
+	}
+	UpdateEmailDesignRequest {
+		Id          string `path:"id"`
+		Name        string `json:"name,optional"`
+		Slug        string `json:"slug,optional"`
+		Description string `json:"description,optional"`
+		Category    string `json:"category,optional"`
+		HtmlBody    string `json:"html_body,optional"`
+		PlainText   string `json:"plain_text,optional"`
+		IsActive    bool   `json:"is_active,optional"`
+	}
+	DeleteEmailDesignRequest {
+		Id string `path:"id"`
+	}
+	// ========== Email Campaigns (Broadcasts) ==========
+	CampaignInfo {
+		Id                string   `json:"id"`
+		OrgId             string   `json:"org_id"`
+		DesignId          *string  `json:"design_id,optional"`
+		Name              string   `json:"name"`
+		Subject           string   `json:"subject"`
+		PreviewText       string   `json:"preview_text,optional"`
+		FromName          string   `json:"from_name,optional"`
+		FromEmail         string   `json:"from_email,optional"`
+		ReplyTo           string   `json:"reply_to,optional"`
+		HtmlBody          string   `json:"html_body"`
+		PlainText         string   `json:"plain_text,optional"`
+		ListIds           []string `json:"list_ids"`
+		ExcludeListIds    []string `json:"exclude_list_ids,optional"`
+		Status            string   `json:"status"` // draft, scheduled, sending, sent, paused, cancelled
+		ScheduledAt       string   `json:"scheduled_at,optional"`
+		StartedAt         string   `json:"started_at,optional"`
+		CompletedAt       string   `json:"completed_at,optional"`
+		TrackOpens        bool     `json:"track_opens"`
+		TrackClicks       bool     `json:"track_clicks"`
+		RecipientsCount   int      `json:"recipients_count"`
+		SentCount         int      `json:"sent_count"`
+		DeliveredCount    int      `json:"delivered_count"`
+		OpenedCount       int      `json:"opened_count"`
+		ClickedCount      int      `json:"clicked_count"`
+		BouncedCount      int      `json:"bounced_count"`
+		ComplainedCount   int      `json:"complained_count"`
+		UnsubscribedCount int      `json:"unsubscribed_count"`
+		CreatedAt         string   `json:"created_at"`
+		UpdatedAt         string   `json:"updated_at"`
+	}
+	ListCampaignsRequest {
+		Status string `form:"status,optional"`
+		Page   int    `form:"page,optional,default=1"`
+		Limit  int    `form:"limit,optional,default=20"`
+	}
+	ListCampaignsResponse {
+		Campaigns []CampaignInfo `json:"campaigns"`
+		Total     int            `json:"total"`
+		Page      int            `json:"page"`
+		Limit     int            `json:"limit"`
+	}
+	GetCampaignRequest {
+		Id string `path:"id"`
+	}
+	CreateCampaignRequest {
+		DesignId       *string  `json:"design_id,optional"`
+		Name           string   `json:"name"`
+		Subject        string   `json:"subject"`
+		PreviewText    string   `json:"preview_text,optional"`
+		FromName       string   `json:"from_name,optional"`
+		FromEmail      string   `json:"from_email,optional"`
+		ReplyTo        string   `json:"reply_to,optional"`
+		HtmlBody       string   `json:"html_body"`
+		PlainText      string   `json:"plain_text,optional"`
+		ListIds        []string `json:"list_ids"`
+		ExcludeListIds []string `json:"exclude_list_ids,optional"`
+		TrackOpens     bool     `json:"track_opens,optional,default=true"`
+		TrackClicks    bool     `json:"track_clicks,optional,default=true"`
+	}
+	UpdateCampaignRequest {
+		Id             string   `path:"id"`
+		Name           string   `json:"name,optional"`
+		Subject        string   `json:"subject,optional"`
+		PreviewText    string   `json:"preview_text,optional"`
+		FromName       string   `json:"from_name,optional"`
+		FromEmail      string   `json:"from_email,optional"`
+		ReplyTo        string   `json:"reply_to,optional"`
+		HtmlBody       string   `json:"html_body,optional"`
+		PlainText      string   `json:"plain_text,optional"`
+		ListIds        []string `json:"list_ids,optional"`
+		ExcludeListIds []string `json:"exclude_list_ids,optional"`
+		TrackOpens     bool     `json:"track_opens,optional"`
+		TrackClicks    bool     `json:"track_clicks,optional"`
+	}
+	DeleteCampaignRequest {
+		Id string `path:"id"`
+	}
+	ScheduleCampaignRequest {
+		Id          string `path:"id"`
+		ScheduledAt string `json:"scheduled_at"` // ISO8601 timestamp
+	}
+	SendCampaignNowRequest {
+		Id string `path:"id"`
+	}
+	CampaignStatsResponse {
+		Campaign CampaignInfo       `json:"campaign"`
+		Links    []CampaignLinkStat `json:"links"`
+	}
+	CampaignLinkStat {
+		Url        string `json:"url"`
+		Name       string `json:"name,optional"`
+		ClickCount int    `json:"click_count"`
+	}
+	// ========== Transactional Emails ==========
+	TransactionalEmailInfo {
+		Id          string  `json:"id"`
+		OrgId       string  `json:"org_id"`
+		DesignId    *string `json:"design_id,optional"`
+		Name        string  `json:"name"`
+		Slug        string  `json:"slug"`
+		Description string  `json:"description,optional"`
+		Subject     string  `json:"subject"`
+		HtmlBody    string  `json:"html_body"`
+		PlainText   string  `json:"plain_text,optional"`
+		FromName    string  `json:"from_name,optional"`
+		FromEmail   string  `json:"from_email,optional"`
+		ReplyTo     string  `json:"reply_to,optional"`
+		IsActive    bool    `json:"is_active"`
+		CreatedAt   string  `json:"created_at"`
+		UpdatedAt   string  `json:"updated_at"`
+	}
+	ListTransactionalEmailsRequest  {}
+	ListTransactionalEmailsResponse {
+		Templates []TransactionalEmailInfo `json:"templates"`
+		Total     int                      `json:"total"`
+	}
+	GetTransactionalEmailRequest {
+		Id string `path:"id"`
+	}
+	CreateTransactionalEmailRequest {
+		DesignId    *string `json:"design_id,optional"`
+		Name        string  `json:"name"`
+		Slug        string  `json:"slug"`
+		Description string  `json:"description,optional"`
+		Subject     string  `json:"subject"`
+		HtmlBody    string  `json:"html_body"`
+		PlainText   string  `json:"plain_text,optional"`
+		FromName    string  `json:"from_name,optional"`
+		FromEmail   string  `json:"from_email,optional"`
+		ReplyTo     string  `json:"reply_to,optional"`
+		IsActive    bool    `json:"is_active,optional,default=true"`
+	}
+	UpdateTransactionalEmailRequest {
+		Id          string `path:"id"`
+		Name        string `json:"name,optional"`
+		Slug        string `json:"slug,optional"`
+		Description string `json:"description,optional"`
+		Subject     string `json:"subject,optional"`
+		HtmlBody    string `json:"html_body,optional"`
+		PlainText   string `json:"plain_text,optional"`
+		FromName    string `json:"from_name,optional"`
+		FromEmail   string `json:"from_email,optional"`
+		ReplyTo     string `json:"reply_to,optional"`
+		IsActive    bool   `json:"is_active,optional"`
+	}
+	DeleteTransactionalEmailRequest {
+		Id string `path:"id"`
+	}
+	TransactionalStatsResponse {
+		Total     int `json:"total"`
+		Sent      int `json:"sent"`
+		Delivered int `json:"delivered"`
+		Opened    int `json:"opened"`
+		Clicked   int `json:"clicked"`
+		Bounced   int `json:"bounced"`
+		Failed    int `json:"failed"`
+	}
+	// ========== Email Queue Admin Types ==========
+	EmailQueueListRequest {
+		Status    string `form:"status,optional"`
+		ContactId string `form:"contact_id,optional"`
+	}
+	EmailQueueItem {
+		Id           string `json:"id"`
+		ContactId    string `json:"contact_id"`
+		ContactEmail string `json:"contact_email"`
+		ContactName  string `json:"contact_name"`
+		TemplateId   string `json:"template_id"`
+		Subject      string `json:"subject"`
+		ScheduledFor string `json:"scheduled_for"`
+		SentAt       string `json:"sent_at,optional"`
+		Status       string `json:"status"`
+		ErrorMessage string `json:"error_message,optional"`
+	}
+	EmailQueueListResponse {
+		Items []EmailQueueItem `json:"items"`
+		Total int              `json:"total"`
+	}
+	CancelEmailRequest {
+		Id string `path:"id"`
+	}
+	// ========== Email Verification Types ==========
+	ConfirmEmailRequest {
+		Token string `form:"token"`
+	}
+	ConfirmEmailResponse {
+		Success  bool   `json:"success"`
+		Message  string `json:"message,optional"`
+		Redirect string `json:"redirect,optional"`
+	}
+	// ========== Email Tracking Types ==========
+	EmailOpenRequest {
+		Token string `path:"token"`
+	}
+	EmailClickRequest {
+		Token string `path:"token"`
+		Url   string `form:"url"`
+		Name  string `form:"name,optional"`
+	}
+	// ========== SDK Types (Clean API) ==========
+	// All SDK endpoints require X-API-Key header
+	// Generic response for simple operations
+	Response {
+		Success bool   `json:"success"`
+		Message string `json:"message,optional"`
+	}
+	// Empty response for delete operations
+	EmptyResponse  {}
+	// Unified Event Request - handles all event tracking
+	EventRequest {
+		Event       string                 `json:"event"` // e.g., "page_view", "click", "signup"
+		Email       string                 `json:"email,optional"`
+		VisitorId   string                 `json:"visitor_id,optional"`
+		SessionId   string                 `json:"session_id,optional"`
+		Page        string                 `json:"page,optional"`
+		Referrer    string                 `json:"referrer,optional"`
+		ScrollDepth int                    `json:"scroll_depth,optional"`
+		Properties  map[string]interface{} `json:"properties,optional"`
+		UtmSource   string                 `json:"utm_source,optional"`
+		UtmMedium   string                 `json:"utm_medium,optional"`
+		UtmCampaign string                 `json:"utm_campaign,optional"`
+	}
+	// Unified Contact Request - handles contacts and opt-ins
+	ContactRequest {
+		Email       string            `json:"email"`
+		Name        string            `json:"name,optional"`
+		Phone       string            `json:"phone,optional"`
+		Company     string            `json:"company,optional"`
+		Message     string            `json:"message,optional"` // Contact form message
+		Source      string            `json:"source,optional"`
+		Tags        []string          `json:"tags,optional"`
+		ListSlug    string            `json:"list_slug,optional"` // Auto-subscribe to list
+		UtmSource   string            `json:"utm_source,optional"`
+		UtmMedium   string            `json:"utm_medium,optional"`
+		UtmCampaign string            `json:"utm_campaign,optional"`
+		Meta        map[string]string `json:"meta,optional"`
+	}
+	ContactResponse {
+		Id    string `json:"id"`
+		Email string `json:"email"`
+		Name  string `json:"name"`
+	}
+	// List subscription
+	SubscribeRequest {
+		Slug  string `path:"slug"`
+		Email string `json:"email"`
+		Name  string `json:"name,optional"`
+	}
+	// ========== Webhook Types ==========
+	StripeWebhookPath {
+		OrgSlug string `path:"org_slug"`
+	}
+	// ========== Organization Admin Types ==========
+	OrgInfo {
+		Id               string `json:"id"`
+		Name             string `json:"name"`
+		Slug             string `json:"slug"`
+		ApiKey           string `json:"api_key"`
+		BillingStatus    string `json:"billing_status"`
+		Plan             string `json:"plan"`
+		MaxContacts      int    `json:"max_contacts"`
+		StripeConfigured bool   `json:"stripe_configured"`
+		FromName         string `json:"from_name,optional"`
+		FromEmail        string `json:"from_email,optional"`
+		ReplyTo          string `json:"reply_to,optional"`
+		AppUrl           string `json:"app_url,optional"`
+		CreatedAt        string `json:"created_at"`
+	}
+	OrgListResponse {
+		Organizations []OrgInfo `json:"organizations"`
+		Total         int       `json:"total"`
+	}
+	GetOrgRequest {
+		Id string `path:"id"`
+	}
+	GetOrgBySlugRequest {
+		Slug string `path:"slug"`
+	}
+	CreateOrgRequest {
+		Name        string `json:"name"`
+		Slug        string `json:"slug"`
+		Plan        string `json:"plan,optional"`
+		MaxContacts int    `json:"max_contacts,optional"`
+		AppUrl      string `json:"app_url,optional"`
+	}
+	UpdateOrgRequest {
+		Id          string `path:"id"`
+		Name        string `json:"name,optional"`
+		Plan        string `json:"plan,optional"`
+		MaxContacts int    `json:"max_contacts,optional"`
+		AppUrl      string `json:"app_url,optional"`
+	}
+	UpdateOrgEmailSettingsRequest {
+		Id        string `path:"id"`
+		FromName  string `json:"from_name,optional"`
+		FromEmail string `json:"from_email,optional"`
+		ReplyTo   string `json:"reply_to,optional"`
+	}
+	RegenerateApiKeyRequest {
+		Id string `path:"id"`
+	}
+	DeleteOrgRequest {
+		Id string `path:"id"`
+	}
+	// ========== Dashboard Stats Types ==========
+	GetDashboardStatsRequest {
+		Id   string `path:"id"` // Organization ID
+		From string `form:"from,optional"`
+		To   string `form:"to,optional"`
+	}
+	DashboardStatsResponse {
+		// Email stats
+		EmailsSent30d    int64   `json:"emails_sent_30d"`
+		EmailsOpened30d  int64   `json:"emails_opened_30d"`
+		EmailsClicked30d int64   `json:"emails_clicked_30d"`
+		EmailOpenRate    float64 `json:"email_open_rate"`
+		// Subscriber stats
+		TotalSubscribers    int64   `json:"total_subscribers"`
+		NewSubscribers30d   int64   `json:"new_subscribers_30d"`
+		NewSubscribers7d    int64   `json:"new_subscribers_7d"`
+		SubscriberGrowthPct float64 `json:"subscriber_growth_pct"`
+		// Setup checklist
+		HasLists         bool `json:"has_lists"`
+		HasMCPConfigured bool `json:"has_mcp_configured"`
+		EmailConfigured  bool `json:"email_configured"` // Org has from_email set
+	}
+	// ========== Platform Settings Types ==========
+	// Platform-wide configuration settings (SMTP, OAuth)
+	PlatformSettingInfo {
+		Key         string `json:"key"`
+		Value       string `json:"value"` // Decrypted value for display (masked for sensitive)
+		Category    string `json:"category"`
+		Description string `json:"description,optional"`
+		IsSensitive bool   `json:"is_sensitive"`
+	}
+	GetPlatformSettingsByCategoryRequest {
+		Category string `path:"category"` // Category: email, google
+	}
+	GetPlatformSettingsResponse {
+		Settings []PlatformSettingInfo `json:"settings"`
+	}
+	// Email settings (SMTP configuration)
+	UpdateEmailSettingsRequest {
+		SmtpHost     string `json:"smtp_host,optional"`
+		SmtpPort     int    `json:"smtp_port,optional"`
+		SmtpUser     string `json:"smtp_user,optional"`
+		SmtpPassword string `json:"smtp_password,optional"`
+		FromEmail    string `json:"from_email,optional"`
+		FromName     string `json:"from_name,optional"`
+		ReplyTo      string `json:"reply_to,optional"`
+	}
+	// Generic response for settings update
+	UpdateSettingsResponse {
+		Success bool   `json:"success"`
+		Message string `json:"message,optional"`
+	}
+	// Setup status for onboarding wizard
+	SetupStatusResponse {
+		PlatformConfigured bool     `json:"platform_configured"` // Has SMTP/email settings
+		MissingSettings    []string `json:"missing_settings"` // List of missing required settings
+	}
+	// ========== SDK Transactional Email Types ==========
+	SendEmailRequest {
+		To           string            `json:"to"` // Email address
+		TemplateSlug string            `json:"template_slug,optional"` // Use design template
+		Subject      string            `json:"subject,optional"` // Required if no template
+		Body         string            `json:"body,optional"` // HTML body, required if no template
+		TextBody     string            `json:"text_body,optional"` // Plain text fallback
+		FromName     string            `json:"from_name,optional"` // Override org default
+		FromEmail    string            `json:"from_email,optional"` // Override org default
+		ReplyTo      string            `json:"reply_to,optional"`
+		Variables    map[string]string `json:"variables,optional"` // Template variables
+		Tags         []string          `json:"tags,optional"` // For tracking/filtering
+		Meta         map[string]string `json:"meta,optional"` // Custom metadata
+	}
+	SendEmailResponse {
+		Success   bool   `json:"success"`
+		MessageId string `json:"message_id"` // For tracking
+		Status    string `json:"status"` // queued, sent, failed
+		Message   string `json:"message,optional"`
+	}
+	GetEmailStatusRequest {
+		MessageId string `path:"messageId"`
+	}
+	EmailStatusResponse {
+		MessageId   string `json:"message_id"`
+		To          string `json:"to"`
+		Subject     string `json:"subject"`
+		Status      string `json:"status"` // queued, sent, delivered, opened, clicked, bounced, complained
+		SentAt      string `json:"sent_at,optional"`
+		DeliveredAt string `json:"delivered_at,optional"`
+		OpenedAt    string `json:"opened_at,optional"`
+		ClickedAt   string `json:"clicked_at,optional"`
+		BouncedAt   string `json:"bounced_at,optional"`
+		BounceType  string `json:"bounce_type,optional"`
+		Opens       int    `json:"opens"`
+		Clicks      int    `json:"clicks"`
+	}
+	ListEmailEventsRequest {
+		MessageId string `path:"messageId"`
+	}
+	EmailEventInfo {
+		Event     string `json:"event"` // sent, delivered, opened, clicked, bounced, complained
+		Timestamp string `json:"timestamp"`
+		Data      string `json:"data,optional"` // Additional event data (link clicked, bounce reason, etc.)
+	}
+	ListEmailEventsResponse {
+		Events []EmailEventInfo `json:"events"`
+	}
+	// ========== SDK Sequence Enrollment Types ==========
+	EnrollSequenceRequest {
+		SequenceSlug string            `json:"sequence_slug"`
+		Email        string            `json:"email"`
+		Variables    map[string]string `json:"variables,optional"` // Custom merge fields
+		StartAtStep  int               `json:"start_at_step,optional"` // Skip to specific step (1-indexed)
+		ScheduledFor string            `json:"scheduled_for,optional"` // Delay start (RFC3339)
+	}
+	EnrollSequenceResponse {
+		Success      bool   `json:"success"`
+		EnrollmentId string `json:"enrollment_id"`
+		Status       string `json:"status"` // active, scheduled, paused
+		Message      string `json:"message,optional"`
+	}
+	GetSequenceEnrollmentRequest {
+		Email        string `form:"email"`
+		SequenceSlug string `form:"sequence_slug,optional"` // If not provided, returns all
+	}
+	SequenceEnrollmentInfo {
+		EnrollmentId  string `json:"enrollment_id"`
+		SequenceSlug  string `json:"sequence_slug"`
+		SequenceName  string `json:"sequence_name"`
+		Status        string `json:"status"` // active, completed, paused, cancelled
+		CurrentStep   int    `json:"current_step"`
+		TotalSteps    int    `json:"total_steps"`
+		EnrolledAt    string `json:"enrolled_at"`
+		NextEmailAt   string `json:"next_email_at,optional"`
+		CompletedAt   string `json:"completed_at,optional"`
+		EmailsSent    int    `json:"emails_sent"`
+		EmailsOpened  int    `json:"emails_opened"`
+		EmailsClicked int    `json:"emails_clicked"`
+	}
+	ListSequenceEnrollmentsResponse {
+		Enrollments []SequenceEnrollmentInfo `json:"enrollments"`
+	}
+	UnenrollSequenceRequest {
+		Email        string `json:"email"`
+		SequenceSlug string `json:"sequence_slug,optional"` // If not provided, unenroll from all
+	}
+	PauseSequenceRequest {
+		Email        string `json:"email"`
+		SequenceSlug string `json:"sequence_slug"`
+	}
+	ResumeSequenceRequest {
+		Email        string `json:"email"`
+		SequenceSlug string `json:"sequence_slug"`
+	}
+	// ========== SDK Contact Management Types ==========
+	GetContactRequest {
+		Id string `path:"id"` // Contact ID or email
+	}
+	SDKContactInfo {
+		Id            string            `json:"id"`
+		Email         string            `json:"email"`
+		Name          string            `json:"name"`
+		Phone         string            `json:"phone,omitempty"`
+		Company       string            `json:"company,omitempty"`
+		Status        string            `json:"status"` // active, unsubscribed, bounced, complained
+		EmailVerified bool              `json:"email_verified"`
+		Tags          []string          `json:"tags"`
+		Lists         []string          `json:"lists"` // List slugs subscribed to
+		CustomFields  map[string]string `json:"custom_fields,omitempty"`
+		Source        string            `json:"source,omitempty"`
+		// Email engagement stats
+		EmailsSent    int    `json:"emails_sent"`
+		EmailsOpened  int    `json:"emails_opened"`
+		EmailsClicked int    `json:"emails_clicked"`
+		LastEmailAt   string `json:"last_email_at,omitempty"`
+		LastOpenAt    string `json:"last_open_at,omitempty"`
+		LastClickAt   string `json:"last_click_at,omitempty"`
+		// Dates
+		CreatedAt string `json:"created_at"`
+		UpdatedAt string `json:"updated_at"`
+	}
+	UpdateContactRequest {
+		Id           string            `path:"id"` // Contact ID or email
+		Name         string            `json:"name,optional"`
+		Phone        string            `json:"phone,optional"`
+		Company      string            `json:"company,optional"`
+		CustomFields map[string]string `json:"custom_fields,optional"`
+	}
+	AddContactTagsRequest {
+		Id   string   `path:"id"` // Contact ID or email
+		Tags []string `json:"tags"`
+	}
+	RemoveContactTagsRequest {
+		Id   string   `path:"id"` // Contact ID or email
+		Tags []string `json:"tags"`
+	}
+	GlobalUnsubscribeRequest {
+		Email  string `json:"email"`
+		Reason string `json:"reason,optional"`
+	}
+	ListContactActivityRequest {
+		Id    string `path:"id"` // Contact ID or email
+		Limit int    `form:"limit,optional"`
+	}
+	ContactActivityInfo {
+		Event     string `json:"event"` // email_sent, email_opened, email_clicked, subscribed, unsubscribed, etc.
+		Timestamp string `json:"timestamp"`
+		Details   string `json:"details,optional"` // Event-specific details (email subject, link clicked, etc.)
+	}
+	ListContactActivityResponse {
+		Activities []ContactActivityInfo `json:"activities"`
+	}
+	// ========== SDK Webhook Registration Types ==========
+	RegisterWebhookRequest {
+		Url    string   `json:"url"` // Webhook endpoint URL
+		Events []string `json:"events"` // Events to subscribe to
+		Secret string   `json:"secret,optional"` // Shared secret for signature verification
+		Active bool     `json:"active,optional"` // Default: true
+	}
+	RegisterWebhookResponse {
+		Success   bool   `json:"success"`
+		WebhookId string `json:"webhook_id"`
+		Secret    string `json:"secret"` // Generated if not provided
+		Message   string `json:"message,optional"`
+	}
+	WebhookInfo {
+		Id        string   `json:"id"`
+		Url       string   `json:"url"`
+		Events    []string `json:"events"`
+		Active    bool     `json:"active"`
+		CreatedAt string   `json:"created_at"`
+		// Stats
+		DeliveriesTotal   int    `json:"deliveries_total"`
+		DeliveriesSuccess int    `json:"deliveries_success"`
+		DeliveriesFailed  int    `json:"deliveries_failed"`
+		LastDeliveryAt    string `json:"last_delivery_at,omitempty"`
+		LastStatus        int    `json:"last_status,omitempty"` // HTTP status code
+	}
+	ListWebhooksResponse {
+		Webhooks []WebhookInfo `json:"webhooks"`
+	}
+	GetWebhookRequest {
+		Id string `path:"id"`
+	}
+	UpdateWebhookRequest {
+		Id     string   `path:"id"`
+		Url    string   `json:"url,optional"`
+		Events []string `json:"events,optional"`
+		Active bool     `json:"active,optional"`
+	}
+	DeleteWebhookRequest {
+		Id string `path:"id"`
+	}
+	TestWebhookRequest {
+		Id string `path:"id"`
+	}
+	TestWebhookResponse {
+		Success    bool   `json:"success"`
+		StatusCode int    `json:"status_code"`
+		Response   string `json:"response,optional"`
+		Error      string `json:"error,optional"`
+	}
+	WebhookLogInfo {
+		Id          string `json:"id"`
+		Event       string `json:"event"`
+		Payload     string `json:"payload"` // JSON string
+		StatusCode  int    `json:"status_code"`
+		Response    string `json:"response,omitempty"`
+		Error       string `json:"error,omitempty"`
+		Duration    int    `json:"duration_ms"`
+		DeliveredAt string `json:"delivered_at"`
+	}
+	ListWebhookLogsRequest {
+		Id    string `path:"id"`
+		Limit int    `form:"limit,optional"`
+	}
+	ListWebhookLogsResponse {
+		Logs []WebhookLogInfo `json:"logs"`
+	}
+	// ========== SDK Stats Types ==========
+	GetStatsOverviewRequest {
+		StartDate string `form:"start_date,optional"` // RFC3339
+		EndDate   string `form:"end_date,optional"` // RFC3339
+	}
+	StatsOverviewResponse {
+		// Contacts
+		TotalContacts  int `json:"total_contacts"`
+		NewContacts    int `json:"new_contacts"` // In period
+		ActiveContacts int `json:"active_contacts"` // Engaged recently
+		// Email
+		EmailsSent      int     `json:"emails_sent"`
+		EmailsDelivered int     `json:"emails_delivered"`
+		EmailsOpened    int     `json:"emails_opened"`
+		EmailsClicked   int     `json:"emails_clicked"`
+		EmailsBounced   int     `json:"emails_bounced"`
+		OpenRate        float64 `json:"open_rate"` // Percentage
+		ClickRate       float64 `json:"click_rate"` // Percentage
+		BounceRate      float64 `json:"bounce_rate"` // Percentage
+	}
+	GetEmailStatsRequest {
+		StartDate string `form:"start_date,optional"` // RFC3339
+		EndDate   string `form:"end_date,optional"` // RFC3339
+		GroupBy   string `form:"group_by,optional"` // day, week, month
+	}
+	EmailStatsPoint {
+		Date      string  `json:"date"`
+		Sent      int     `json:"sent"`
+		Delivered int     `json:"delivered"`
+		Opened    int     `json:"opened"`
+		Clicked   int     `json:"clicked"`
+		Bounced   int     `json:"bounced"`
+		OpenRate  float64 `json:"open_rate"`
+		ClickRate float64 `json:"click_rate"`
+	}
+	GetEmailStatsResponse {
+		Stats []EmailStatsPoint `json:"stats"`
+		// Totals for the period
+		TotalSent      int     `json:"total_sent"`
+		TotalDelivered int     `json:"total_delivered"`
+		TotalOpened    int     `json:"total_opened"`
+		TotalClicked   int     `json:"total_clicked"`
+		TotalBounced   int     `json:"total_bounced"`
+		AvgOpenRate    float64 `json:"avg_open_rate"`
+		AvgClickRate   float64 `json:"avg_click_rate"`
+	}
+	GetContactStatsRequest {
+		StartDate string `form:"start_date,optional"` // RFC3339
+		EndDate   string `form:"end_date,optional"` // RFC3339
+		GroupBy   string `form:"group_by,optional"` // day, week, month
+	}
+	ContactStatsPoint {
+		Date         string `json:"date"`
+		NewContacts  int    `json:"new_contacts"`
+		Unsubscribed int    `json:"unsubscribed"`
+		Bounced      int    `json:"bounced"`
+		NetGrowth    int    `json:"net_growth"`
+	}
+	GetContactStatsResponse {
+		Stats []ContactStatsPoint `json:"stats"`
+		// Current state
+		TotalActive       int `json:"total_active"`
+		TotalUnsubscribed int `json:"total_unsubscribed"`
+		TotalBounced      int `json:"total_bounced"`
+		NetGrowth         int `json:"net_growth"` // For period
+	}
+	// ========== SDK Tracking Types (for embedded handlers) ==========
+	TrackOpenRequest {
+		Token string `json:"token"`
+	}
+	TrackClickRequest {
+		Token string `json:"token"`
+		Url   string `json:"url"`
+	}
+	TrackUnsubscribeRequest {
+		Token string `json:"token"`
+	}
+	TrackConfirmRequest {
+		Token string `json:"token"`
+	}
+	TrackConfirmResponse {
+		Success     bool   `json:"success"`
+		Message     string `json:"message,omitempty"`
+		RedirectUrl string `json:"redirect_url,omitempty"`
+	}
+	// ========== Blocked Domains Types ==========
+	BlockedDomainInfo {
+		Id            string `json:"id"`
+		OrgId         string `json:"org_id"`
+		Domain        string `json:"domain"`
+		Reason        string `json:"reason,optional"`
+		BlockAttempts int    `json:"block_attempts"`
+		CreatedAt     string `json:"created_at"`
+		UpdatedAt     string `json:"updated_at,optional"`
+	}
+	ListBlockedDomainsRequest {
+		Page  int `form:"page,optional,default=1"`
+		Limit int `form:"limit,optional,default=50"`
+	}
+	ListBlockedDomainsResponse {
+		Domains []BlockedDomainInfo `json:"domains"`
+		Total   int                 `json:"total"`
+		Page    int                 `json:"page"`
+		Limit   int                 `json:"limit"`
+	}
+	CreateBlockedDomainRequest {
+		Domain string `json:"domain"`
+		Reason string `json:"reason,optional"`
+	}
+	DeleteBlockedDomainRequest {
+		Id string `path:"id"`
+	}
+	BulkBlockDomainsRequest {
+		Domains []string `json:"domains"`
+		Reason  string   `json:"reason,optional"`
+	}
+	BulkBlockDomainsResponse {
+		Success int      `json:"success"`
+		Failed  int      `json:"failed"`
+		Errors  []string `json:"errors,optional"`
+	}
+	// ========== Suppression List Types ==========
+	SuppressedEmailInfo {
+		Id            string `json:"id"`
+		OrgId         string `json:"org_id"`
+		Email         string `json:"email"`
+		Reason        string `json:"reason,optional"`
+		Source        string `json:"source"` // manual, import, api
+		BlockAttempts int    `json:"block_attempts"`
+		CreatedAt     string `json:"created_at"`
+	}
+	ListSuppressedEmailsRequest {
+		Page  int `form:"page,optional,default=1"`
+		Limit int `form:"limit,optional,default=50"`
+	}
+	ListSuppressedEmailsResponse {
+		Emails []SuppressedEmailInfo `json:"emails"`
+		Total  int                   `json:"total"`
+		Page   int                   `json:"page"`
+		Limit  int                   `json:"limit"`
+	}
+	AddSuppressedEmailRequest {
+		Email  string `json:"email"`
+		Reason string `json:"reason,optional"`
+	}
+	DeleteSuppressedEmailRequest {
+		Id string `path:"id"`
+	}
+	BulkSuppressEmailsRequest {
+		Emails []string `json:"emails"`
+		Reason string   `json:"reason,optional"`
+	}
+	BulkSuppressEmailsResponse {
+		Success int      `json:"success"`
+		Failed  int      `json:"failed"`
+		Errors  []string `json:"errors,optional"`
+	}
+	// ========== Import Job Types ==========
+	ImportJobInfo {
+		Id            string `json:"id"`
+		OrgId         string `json:"org_id"`
+		ListId        string `json:"list_id,optional"`
+		Type          string `json:"type"` // subscribers, suppression, blocked_domains
+		Status        string `json:"status"` // pending, processing, completed, failed, cancelled
+		Filename      string `json:"filename"`
+		TotalRows     int    `json:"total_rows"`
+		ProcessedRows int    `json:"processed_rows"`
+		SuccessCount  int    `json:"success_count"`
+		ErrorCount    int    `json:"error_count"`
+		SkipCount     int    `json:"skip_count"`
+		Errors        string `json:"errors,optional"`
+		StartedAt     string `json:"started_at,optional"`
+		CompletedAt   string `json:"completed_at,optional"`
+		CreatedAt     string `json:"created_at"`
+	}
+	ListImportJobsRequest {
+		Page  int `form:"page,optional,default=1"`
+		Limit int `form:"limit,optional,default=20"`
+	}
+	ListImportJobsResponse {
+		Jobs  []ImportJobInfo `json:"jobs"`
+		Total int             `json:"total"`
+		Page  int             `json:"page"`
+		Limit int             `json:"limit"`
+	}
+	GetImportJobRequest {
+		Id string `path:"id"`
+	}
+	CancelImportJobRequest {
+		Id string `path:"id"`
+	}
+	// ========== CSV Export Types ==========
+	ExportSubscribersRequest {
+		ListId string `path:"list_id"`
+		Status string `form:"status,optional"` // active, unsubscribed, all
+	}
+	ExportSuppressedEmailsRequest  {}
+	ExportBlockedDomainsRequest  {}
+	// ========== Housekeeping Types ==========
+	HousekeepingInactiveRequest {
+		NoOpensDays  int  `json:"no_opens_days,optional,default=180"` // Delete contacts with no opens in N days
+		NoClicksDays int  `json:"no_clicks_days,optional,default=365"` // Delete contacts with no clicks in N days
+		DryRun       bool `json:"dry_run,optional,default=true"` // Preview only, don't actually delete
+	}
+	HousekeepingUnconfirmedRequest {
+		OlderThanDays int  `json:"older_than_days,optional,default=30"` // Delete unconfirmed older than N days
+		DryRun        bool `json:"dry_run,optional,default=true"`
+	}
+	HousekeepingResponse {
+		AffectedCount int    `json:"affected_count"` // Number of records affected/to be affected
+		DryRun        bool   `json:"dry_run"`
+		Message       string `json:"message"`
+	}
+	// ========== Org Email Config Types ==========
+	OrgEmailConfigInfo {
+		SESRateLimit  float64 `json:"ses_rate_limit"` // Emails per second
+		SESRateBurst  int     `json:"ses_rate_burst"` // Burst size
+		SESDailyQuota int64   `json:"ses_daily_quota"` // Daily sending quota
+		WorkerCount   int     `json:"worker_count"` // Number of email workers
+		BatchSize     int     `json:"batch_size"` // Emails per batch
+		AWSRegion     string  `json:"aws_region,optional"`
+		HasOwnCreds   bool    `json:"has_own_credentials"` // Has org-specific AWS credentials
+		FromEmail     string  `json:"from_email,optional"`
+		FromName      string  `json:"from_name,optional"`
+		ReplyTo       string  `json:"reply_to,optional"`
+	}
+	GetOrgEmailConfigRequest {
+		OrgId string `path:"org_id"`
+	}
+	UpdateOrgEmailConfigRequest {
+		OrgId         string  `path:"org_id"`
+		SESRateLimit  float64 `json:"ses_rate_limit,optional"`
+		SESRateBurst  int     `json:"ses_rate_burst,optional"`
+		SESDailyQuota int64   `json:"ses_daily_quota,optional"`
+		WorkerCount   int     `json:"worker_count,optional"`
+		BatchSize     int     `json:"batch_size,optional"`
+		AWSRegion     string  `json:"aws_region,optional"`
+		AWSAccessKey  string  `json:"aws_access_key,optional"` // Will be encrypted
+		AWSSecretKey  string  `json:"aws_secret_key,optional"` // Will be encrypted
+		FromEmail     string  `json:"from_email,optional"`
+		FromName      string  `json:"from_name,optional"`
+		ReplyTo       string  `json:"reply_to,optional"`
+	}
+	DetectSESQuotaRequest {
+		OrgId        string `path:"org_id"`
+		AWSRegion    string `json:"aws_region,optional"`
+		AWSAccessKey string `json:"aws_access_key,optional"` // If empty, use org's stored creds
+		AWSSecretKey string `json:"aws_secret_key,optional"`
+	}
+	SESQuotaResponse {
+		Max24HourSend   float64 `json:"max_24_hour_send"`
+		MaxSendRate     float64 `json:"max_send_rate"`
+		SentLast24Hours float64 `json:"sent_last_24_hours"`
+		RemainingQuota  float64 `json:"remaining_quota"`
+	}
+	// ========== Backup Types ==========
+	BackupInfo {
+		Id           string `json:"id"`
+		Filename     string `json:"filename"`
+		FilePath     string `json:"file_path,omitempty"`
+		FileSize     int64  `json:"file_size"`
+		BackupType   string `json:"backup_type"`
+		StorageType  string `json:"storage_type"`
+		S3Bucket     string `json:"s3_bucket,omitempty"`
+		S3Key        string `json:"s3_key,omitempty"`
+		Status       string `json:"status"`
+		ErrorMessage string `json:"error_message,omitempty"`
+		CreatedBy    string `json:"created_by,omitempty"`
+		StartedAt    string `json:"started_at"`
+		CompletedAt  string `json:"completed_at,omitempty"`
+		CreatedAt    string `json:"created_at"`
+	}
+	CreateBackupRequest {
+		Compress   bool   `json:"compress,optional"`
+		UploadToS3 bool   `json:"upload_to_s3,optional"`
+		S3Bucket   string `json:"s3_bucket,optional"`
+		S3Region   string `json:"s3_region,optional"`
+	}
+	CreateBackupResponse {
+		Backup BackupInfo `json:"backup"`
+	}
+	ListBackupsRequest {
+		Page     int `form:"page,optional,default=1"`
+		PageSize int `form:"page_size,optional,default=20"`
+	}
+	ListBackupsResponse {
+		Backups []BackupInfo `json:"backups"`
+		Total   int          `json:"total"`
+		Page    int          `json:"page"`
+	}
+	GetBackupRequest {
+		Id string `path:"id"`
+	}
+	DeleteBackupRequest {
+		Id string `path:"id"`
+	}
+	DownloadBackupRequest {
+		Id string `path:"id"`
+	}
+	BackupSettingsRequest {
+		// S3 settings
+		S3Enabled   bool   `json:"s3_enabled"`
+		S3Bucket    string `json:"s3_bucket,optional"`
+		S3Region    string `json:"s3_region,optional"`
+		S3AccessKey string `json:"s3_access_key,optional"`
+		S3SecretKey string `json:"s3_secret_key,optional"`
+		S3Prefix    string `json:"s3_prefix,optional"`
+		// Schedule settings
+		ScheduleEnabled bool   `json:"schedule_enabled"`
+		ScheduleCron    string `json:"schedule_cron,optional"` // e.g., "0 3 * * *" for 3 AM daily
+		RetentionDays   int    `json:"retention_days,optional"`
+	}
+	BackupSettingsResponse {
+		S3Enabled       bool   `json:"s3_enabled"`
+		S3Bucket        string `json:"s3_bucket"`
+		S3Region        string `json:"s3_region"`
+		S3Prefix        string `json:"s3_prefix"`
+		HasS3Creds      bool   `json:"has_s3_creds"`
+		ScheduleEnabled bool   `json:"schedule_enabled"`
+		ScheduleCron    string `json:"schedule_cron"`
+		RetentionDays   int    `json:"retention_days"`
+		LastBackupAt    string `json:"last_backup_at,omitempty"`
+		NextBackupAt    string `json:"next_backup_at,omitempty"`
+	}
+	VersionInfo {
+		Version   string `json:"version"`
+		Commit    string `json:"commit"`
+		BuildDate string `json:"build_date"`
+		GoVersion string `json:"go_version"`
+		OS        string `json:"os"`
+		Arch      string `json:"arch"`
+	}
+	UpdateCheckResponse {
+		CurrentVersion  string `json:"current_version"`
+		LatestVersion   string `json:"latest_version,omitempty"`
+		UpdateAvailable bool   `json:"update_available"`
+		ReleaseDate     string `json:"release_date,omitempty"`
+		Changelog       string `json:"changelog,omitempty"`
+		DownloadURL     string `json:"download_url,omitempty"`
+	}
+	// ========== GDPR Types ==========
+	GDPRExportRequest {
+		ContactId string `path:"contact_id"`
+	}
+	GDPRExportResponse {
+		DownloadURL string `json:"download_url"`
+		ExpiresAt   string `json:"expires_at"`
+		Format      string `json:"format"` // json, csv
+	}
+	GDPRDeleteRequest {
+		ContactId   string `path:"contact_id"`
+		Confirm     bool   `json:"confirm"` // Must be true to proceed
+		DeleteEmail bool   `json:"delete_email,optional"` // Also delete from email provider logs if possible
+	}
+	GDPRDeleteResponse {
+		Success       bool   `json:"success"`
+		Message       string `json:"message"`
+		DeletedData   string `json:"deleted_data"` // Summary of what was deleted
+		AuditRecordId string `json:"audit_record_id"`
+	}
+	GDPRConsentRequest {
+		ContactId string `path:"contact_id"`
+	}
+	GDPRConsentInfo {
+		ContactId           string `json:"contact_id"`
+		Email               string `json:"email"`
+		GDPRConsent         bool   `json:"gdpr_consent"`
+		GDPRConsentAt       string `json:"gdpr_consent_at,omitempty"`
+		MarketingConsent    bool   `json:"marketing_consent"`
+		MarketingConsentAt  string `json:"marketing_consent_at,omitempty"`
+		DataRetentionPolicy string `json:"data_retention_policy,omitempty"`
+		CreatedAt           string `json:"created_at"`
+	}
+	UpdateGDPRConsentRequest {
+		ContactId        string `path:"contact_id"`
+		GDPRConsent      bool   `json:"gdpr_consent,optional"`
+		MarketingConsent bool   `json:"marketing_consent,optional"`
+	}
+	GDPRLookupRequest {
+		Email string `form:"email"`
+	}
+	GDPRLookupResponse {
+		Found     bool   `json:"found"`
+		ContactId string `json:"contact_id,omitempty"`
+		Email     string `json:"email,omitempty"`
+	}
+)
+
+// ============================================================================
+// Service Routes
+// ============================================================================
+// Health check - only truly public endpoint (no auth)
+@server (
+	group:  public
+	prefix: /api/v1
+)
+service outlet {
+	@handler Health
+	get /health returns (HealthResponse)
+}
+
+// Note: Email verification and tracking endpoints are registered manually in outlet.go
+// because they need custom response handling (redirects, pixels)
+// - GET /api/confirm-email - double opt-in confirmation (redirects)
+// - GET /api/e/o/:token - email open tracking (returns 1x1 pixel)
+// - GET /api/e/c/:token - email click tracking (redirects)
+// ============================================================================
+// API Service
+// ============================================================================
+// ----------------------------------------------------------------------------
+// Public Endpoints (No Authentication Required)
+// ----------------------------------------------------------------------------
+// Auth endpoints (rate limited to prevent brute force attacks)
+@server (
+	prefix:     /api/v1
+	group:      auth
+	middleware: AuthRateLimit
+)
+service outlet {
+	@doc "User login"
+	@handler login
+	post /auth/login (LoginRequest) returns (LoginResponse)
+
+	@doc "User registration"
+	@handler register
+	post /auth/register (RegisterRequest) returns (RegisterResponse)
+
+	@doc "Request password reset"
+	@handler forgotPassword
+	post /auth/forgot-password (ForgotPasswordRequest) returns (ForgotPasswordResponse)
+
+	@doc "Reset password with token"
+	@handler resetPassword
+	post /auth/reset-password (ResetPasswordRequest) returns (ResetPasswordResponse)
+
+	@doc "Verify email address"
+	@handler verifyEmail
+	get /auth/verify-email (VerifyEmailRequest) returns (VerifyEmailResponse)
+
+	@doc "Validate invitation token and get user details"
+	@handler validateInvitation
+	get /auth/validate-invitation (ValidateInvitationRequest) returns (ValidateInvitationResponse)
+
+	@doc "Refresh access token using refresh token"
+	@handler refreshToken
+	post /auth/refresh (RefreshTokenRequest) returns (LoginResponse)
+}
+
+// ============================================================================
+// Admin Endpoints (Protected - Token Required)
+// ============================================================================
+// Admin Auth
+@server (
+	group:      admin/auth
+	prefix:     /api/admin
+	middleware: Auth
+)
+service outlet {
+	@handler Logout
+	post /auth/logout returns (AnalyticsResponse)
+
+	@handler GetCurrentUser
+	get /auth/me returns (UserInfo)
+}
+
+// Admin Webhooks
+@server (
+	group:      admin/webhooks
+	prefix:     /api/admin/webhooks
+	middleware: Auth
+)
+service outlet {
+	@handler AdminListWebhooks
+	get / returns (ListWebhooksResponse)
+
+	@handler AdminCreateWebhook
+	post / (RegisterWebhookRequest) returns (RegisterWebhookResponse)
+
+	@handler AdminGetWebhook
+	get /:id (GetWebhookRequest) returns (WebhookInfo)
+
+	@handler AdminUpdateWebhook
+	put /:id (UpdateWebhookRequest) returns (WebhookInfo)
+
+	@handler AdminDeleteWebhook
+	delete /:id (DeleteWebhookRequest) returns (Response)
+
+	@handler AdminTestWebhook
+	post /:id/test (TestWebhookRequest) returns (TestWebhookResponse)
+
+	@handler AdminListWebhookLogs
+	get /:id/logs (ListWebhookLogsRequest) returns (ListWebhookLogsResponse)
+}
+
+// Admin Users
+@server (
+	group:      admin/users
+	prefix:     /api/admin
+	middleware: Auth
+)
+service outlet {
+	@handler ListUsers
+	get /users returns (UserListResponse)
+
+	@handler GetUser
+	get /users/:id (GetUserRequest) returns (UserInfo)
+
+	@handler CreateUser
+	post /users (CreateUserRequest) returns (CreateUserResponse)
+
+	@handler UpdateUser
+	put /users/:id (UpdateUserRequest) returns (UserInfo)
+
+	@handler DeleteUser
+	delete /users/:id (DeleteUserRequest) returns (Response)
+}
+
+// MCP API Keys (User Settings)
+@server (
+	group:      admin/apikeys
+	prefix:     /api/admin
+	middleware: Auth
+)
+service outlet {
+	@handler ListMCPAPIKeys
+	get /api-keys returns (ListMCPAPIKeysResponse)
+
+	@handler CreateMCPAPIKey
+	post /api-keys (CreateMCPAPIKeyRequest) returns (CreateMCPAPIKeyResponse)
+
+	@handler RevokeMCPAPIKey
+	delete /api-keys/:id (RevokeMCPAPIKeyRequest) returns (RevokeMCPAPIKeyResponse)
+}
+
+// Admin Subscribers
+@server (
+	group:      admin/subscribers
+	prefix:     /api/admin
+	middleware: Auth
+)
+service outlet {
+	@handler VerifySubscriber
+	post /subscribers/:id/verify (SubscriberActionRequest) returns (SubscriberInfo)
+
+	@handler UnsubscribeSubscriber
+	post /subscribers/:id/unsubscribe (SubscriberActionRequest) returns (SubscriberInfo)
+
+	@handler ResubscribeSubscriber
+	post /subscribers/:id/resubscribe (SubscriberActionRequest) returns (SubscriberInfo)
+
+	@handler BlockSubscriber
+	post /subscribers/:id/block (SubscriberActionRequest) returns (SubscriberInfo)
+
+	@handler UnblockSubscriber
+	post /subscribers/:id/unblock (SubscriberActionRequest) returns (SubscriberInfo)
+}
+
+// Admin Lists
+@server (
+	group:      admin/lists
+	prefix:     /api/admin
+	middleware: Auth
+)
+service outlet {
+	@handler ListLists
+	get /lists returns (ListListsResponse)
+
+	@handler GetList
+	get /lists/:id (GetListRequest) returns (ListInfo)
+
+	@handler CreateList
+	post /lists (CreateListRequest) returns (ListInfo)
+
+	@handler UpdateList
+	put /lists/:id (UpdateListRequest) returns (ListInfo)
+
+	@handler DeleteList
+	delete /lists/:id (DeleteListRequest) returns (Response)
+
+	@handler GetListStats
+	get /lists/:id/stats (GetListRequest) returns (ListStatsResponse)
+
+	@handler ListListSubscribers
+	get /lists/:id/subscribers (ListSubscribersRequest) returns (ListSubscribersResponse)
+
+	@handler RemoveListSubscriber
+	delete /lists/:id/subscribers/:subscriberId (RemoveSubscriberRequest) returns (Response)
+
+	@handler GetEmailDashboardStats
+	get /email-stats (EmailDashboardStatsRequest) returns (EmailDashboardStatsResponse)
+
+	@handler GetListEmbedCode
+	get /lists/:id/embed-code (GetEmbedCodeRequest) returns (EmbedCodeResponse)
+}
+
+// Admin Blocklist Management (Blocked Domains + Suppression)
+@server (
+	group:      admin/blocklist
+	prefix:     /api/admin
+	middleware: Auth
+)
+service outlet {
+	// Blocked Domains
+	@handler ListBlockedDomains
+	get /blocked-domains (ListBlockedDomainsRequest) returns (ListBlockedDomainsResponse)
+
+	@handler CreateBlockedDomain
+	post /blocked-domains (CreateBlockedDomainRequest) returns (BlockedDomainInfo)
+
+	@handler DeleteBlockedDomain
+	delete /blocked-domains/:id (DeleteBlockedDomainRequest) returns (Response)
+
+	@handler BulkBlockDomains
+	post /blocked-domains/bulk (BulkBlockDomainsRequest) returns (BulkBlockDomainsResponse)
+
+	// Suppression List
+	@handler ListSuppressedEmails
+	get /suppression-list (ListSuppressedEmailsRequest) returns (ListSuppressedEmailsResponse)
+
+	@handler AddSuppressedEmail
+	post /suppression-list (AddSuppressedEmailRequest) returns (SuppressedEmailInfo)
+
+	@handler DeleteSuppressedEmail
+	delete /suppression-list/:id (DeleteSuppressedEmailRequest) returns (Response)
+
+	@handler BulkSuppressEmails
+	post /suppression-list/bulk (BulkSuppressEmailsRequest) returns (BulkSuppressEmailsResponse)
+
+	@handler ClearSuppressionList
+	delete /suppression-list returns (Response)
+}
+
+// Admin Import/Export
+@server (
+	group:      admin/imports
+	prefix:     /api/admin
+	middleware: Auth
+)
+service outlet {
+	// Import Jobs
+	@handler ListImportJobs
+	get /import-jobs (ListImportJobsRequest) returns (ListImportJobsResponse)
+
+	@handler GetImportJob
+	get /import-jobs/:id (GetImportJobRequest) returns (ImportJobInfo)
+
+	@handler CancelImportJob
+	post /import-jobs/:id/cancel (CancelImportJobRequest) returns (Response)
+// Note: Actual CSV upload endpoints are registered manually in outlet.go
+// because they require multipart/form-data handling
+}
+
+// Admin Housekeeping
+@server (
+	group:      admin/housekeeping
+	prefix:     /api/admin/housekeeping
+	middleware: Auth
+)
+service outlet {
+	@handler HousekeepingInactive
+	post /inactive (HousekeepingInactiveRequest) returns (HousekeepingResponse)
+
+	@handler HousekeepingUnconfirmed
+	post /unconfirmed (HousekeepingUnconfirmedRequest) returns (HousekeepingResponse)
+}
+
+// Admin Sequences (Email)
+@server (
+	group:      admin/sequences
+	prefix:     /api/admin
+	middleware: Auth
+)
+service outlet {
+	@handler ListSequences
+	get /sequences returns (SequenceListResponse)
+
+	@handler GetSequence
+	get /sequences/:id (GetSequenceRequest) returns (SequenceDetailResponse)
+
+	@handler CreateSequence
+	post /sequences (CreateSequenceRequest) returns (SequenceInfo)
+
+	@handler UpdateSequence
+	put /sequences/:id (UpdateSequenceRequest) returns (SequenceInfo)
+
+	@handler GetSequenceStats
+	get /sequences/:id/stats (SequenceStatsRequest) returns (SequenceStatsResponse)
+
+	@handler DeleteSequence
+	delete /sequences/:id (GetSequenceRequest) returns (Response)
+
+	// Entry Rules
+	@handler CreateEntryRule
+	post /entry-rules (CreateEntryRuleRequest) returns (EntryRuleResponse)
+
+	@handler UpdateEntryRule
+	put /entry-rules/:id (UpdateEntryRuleRequest) returns (EntryRuleResponse)
+
+	@handler DeleteEntryRule
+	delete /entry-rules/:id (DeleteEntryRuleRequest) returns (Response)
+
+	@handler CreateTemplate
+	post /templates (CreateTemplateRequest) returns (TemplateInfo)
+
+	@handler UpdateTemplate
+	put /templates/:id (UpdateTemplateRequest) returns (TemplateInfo)
+
+	@handler DeleteTemplate
+	delete /templates/:id (DeleteTemplateRequest) returns (Response)
+
+	@handler ListEmailQueue
+	get /email-queue (EmailQueueListRequest) returns (EmailQueueListResponse)
+
+	@handler CancelEmail
+	post /email-queue/:id/cancel (CancelEmailRequest) returns (Response)
+}
+
+// Admin Email Designs (Global Templates)
+@server (
+	group:      admin/designs
+	prefix:     /api/admin
+	middleware: Auth
+)
+service outlet {
+	@handler ListEmailDesigns
+	get /email-designs (ListEmailDesignsRequest) returns (ListEmailDesignsResponse)
+
+	@handler GetEmailDesign
+	get /email-designs/:id (GetEmailDesignRequest) returns (EmailDesignInfo)
+
+	@handler CreateEmailDesign
+	post /email-designs (CreateEmailDesignRequest) returns (EmailDesignInfo)
+
+	@handler UpdateEmailDesign
+	put /email-designs/:id (UpdateEmailDesignRequest) returns (EmailDesignInfo)
+
+	@handler DeleteEmailDesign
+	delete /email-designs/:id (DeleteEmailDesignRequest) returns (Response)
+}
+
+// Admin Email Campaigns (Broadcasts)
+@server (
+	group:      admin/campaigns
+	prefix:     /api/admin
+	middleware: Auth
+)
+service outlet {
+	@handler ListCampaigns
+	get /campaigns (ListCampaignsRequest) returns (ListCampaignsResponse)
+
+	@handler GetCampaign
+	get /campaigns/:id (GetCampaignRequest) returns (CampaignInfo)
+
+	@handler CreateCampaign
+	post /campaigns (CreateCampaignRequest) returns (CampaignInfo)
+
+	@handler UpdateCampaign
+	put /campaigns/:id (UpdateCampaignRequest) returns (CampaignInfo)
+
+	@handler DeleteCampaign
+	delete /campaigns/:id (DeleteCampaignRequest) returns (Response)
+
+	@handler ScheduleCampaign
+	post /campaigns/:id/schedule (ScheduleCampaignRequest) returns (CampaignInfo)
+
+	@handler SendCampaignNow
+	post /campaigns/:id/send (SendCampaignNowRequest) returns (CampaignInfo)
+
+	@handler GetCampaignStats
+	get /campaigns/:id/stats (GetCampaignRequest) returns (CampaignStatsResponse)
+}
+
+// Admin Transactional Emails
+@server (
+	group:      admin/transactional
+	prefix:     /api/admin
+	middleware: Auth
+)
+service outlet {
+	@handler ListTransactionalEmails
+	get /transactional-emails (ListTransactionalEmailsRequest) returns (ListTransactionalEmailsResponse)
+
+	@handler GetTransactionalEmail
+	get /transactional-emails/:id (GetTransactionalEmailRequest) returns (TransactionalEmailInfo)
+
+	@handler CreateTransactionalEmail
+	post /transactional-emails (CreateTransactionalEmailRequest) returns (TransactionalEmailInfo)
+
+	@handler UpdateTransactionalEmail
+	put /transactional-emails/:id (UpdateTransactionalEmailRequest) returns (TransactionalEmailInfo)
+
+	@handler DeleteTransactionalEmail
+	delete /transactional-emails/:id (DeleteTransactionalEmailRequest) returns (Response)
+
+	@handler GetTransactionalEmailStats
+	get /transactional-emails/:id/stats (GetTransactionalEmailRequest) returns (TransactionalStatsResponse)
+}
+
+// Admin Organizations
+@server (
+	group:      admin/organizations
+	prefix:     /api/admin
+	middleware: Auth
+)
+service outlet {
+	@handler ListOrganizations
+	get /organizations returns (OrgListResponse)
+
+	@handler GetOrganization
+	get /organizations/:id (GetOrgRequest) returns (OrgInfo)
+
+	@handler GetOrganizationBySlug
+	get /organizations/slug/:slug (GetOrgBySlugRequest) returns (OrgInfo)
+
+	@handler CreateOrganization
+	post /organizations (CreateOrgRequest) returns (OrgInfo)
+
+	@handler UpdateOrganization
+	put /organizations/:id (UpdateOrgRequest) returns (OrgInfo)
+
+	@handler UpdateOrgEmailSettings
+	put /organizations/:id/email (UpdateOrgEmailSettingsRequest) returns (OrgInfo)
+
+	@handler RegenerateOrgApiKey
+	post /organizations/:id/regenerate-key (RegenerateApiKeyRequest) returns (OrgInfo)
+
+	@handler DeleteOrganization
+	delete /organizations/:id (DeleteOrgRequest) returns (Response)
+
+	@handler GetDashboardStats
+	get /organizations/:id/dashboard-stats (GetDashboardStatsRequest) returns (DashboardStatsResponse)
+}
+
+// Platform Settings (Super Admin only)
+// These are global platform configurations, not org-scoped
+@server (
+	group:      admin/settings
+	prefix:     /api/admin/settings
+	middleware: Auth
+)
+service outlet {
+	@handler GetSetupStatus
+	get /setup-status returns (SetupStatusResponse)
+
+	@handler GetPlatformSettings
+	get / returns (GetPlatformSettingsResponse)
+
+	@handler GetPlatformSettingsByCategory
+	get /:category (GetPlatformSettingsByCategoryRequest) returns (GetPlatformSettingsResponse)
+
+	@handler UpdateEmailSettings
+	put /email (UpdateEmailSettingsRequest) returns (UpdateSettingsResponse)
+}
+
+// Backup Management (Super Admin only)
+@server (
+	group:      admin/backup
+	prefix:     /api/admin/backup
+	middleware: Auth
+)
+service outlet {
+	@handler CreateBackup
+	post / (CreateBackupRequest) returns (CreateBackupResponse)
+
+	@handler ListBackups
+	get / (ListBackupsRequest) returns (ListBackupsResponse)
+
+	@handler GetBackup
+	get /:id (GetBackupRequest) returns (BackupInfo)
+
+	@handler DeleteBackup
+	delete /:id (DeleteBackupRequest) returns (Response)
+
+	@handler DownloadBackup
+	get /:id/download (DownloadBackupRequest)
+
+	@handler GetBackupSettings
+	get /settings returns (BackupSettingsResponse)
+
+	@handler UpdateBackupSettings
+	put /settings (BackupSettingsRequest) returns (BackupSettingsResponse)
+}
+
+// Version & Updates (Super Admin only)
+@server (
+	group:      admin/system
+	prefix:     /api/admin/system
+	middleware: Auth
+)
+service outlet {
+	@handler GetVersion
+	get /version returns (VersionInfo)
+
+	@handler CheckForUpdates
+	get /updates/check returns (UpdateCheckResponse)
+}
+
+// GDPR Compliance (Per-org scoped, requires Auth)
+@server (
+	group:      admin/gdpr
+	prefix:     /api/admin/gdpr
+	middleware: Auth
+)
+service outlet {
+	@handler LookupContact
+	get /contacts/lookup (GDPRLookupRequest) returns (GDPRLookupResponse)
+
+	@handler ExportContactData
+	post /contacts/:contact_id/export (GDPRExportRequest) returns (GDPRExportResponse)
+
+	@handler DeleteContactData
+	delete /contacts/:contact_id (GDPRDeleteRequest) returns (GDPRDeleteResponse)
+
+	@handler GetContactConsent
+	get /contacts/:contact_id/consent (GDPRConsentRequest) returns (GDPRConsentInfo)
+
+	@handler UpdateContactConsent
+	put /contacts/:contact_id/consent (UpdateGDPRConsentRequest) returns (GDPRConsentInfo)
+}
+
+// Admin Org Email Config (Per-org email sending configuration)
+@server (
+	group:      admin/emailconfig
+	prefix:     /api/admin/organizations
+	middleware: Auth
+)
+service outlet {
+	@handler GetOrgEmailConfig
+	get /:org_id/email-config (GetOrgEmailConfigRequest) returns (OrgEmailConfigInfo)
+
+	@handler UpdateOrgEmailConfig
+	put /:org_id/email-config (UpdateOrgEmailConfigRequest) returns (OrgEmailConfigInfo)
+
+	@handler DetectSESQuota
+	post /:org_id/email-config/detect-quota (DetectSESQuotaRequest) returns (SESQuotaResponse)
+}
+
+// ============================================================================
+// SDK API (External API with API Key Auth)
+// All SDK endpoints require X-API-Key header
+// ============================================================================
+@server (
+	group:      sdk
+	prefix:     /sdk/v1
+	middleware: APIKeyAuth
+)
+service outlet {
+	@handler CreateContact
+	post /contacts (ContactRequest) returns (ContactResponse)
+
+	@handler SubscribeToList
+	post /lists/:slug/subscribe (SubscribeRequest) returns (Response)
+
+	@handler UnsubscribeFromList
+	post /lists/:slug/unsubscribe (SubscribeRequest) returns (Response)
+}
+
+// SDK Transactional Email API
+@server (
+	group:      sdk/emails
+	prefix:     /sdk/v1/emails
+	middleware: APIKeyAuth
+)
+service outlet {
+	@handler SendEmail
+	post / (SendEmailRequest) returns (SendEmailResponse)
+
+	@handler GetEmailStatus
+	get /:messageId (GetEmailStatusRequest) returns (EmailStatusResponse)
+
+	@handler ListEmailEvents
+	get /:messageId/events (ListEmailEventsRequest) returns (ListEmailEventsResponse)
+}
+
+// SDK Sequence Enrollment API
+@server (
+	group:      sdk/sequences
+	prefix:     /sdk/v1/sequences
+	middleware: APIKeyAuth
+)
+service outlet {
+	@handler EnrollInSequence
+	post /enroll (EnrollSequenceRequest) returns (EnrollSequenceResponse)
+
+	@handler GetSequenceEnrollments
+	get /enrollments (GetSequenceEnrollmentRequest) returns (ListSequenceEnrollmentsResponse)
+
+	@handler UnenrollFromSequence
+	post /unenroll (UnenrollSequenceRequest) returns (Response)
+
+	@handler PauseSequenceEnrollment
+	post /pause (PauseSequenceRequest) returns (Response)
+
+	@handler ResumeSequenceEnrollment
+	post /resume (ResumeSequenceRequest) returns (Response)
+}
+
+// SDK Contact Management API
+@server (
+	group:      sdk/contacts
+	prefix:     /sdk/v1/contacts
+	middleware: APIKeyAuth
+)
+service outlet {
+	@handler GetContact
+	get /:id (GetContactRequest) returns (SDKContactInfo)
+
+	@handler UpdateContact
+	put /:id (UpdateContactRequest) returns (SDKContactInfo)
+
+	@handler AddContactTags
+	post /:id/tags (AddContactTagsRequest) returns (Response)
+
+	@handler RemoveContactTags
+	delete /:id/tags (RemoveContactTagsRequest) returns (Response)
+
+	@handler ListContactActivity
+	get /:id/activity (ListContactActivityRequest) returns (ListContactActivityResponse)
+
+	@handler GlobalUnsubscribe
+	post /unsubscribe (GlobalUnsubscribeRequest) returns (Response)
+}
+
+// SDK Webhook Registration API
+@server (
+	group:      sdk/webhooks
+	prefix:     /sdk/v1/webhooks
+	middleware: APIKeyAuth
+)
+service outlet {
+	@handler RegisterWebhook
+	post / (RegisterWebhookRequest) returns (RegisterWebhookResponse)
+
+	@handler ListWebhooks
+	get / returns (ListWebhooksResponse)
+
+	@handler GetWebhook
+	get /:id (GetWebhookRequest) returns (WebhookInfo)
+
+	@handler UpdateWebhook
+	put /:id (UpdateWebhookRequest) returns (WebhookInfo)
+
+	@handler DeleteWebhook
+	delete /:id (DeleteWebhookRequest) returns (Response)
+
+	@handler TestWebhook
+	post /:id/test (TestWebhookRequest) returns (TestWebhookResponse)
+
+	@handler ListWebhookLogs
+	get /:id/logs (ListWebhookLogsRequest) returns (ListWebhookLogsResponse)
+}
+
+// SDK Stats API
+@server (
+	group:      sdk/stats
+	prefix:     /sdk/v1/stats
+	middleware: APIKeyAuth
+)
+service outlet {
+	@handler GetStatsOverview
+	get /overview (GetStatsOverviewRequest) returns (StatsOverviewResponse)
+
+	@handler GetEmailStats
+	get /emails (GetEmailStatsRequest) returns (GetEmailStatsResponse)
+
+	@handler GetContactStats
+	get /contacts (GetContactStatsRequest) returns (GetContactStatsResponse)
+}
+
+// SDK Tracking API (for embedded handlers in SDK)
+@server (
+	group:      sdk/tracking
+	prefix:     /sdk/v1/tracking
+	middleware: APIKeyAuth
+)
+service outlet {
+	@handler TrackOpen
+	post /open (TrackOpenRequest) returns (Response)
+
+	@handler TrackClick
+	post /click (TrackClickRequest) returns (Response)
+
+	@handler TrackUnsubscribe
+	post /unsubscribe (TrackUnsubscribeRequest) returns (Response)
+
+	@handler TrackConfirm
+	post /confirm (TrackConfirmRequest) returns (TrackConfirmResponse)
+}
+

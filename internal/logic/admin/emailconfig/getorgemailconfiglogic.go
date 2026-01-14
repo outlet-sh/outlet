@@ -1,0 +1,46 @@
+package emailconfig
+
+import (
+	"context"
+	"fmt"
+
+	"outlet/internal/services/email"
+	"outlet/internal/svc"
+	"outlet/internal/types"
+
+	"github.com/zeromicro/go-zero/core/logx"
+)
+
+type GetOrgEmailConfigLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewGetOrgEmailConfigLogic(ctx context.Context, svcCtx *svc.ServiceContext) *GetOrgEmailConfigLogic {
+	return &GetOrgEmailConfigLogic{
+		Logger: logx.WithContext(ctx),
+		ctx:    ctx,
+		svcCtx: svcCtx,
+	}
+}
+
+func (l *GetOrgEmailConfigLogic) GetOrgEmailConfig(req *types.GetOrgEmailConfigRequest) (resp *types.OrgEmailConfigInfo, err error) {
+	config, err := email.GetOrgEmailConfig(l.ctx, l.svcCtx.DB, req.OrgId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get email config: %w", err)
+	}
+
+	return &types.OrgEmailConfigInfo{
+		SESRateLimit:  config.SESRateLimit,
+		SESRateBurst:  config.SESRateBurst,
+		SESDailyQuota: config.SESDailyQuota,
+		WorkerCount:   config.WorkerCount,
+		BatchSize:     config.BatchSize,
+		AWSRegion:     config.AWSRegion,
+		HasOwnCreds:   config.HasOwnAWSCredentials(),
+		FromEmail:     config.FromEmail,
+		FromName:      config.FromName,
+		ReplyTo:       config.ReplyTo,
+	}, nil
+}

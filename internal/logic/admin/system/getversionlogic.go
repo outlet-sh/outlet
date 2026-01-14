@@ -1,0 +1,37 @@
+package system
+
+import (
+	"context"
+	"runtime"
+
+	"outlet/internal/svc"
+	"outlet/internal/types"
+	"outlet/internal/version"
+
+	"github.com/zeromicro/go-zero/core/logx"
+)
+
+type GetVersionLogic struct {
+	logx.Logger
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
+}
+
+func NewGetVersionLogic(ctx context.Context, svcCtx *svc.ServiceContext) *GetVersionLogic {
+	return &GetVersionLogic{
+		Logger: logx.WithContext(ctx),
+		ctx:    ctx,
+		svcCtx: svcCtx,
+	}
+}
+
+func (l *GetVersionLogic) GetVersion() (resp *types.VersionInfo, err error) {
+	return &types.VersionInfo{
+		Version:   version.Version,
+		Commit:    version.Commit,
+		BuildDate: version.BuildDate,
+		GoVersion: runtime.Version(),
+		OS:        runtime.GOOS,
+		Arch:      runtime.GOARCH,
+	}, nil
+}
