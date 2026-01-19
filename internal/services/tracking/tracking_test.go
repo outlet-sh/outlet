@@ -6,7 +6,7 @@ import (
 	"errors"
 	"testing"
 
-	"outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/db"
 )
 
 // mockQueries implements the database methods needed by tracking service

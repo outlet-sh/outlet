@@ -2,7 +2,7 @@
   SaveButton Component
   Button with saving/saved state feedback
   - Shows "Saving..." with spinner when loading
-  - Shows "Saved ✓" briefly on success
+  - Shows "Saved" briefly on success
   - Shows original text otherwise
 -->
 

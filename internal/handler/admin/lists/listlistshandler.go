@@ -3,9 +3,9 @@ package lists
 import (
 	"net/http"
 
+	"github.com/outlet-sh/outlet/internal/logic/admin/lists"
+	"github.com/outlet-sh/outlet/internal/svc"
 	"github.com/zeromicro/go-zero/rest/httpx"
-	"outlet/internal/logic/admin/lists"
-	"outlet/internal/svc"
 )
 
 func ListListsHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

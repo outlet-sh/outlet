@@ -12,47 +12,28 @@
 
 	interface Props {
 		items: BreadcrumbItem[];
-		separator?: 'slash' | 'chevron' | 'arrow';
+		class?: string;
 	}
 
 	let {
 		items,
-		separator = 'chevron'
+		class: className = ''
 	}: Props = $props();
-
-	const separatorIcons = {
-		slash: '/',
-		chevron: 'fa-chevron-right',
-		arrow: 'fa-arrow-right'
-	};
 </script>
 
-<nav class="breadcrumb" aria-label="Breadcrumb">
-	<ol class="breadcrumb-list">
+<div class="breadcrumbs text-sm {className}">
+	<ul>
 		{#each items as item, index}
-			<li class="breadcrumb-item">
-				{#if index > 0}
-					<span class="breadcrumb-separator">
-						{#if separator === 'slash'}
-							/
-						{:else}
-							<i class="fas {separatorIcons[separator]} text-xs"></i>
-						{/if}
-					</span>
-				{/if}
-
+			<li>
 				{#if item.href && index < items.length - 1}
-					<a
-						href={item.href}
-						class="breadcrumb-link"
-					>
+					<a href={item.href} class="flex items-center gap-2">
 						{#if item.icon}
 							<i class="fas fa-{item.icon}"></i>
 						{/if}
 						{item.label}
 					</a>
 				{:else}
-					<span class="breadcrumb-current">
+					<span class="flex items-center gap-2">
 						{#if item.icon}
 							<i class="fas fa-{item.icon}"></i>
 						{/if}
@@ -61,38 +42,5 @@
 				{/if}
 			</li>
 		{/each}
-	</ol>
-</nav>
-
-<style>
-	@reference "$src/app.css";
-	@layer components.breadcrumb {
-		.breadcrumb {
-			@apply flex;
-		}
-
-		.breadcrumb-list {
-			@apply flex items-center space-x-2;
-		}
-
-		.breadcrumb-item {
-			@apply flex items-center;
-		}
-
-		.breadcrumb-separator {
-			@apply mx-2 text-text-muted;
-		}
-
-		.breadcrumb-link {
-			@apply flex items-center gap-2 text-sm font-medium transition-colors text-text-secondary;
-		}
-
-		.breadcrumb-link:hover {
-			@apply text-text;
-		}
-
-		.breadcrumb-current {
-			@apply flex items-center gap-2 text-sm font-medium text-text;
-		}
-	}
-</style>
+	</ul>
+</div>

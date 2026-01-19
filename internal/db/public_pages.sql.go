@@ -265,6 +265,80 @@ func (q *Queries) GetListByIDForPublicPage(ctx context.Context, id int64) (GetLi
 	return i, err
 }
 
+const getListByPublicIDForPublicPage = `-- name: GetListByPublicIDForPublicPage :one
+SELECT
+    el.id,
+    el.org_id,
+    el.name,
+    el.slug,
+    el.public_id,
+    el.description,
+    el.double_optin,
+    el.public_page_enabled,
+    el.thank_you_url,
+    el.confirm_redirect_url,
+    el.unsubscribe_redirect_url,
+    el.confirmation_email_subject,
+    el.confirmation_email_body,
+    o.name as org_name,
+    o.slug as org_slug,
+    o.from_name,
+    o.from_email,
+    o.settings as org_settings
+FROM email_lists el
+JOIN organizations o ON o.id = el.org_id
+WHERE el.public_id = ?1
+  AND (el.public_page_enabled IS NULL OR el.public_page_enabled = 1)
+LIMIT 1
+`
+
+type GetListByPublicIDForPublicPageRow struct {
+	ID                       int64          `json:"id"`
+	OrgID                    string         `json:"org_id"`
+	Name                     string         `json:"name"`
+	Slug                     string         `json:"slug"`
+	PublicID                 string         `json:"public_id"`
+	Description              sql.NullString `json:"description"`
+	DoubleOptin              sql.NullInt64  `json:"double_optin"`
+	PublicPageEnabled        sql.NullInt64  `json:"public_page_enabled"`
+	ThankYouUrl              sql.NullString `json:"thank_you_url"`
+	ConfirmRedirectUrl       sql.NullString `json:"confirm_redirect_url"`
+	UnsubscribeRedirectUrl   sql.NullString `json:"unsubscribe_redirect_url"`
+	ConfirmationEmailSubject sql.NullString `json:"confirmation_email_subject"`
+	ConfirmationEmailBody    sql.NullString `json:"confirmation_email_body"`
+	OrgName                  string         `json:"org_name"`
+	OrgSlug                  string         `json:"org_slug"`
+	FromName                 sql.NullString `json:"from_name"`
+	FromEmail                sql.NullString `json:"from_email"`
+	OrgSettings              sql.NullString `json:"org_settings"`
+}
+
+func (q *Queries) GetListByPublicIDForPublicPage(ctx context.Context, publicID string) (GetListByPublicIDForPublicPageRow, error) {
+	row := q.db.QueryRowContext(ctx, getListByPublicIDForPublicPage, publicID)
+	var i GetListByPublicIDForPublicPageRow
+	err := row.Scan(
+		&i.ID,
+		&i.OrgID,
+		&i.Name,
+		&i.Slug,
+		&i.PublicID,
+		&i.Description,
+		&i.DoubleOptin,
+		&i.PublicPageEnabled,
+		&i.ThankYouUrl,
+		&i.ConfirmRedirectUrl,
+		&i.UnsubscribeRedirectUrl,
+		&i.ConfirmationEmailSubject,
+		&i.ConfirmationEmailBody,
+		&i.OrgName,
+		&i.OrgSlug,
+		&i.FromName,
+		&i.FromEmail,
+		&i.OrgSettings,
+	)
+	return i, err
+}
+
 const getListBySlugForPublicPage = `-- name: GetListBySlugForPublicPage :one
 
 SELECT

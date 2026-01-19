@@ -3,9 +3,9 @@ package users
 import (
 	"net/http"
 
+	"github.com/outlet-sh/outlet/internal/logic/admin/users"
+	"github.com/outlet-sh/outlet/internal/svc"
 	"github.com/zeromicro/go-zero/rest/httpx"
-	"outlet/internal/logic/admin/users"
-	"outlet/internal/svc"
 )
 
 func ListUsersHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

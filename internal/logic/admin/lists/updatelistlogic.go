@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"strconv"
 
-	"outlet/internal/db"
-	"outlet/internal/svc"
-	"outlet/internal/types"
-	"outlet/internal/utils"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
+	"github.com/outlet-sh/outlet/internal/utils"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -52,6 +52,56 @@ func (l *UpdateListLogic) UpdateList(req *types.UpdateListRequest) (resp *types.
 		}
 	}
 
+	// Redirect URL settings
+	if req.ThankYouUrl != nil {
+		params.ThankYouUrl = *req.ThankYouUrl
+	}
+	if req.ConfirmRedirectUrl != nil {
+		params.ConfirmRedirectUrl = *req.ConfirmRedirectUrl
+	}
+	if req.AlreadySubscribedUrl != nil {
+		params.AlreadySubscribedUrl = *req.AlreadySubscribedUrl
+	}
+	if req.UnsubscribeRedirectUrl != nil {
+		params.UnsubscribeRedirectUrl = *req.UnsubscribeRedirectUrl
+	}
+
+	// Thank you email settings
+	if req.ThankYouEmailEnabled != nil {
+		params.ThankYouEmailEnabled = sql.NullInt64{
+			Int64: boolToInt64(*req.ThankYouEmailEnabled),
+			Valid: true,
+		}
+	}
+	if req.ThankYouEmailSubject != nil {
+		params.ThankYouEmailSubject = *req.ThankYouEmailSubject
+	}
+	if req.ThankYouEmailBody != nil {
+		params.ThankYouEmailBody = *req.ThankYouEmailBody
+	}
+
+	// Goodbye email settings
+	if req.GoodbyeEmailEnabled != nil {
+		params.GoodbyeEmailEnabled = sql.NullInt64{
+			Int64: boolToInt64(*req.GoodbyeEmailEnabled),
+			Valid: true,
+		}
+	}
+	if req.GoodbyeEmailSubject != nil {
+		params.GoodbyeEmailSubject = *req.GoodbyeEmailSubject
+	}
+	if req.GoodbyeEmailBody != nil {
+		params.GoodbyeEmailBody = *req.GoodbyeEmailBody
+	}
+
+	// Unsubscribe behavior settings
+	if req.UnsubscribeBehavior != nil {
+		params.UnsubscribeBehavior = *req.UnsubscribeBehavior
+	}
+	if req.UnsubscribeScope != nil {
+		params.UnsubscribeScope = *req.UnsubscribeScope
+	}
+
 	list, err := l.svcCtx.DB.UpdateEmailList(l.ctx, params)
 	if err != nil {
 		l.Errorf("Failed to update list: %v", err)
@@ -64,14 +114,29 @@ func (l *UpdateListLogic) UpdateList(req *types.UpdateListRequest) (resp *types.
 	})
 
 	return &types.ListInfo{
-		Id:              strconv.FormatInt(list.ID, 10),
-		OrgId:           list.OrgID,
-		Name:            list.Name,
-		Slug:            list.Slug,
-		Description:     list.Description.String,
-		DoubleOptin:     list.DoubleOptin.Int64 == 1,
-		SubscriberCount: int(subscriberCount),
-		CreatedAt:       utils.FormatNullString(list.CreatedAt),
-		UpdatedAt:       utils.FormatNullString(list.UpdatedAt),
+		Id:                     strconv.FormatInt(list.ID, 10),
+		PublicId:               list.PublicID,
+		OrgId:                  list.OrgID,
+		Name:                   list.Name,
+		Slug:                   list.Slug,
+		Description:            list.Description.String,
+		DoubleOptin:            list.DoubleOptin.Int64 == 1,
+		ConfirmationSubject:    list.ConfirmationEmailSubject.String,
+		ConfirmationBody:       list.ConfirmationEmailBody.String,
+		SubscriberCount:        int(subscriberCount),
+		CreatedAt:              utils.FormatNullString(list.CreatedAt),
+		UpdatedAt:              utils.FormatNullString(list.UpdatedAt),
+		ThankYouUrl:            list.ThankYouUrl.String,
+		ConfirmRedirectUrl:     list.ConfirmRedirectUrl.String,
+		AlreadySubscribedUrl:   list.AlreadySubscribedUrl.String,
+		UnsubscribeRedirectUrl: list.UnsubscribeRedirectUrl.String,
+		ThankYouEmailEnabled:   list.ThankYouEmailEnabled.Int64 == 1,
+		ThankYouEmailSubject:   list.ThankYouEmailSubject.String,
+		ThankYouEmailBody:      list.ThankYouEmailBody.String,
+		GoodbyeEmailEnabled:    list.GoodbyeEmailEnabled.Int64 == 1,
+		GoodbyeEmailSubject:    list.GoodbyeEmailSubject.String,
+		GoodbyeEmailBody:       list.GoodbyeEmailBody.String,
+		UnsubscribeBehavior:    list.UnsubscribeBehavior.String,
+		UnsubscribeScope:       list.UnsubscribeScope.String,
 	}, nil
 }

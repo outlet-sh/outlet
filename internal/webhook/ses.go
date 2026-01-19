@@ -9,9 +9,9 @@ import (
 	"net/http"
 	"time"
 
-	"outlet/internal/db"
-	"outlet/internal/events"
-	"outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/events"
+	"github.com/outlet-sh/outlet/internal/svc"
 )
 
 // SNS message wrapper

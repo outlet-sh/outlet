@@ -1,10 +1,8 @@
 package workers
 
 import (
-	"context"
-
-	"outlet/internal/services/email"
-	"outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/services/email"
+	"github.com/outlet-sh/outlet/internal/svc"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -64,17 +62,4 @@ func (w *EmailWorker) Stats() (sent, failed, retried int64, circuitOpen bool) {
 		return w.dispatcher.Stats()
 	}
 	return 0, 0, 0, false
-}
-
-// Legacy function for backwards compatibility
-// Deprecated: Use StartEmailWorker instead which returns an EmailWorker
-func StartEmailWorkerLegacy(svcCtx *svc.ServiceContext) {
-	ctx := context.Background()
-	_ = ctx // Context available for future use
-
-	worker := StartEmailWorker(svcCtx)
-
-	// Block forever (legacy behavior) - worker runs in background goroutines
-	select {}
-	_ = worker // Keep reference alive
 }

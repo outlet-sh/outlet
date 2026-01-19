@@ -174,3 +174,64 @@ SELECT
         (SELECT COUNT(*) FROM contacts c2 WHERE c2.org_id = sqlc.arg(org_id) AND datetime(c2.created_at) BETWEEN datetime('now', '-60 days') AND datetime('now', '-30 days')),
         0
     ) as previous_period;
+
+-- ============================================
+-- GDPR EXPORT QUERIES
+-- ============================================
+
+-- name: GetContactCampaignSends :many
+SELECT
+    cs.id,
+    cs.campaign_id,
+    ec.name as campaign_name,
+    cs.sent_at,
+    cs.opened_at,
+    cs.clicked_at
+FROM campaign_sends cs
+LEFT JOIN email_campaigns ec ON ec.id = cs.campaign_id
+WHERE cs.contact_id = sqlc.arg(contact_id)
+ORDER BY cs.sent_at DESC;
+
+-- name: GetContactEmailClicks :many
+SELECT
+    ec.id,
+    ec.link_url,
+    ec.link_name,
+    ec.clicked_at,
+    ec.user_agent,
+    ec.ip_address
+FROM email_clicks ec
+WHERE ec.contact_id = sqlc.arg(contact_id)
+ORDER BY ec.clicked_at DESC;
+
+-- name: GetContactTransactionalSends :many
+SELECT
+    ts.id,
+    ts.template_id,
+    te.name as template_name,
+    ts.to_email,
+    ts.status,
+    ts.opened_at,
+    ts.clicked_at,
+    ts.created_at
+FROM transactional_sends ts
+LEFT JOIN transactional_emails te ON te.id = ts.template_id
+WHERE ts.contact_id = sqlc.arg(contact_id)
+ORDER BY ts.created_at DESC;
+
+-- name: GetContactSequenceEmails :many
+SELECT
+    eq.id,
+    et.sequence_id,
+    es.name as sequence_name,
+    et.position as step_number,
+    et.subject,
+    eq.status,
+    eq.sent_at,
+    eq.opened_at,
+    eq.clicked_at
+FROM email_queue eq
+LEFT JOIN email_templates et ON et.id = eq.template_id
+LEFT JOIN email_sequences es ON es.id = et.sequence_id
+WHERE eq.contact_id = sqlc.arg(contact_id)
+ORDER BY eq.sent_at DESC;

@@ -36,6 +36,7 @@ export { default as DateFilterPopover } from './DateFilterPopover.svelte';
 export { default as Tabs } from './Tabs.svelte';
 export { default as Breadcrumb } from './Breadcrumb.svelte';
 export { default as Dropdown } from './Dropdown.svelte';
+export { default as Steps } from './Steps.svelte';
 
 // Data Display
 export { default as Table } from './Table.svelte';
@@ -45,6 +46,7 @@ export { default as Sparkline } from './Sparkline.svelte';
 export { default as Chart } from './Chart.svelte';
 export { default as Badge } from './Badge.svelte';
 export { default as Avatar } from './Avatar.svelte';
+export { default as CodeBlock } from './CodeBlock.svelte';
 
 // Overlays
 export { default as Modal } from './Modal.svelte';
@@ -79,3 +81,4 @@ export { default as MarkdownEditor } from './MarkdownEditor.svelte';
 export { default as ContentChatPanel } from './ContentChatPanel.svelte';
 export { default as ContentEditor } from './ContentEditor.svelte';
 export { default as Markdown } from './Markdown.svelte';
+export { default as HtmlEditor } from './HtmlEditor.svelte';

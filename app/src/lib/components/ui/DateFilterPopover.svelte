@@ -14,8 +14,6 @@
 
 	let { dateRange = $bindable(), presets = [], onchange }: Props = $props();
 
-	let showPopover = $state(false);
-
 	const defaultPresets = [
 		{
 			label: 'Last 7 days',
@@ -39,7 +37,7 @@
 		}
 	];
 
-	const allPresets = presets.length > 0 ? presets : defaultPresets;
+	const allPresets = $derived(presets.length > 0 ? presets : defaultPresets);
 
 	function handleFromChange(event: Event) {
 		const input = event.target as HTMLInputElement;
@@ -57,17 +55,9 @@
 		dateRange.from = preset.from;
 		dateRange.to = preset.to;
 		onchange?.(dateRange);
-		showPopover = false;
-	}
-
-	function togglePopover() {
-		showPopover = !showPopover;
-	}
-
-	function handleClickOutside(event: MouseEvent) {
-		const target = event.target as HTMLElement;
-		if (!target.closest('.date-filter-container')) {
-			showPopover = false;
+		// Close dropdown by removing focus
+		if (document.activeElement instanceof HTMLElement) {
+			document.activeElement.blur();
 		}
 	}
 
@@ -89,80 +79,77 @@
 	const displayText = $derived(formatDateDisplay(dateRange.from, dateRange.to));
 </script>
 
-<svelte:window onclick={handleClickOutside} />
-
-<div class="date-filter-container relative">
-	<button
-		type="button"
-		onclick={(e) => { e.stopPropagation(); togglePopover(); }}
-		class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg border border-border bg-bg hover:bg-bg-secondary transition-colors text-text"
-	>
-		<Filter size={14} class="text-text-muted" />
+<div class="dropdown dropdown-end">
+	<div tabindex="0" role="button" class="btn btn-sm btn-ghost gap-2">
+		<Filter size={14} class="opacity-60" />
 		<span>{displayText}</span>
-	</button>
-
-	{#if showPopover}
-		<div
-			class="absolute top-full right-0 mt-2 z-50 w-80 bg-bg border border-border rounded-lg shadow-lg"
-			onclick={(e) => e.stopPropagation()}
-		>
-			<!-- Header -->
-			<div class="flex items-center justify-between px-4 py-3 border-b border-border">
-				<div class="flex items-center gap-2 text-sm font-medium text-text">
-					<Calendar size={16} />
-					Date Range
-				</div>
-				<button
-					type="button"
-					onclick={() => showPopover = false}
-					class="text-text-muted hover:text-text transition-colors"
-				>
-					<X size={16} />
-				</button>
+	</div>
+	<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+	<div tabindex="0" class="dropdown-content z-50 w-80 bg-base-100 rounded-lg shadow-lg border border-base-300">
+		<!-- Header -->
+		<div class="flex items-center justify-between px-4 py-3 border-b border-base-300">
+			<div class="flex items-center gap-2 text-sm font-medium">
+				<Calendar size={16} />
+				Date Range
 			</div>
+			<button
+				type="button"
+				onclick={() => {
+					if (document.activeElement instanceof HTMLElement) {
+						document.activeElement.blur();
+					}
+				}}
+				class="btn btn-ghost btn-xs btn-circle"
+			>
+				<X size={16} />
+			</button>
+		</div>
 
-			<!-- Presets -->
-			<div class="p-3 border-b border-border">
-				<div class="flex flex-wrap gap-2">
-					{#each allPresets as preset}
-						<button
-							type="button"
-							onclick={() => selectPreset(preset)}
-							class="px-3 py-1.5 text-xs font-medium rounded-md transition-colors {dateRange.from === preset.from && dateRange.to === preset.to
-								? 'bg-primary text-white'
-								: 'bg-bg-secondary text-text-muted hover:bg-bg-tertiary hover:text-text'}"
-						>
-							{preset.label}
-						</button>
-					{/each}
-				</div>
+		<!-- Presets -->
+		<div class="p-3 border-b border-base-300">
+			<div class="flex flex-wrap gap-2">
+				{#each allPresets as preset}
+					<button
+						type="button"
+						onclick={() => selectPreset(preset)}
+						class="btn btn-xs {dateRange.from === preset.from && dateRange.to === preset.to
+							? 'btn-primary'
+							: 'btn-ghost'}"
+					>
+						{preset.label}
+					</button>
+				{/each}
 			</div>
+		</div>
 
-			<!-- Custom Date Inputs -->
-			<div class="p-4 space-y-3">
-				<div class="grid grid-cols-2 gap-3">
-					<div>
-						<label for="from-date" class="block text-xs font-medium text-text-muted mb-1">From</label>
-						<input
-							type="date"
-							id="from-date"
-							bind:value={dateRange.from}
-							onchange={handleFromChange}
-							class="input w-full text-sm"
-						/>
-					</div>
-					<div>
-						<label for="to-date" class="block text-xs font-medium text-text-muted mb-1">To</label>
-						<input
-							type="date"
-							id="to-date"
-							bind:value={dateRange.to}
-							onchange={handleToChange}
-							class="input w-full text-sm"
-						/>
-					</div>
+		<!-- Custom Date Inputs -->
+		<div class="p-4 space-y-3">
+			<div class="grid grid-cols-2 gap-3">
+				<div>
+					<label for="from-date" class="label pb-1">
+						<span class="label-text text-xs">From</span>
+					</label>
+					<input
+						type="date"
+						id="from-date"
+						bind:value={dateRange.from}
+						onchange={handleFromChange}
+						class="input input-bordered input-sm w-full"
+					/>
+				</div>
+				<div>
+					<label for="to-date" class="label pb-1">
+						<span class="label-text text-xs">To</span>
+					</label>
+					<input
+						type="date"
+						id="to-date"
+						bind:value={dateRange.to}
+						onchange={handleToChange}
+						class="input input-bordered input-sm w-full"
+					/>
 				</div>
 			</div>
 		</div>
-	{/if}
+	</div>
 </div>

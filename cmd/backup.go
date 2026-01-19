@@ -13,7 +13,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
 	"github.com/zeromicro/go-zero/core/conf"
-	"outlet/internal/config"
+	"github.com/outlet-sh/outlet/internal/config"
 
 	_ "modernc.org/sqlite"
 )

@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"outlet/internal/db"
-	"outlet/internal/services/email"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/services/email"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

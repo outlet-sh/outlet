@@ -5,7 +5,7 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-  args_bin = []
+  args_bin = ["serve"]
   bin = "./tmp/outlet"
   cmd = "go build -o ./tmp/outlet ."
   delay = 1000

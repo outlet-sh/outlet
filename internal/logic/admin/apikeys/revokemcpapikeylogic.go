@@ -3,9 +3,9 @@ package apikeys
 import (
 	"context"
 
-	"outlet/internal/errorx"
-	"outlet/internal/svc"
-	"outlet/internal/types"
+	"github.com/outlet-sh/outlet/internal/errorx"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )

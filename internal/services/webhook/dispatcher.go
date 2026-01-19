@@ -15,8 +15,8 @@ import (
 	"sync"
 	"time"
 
-	"outlet/internal/db"
-	"outlet/internal/events"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/events"
 )
 
 // Dispatcher delivers webhooks to registered endpoints when events occur.

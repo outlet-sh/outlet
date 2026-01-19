@@ -4,9 +4,9 @@ import (
 	"context"
 	"database/sql"
 
-	"outlet/internal/logic/public"
-	"outlet/internal/svc"
-	"outlet/internal/types"
+	"github.com/outlet-sh/outlet/internal/logic/public"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )

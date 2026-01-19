@@ -26,6 +26,32 @@ WHERE el.slug = sqlc.arg(slug)
   AND (el.public_page_enabled IS NULL OR el.public_page_enabled = 1)
 LIMIT 1;
 
+-- name: GetListByPublicIDForPublicPage :one
+SELECT
+    el.id,
+    el.org_id,
+    el.name,
+    el.slug,
+    el.public_id,
+    el.description,
+    el.double_optin,
+    el.public_page_enabled,
+    el.thank_you_url,
+    el.confirm_redirect_url,
+    el.unsubscribe_redirect_url,
+    el.confirmation_email_subject,
+    el.confirmation_email_body,
+    o.name as org_name,
+    o.slug as org_slug,
+    o.from_name,
+    o.from_email,
+    o.settings as org_settings
+FROM email_lists el
+JOIN organizations o ON o.id = el.org_id
+WHERE el.public_id = sqlc.arg(public_id)
+  AND (el.public_page_enabled IS NULL OR el.public_page_enabled = 1)
+LIMIT 1;
+
 -- name: GetListByIDForPublicPage :one
 SELECT
     el.id,

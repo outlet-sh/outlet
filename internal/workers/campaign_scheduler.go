@@ -8,9 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"outlet/internal/db"
-	"outlet/internal/services/email"
-	"outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/services/email"
+	"github.com/outlet-sh/outlet/internal/svc"
 
 	"github.com/google/uuid"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -40,14 +40,14 @@ type CampaignSchedulerConfig struct {
 	PoolSize int
 }
 
-// DefaultCampaignSchedulerConfig returns sensible defaults (listmonk-inspired)
+// DefaultCampaignSchedulerConfig returns sensible defaults 
 func DefaultCampaignSchedulerConfig() CampaignSchedulerConfig {
 	return CampaignSchedulerConfig{
 		ScheduleInterval: 10 * time.Second,
 		SendPollInterval: 2 * time.Second,
 		Workers:          10,             // Increased from 5
 		RateLimit:        14,             // SES sandbox default
-		BatchSize:        1000,           // Increased from 100 (listmonk default)
+		BatchSize:        1000,           // Increased from 100
 		ErrorThreshold:   100,            // Pause after 100 consecutive errors
 		PoolSize:         20,             // SMTP connection pool size
 	}

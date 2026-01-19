@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { createEventDispatcher } from 'svelte';
+
 	interface DateRange {
 		from: string;
 		to: string;
@@ -7,10 +9,13 @@
 	interface Props {
 		dateRange: DateRange;
 		presets?: { label: string; from: string; to: string }[];
-		onchange?: (range: DateRange) => void;
 	}
 
-	let { dateRange = $bindable(), presets = [], onchange }: Props = $props();
+	let { dateRange = $bindable(), presets = [] }: Props = $props();
+
+	const dispatch = createEventDispatcher<{
+		change: DateRange;
+	}>();
 
 	const defaultPresets = [
 		{
@@ -35,24 +40,24 @@
 		}
 	];
 
-	const allPresets = presets.length > 0 ? presets : defaultPresets;
+	const allPresets = $derived(presets.length > 0 ? presets : defaultPresets);
 
 	function handleFromChange(event: Event) {
 		const input = event.target as HTMLInputElement;
 		dateRange.from = input.value;
-		onchange?.(dateRange);
+		dispatch('change', dateRange);
 	}
 
 	function handleToChange(event: Event) {
 		const input = event.target as HTMLInputElement;
 		dateRange.to = input.value;
-		onchange?.(dateRange);
+		dispatch('change', dateRange);
 	}
 
 	function selectPreset(preset: { from: string; to: string }) {
 		dateRange.from = preset.from;
 		dateRange.to = preset.to;
-		onchange?.(dateRange);
+		dispatch('change', dateRange);
 	}
 </script>
 
@@ -62,7 +67,7 @@
 			<button
 				type="button"
 				onclick={() => selectPreset(preset)}
-				class="btn-secondary"
+				class="btn btn-sm btn-secondary"
 			>
 				{preset.label}
 			</button>
@@ -71,23 +76,23 @@
 
 	<div class="flex space-x-4">
 		<div class="flex-1">
-			<label for="from-date" class="block text-sm font-medium text-text-muted">From</label>
+			<label for="from-date" class="label pb-1"><span class="label-text">From</span></label>
 			<input
 				type="date"
 				id="from-date"
 				bind:value={dateRange.from}
 				onchange={handleFromChange}
-				class="input mt-1 block w-full"
+				class="input input-bordered w-full"
 			/>
 		</div>
 		<div class="flex-1">
-			<label for="to-date" class="block text-sm font-medium text-text-muted">To</label>
+			<label for="to-date" class="label pb-1"><span class="label-text">To</span></label>
 			<input
 				type="date"
 				id="to-date"
 				bind:value={dateRange.to}
 				onchange={handleToChange}
-				class="input mt-1 block w-full"
+				class="input input-bordered w-full"
 			/>
 		</div>
 	</div>

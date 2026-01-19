@@ -61,7 +61,10 @@
             color: var(--text);
         }
         input[type="email"],
-        input[type="text"] {
+        input[type="text"],
+        input[type="number"],
+        input[type="date"],
+        select {
             width: 100%;
             padding: 12px 14px;
             font-size: 15px;
@@ -69,10 +72,15 @@
             border-radius: 8px;
             outline: none;
             transition: border-color 0.15s, box-shadow 0.15s;
+            background: white;
         }
-        input:focus {
+        input:focus,
+        select:focus {
             border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.1);
+        }
+        .required-indicator {
+            color: var(--error);
         }
         button {
             width: 100%;
@@ -138,13 +146,32 @@
 
             <form method="POST" id="subscribe-form">
                 <div class="form-group">
-                    <label for="email">Email address</label>
+                    <label for="email">Email address <span class="required-indicator">*</span></label>
                     <input type="email" id="email" name="email" placeholder="you@example.com" required value="{{.Email}}">
                 </div>
                 <div class="form-group">
                     <label for="name">Name <span style="color: var(--text-muted); font-weight: normal;">(optional)</span></label>
                     <input type="text" id="name" name="name" placeholder="Your name" value="{{.Name}}">
                 </div>
+                {{range .CustomFields}}
+                <div class="form-group">
+                    <label for="cf_{{.FieldKey}}">{{.Name}}{{if .Required}} <span class="required-indicator">*</span>{{end}}</label>
+                    {{if eq .FieldType "dropdown"}}
+                    <select id="cf_{{.FieldKey}}" name="custom_fields[{{.FieldKey}}]"{{if .Required}} required{{end}}>
+                        <option value="">{{.Placeholder}}</option>
+                        {{range .Options}}
+                        <option value="{{.}}">{{.}}</option>
+                        {{end}}
+                    </select>
+                    {{else if eq .FieldType "number"}}
+                    <input type="number" id="cf_{{.FieldKey}}" name="custom_fields[{{.FieldKey}}]" placeholder="{{.Placeholder}}" value="{{.DefaultValue}}"{{if .Required}} required{{end}}>
+                    {{else if eq .FieldType "date"}}
+                    <input type="date" id="cf_{{.FieldKey}}" name="custom_fields[{{.FieldKey}}]" placeholder="{{.Placeholder}}" value="{{.DefaultValue}}"{{if .Required}} required{{end}}>
+                    {{else}}
+                    <input type="text" id="cf_{{.FieldKey}}" name="custom_fields[{{.FieldKey}}]" placeholder="{{.Placeholder}}" value="{{.DefaultValue}}"{{if .Required}} required{{end}}>
+                    {{end}}
+                </div>
+                {{end}}
                 <button type="submit">Subscribe</button>
             </form>
         </div>

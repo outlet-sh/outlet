@@ -93,7 +93,7 @@
 	let previousTemplate = $state('default');
 
 	// Status options
-	const STATUS_OPTIONS = type === 'post'
+	const STATUS_OPTIONS = $derived(type === 'post'
 		? [
 			{ value: 'draft', label: 'Draft' },
 			{ value: 'published', label: 'Published' },
@@ -102,7 +102,7 @@
 		: [
 			{ value: 'draft', label: 'Draft' },
 			{ value: 'published', label: 'Published' }
-		];
+		]);
 
 	// Category options with "create new"
 	let categoryOptions = $derived([

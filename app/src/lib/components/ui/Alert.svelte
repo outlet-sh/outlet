@@ -1,7 +1,6 @@
 <!--
   Reusable Alert Component
-  Ensures 100% consistency for all alerts/notices
-  All styling controlled by theme tokens
+  Uses DaisyUI alert classes
 -->
 
 <script lang="ts">
@@ -19,19 +18,36 @@
 
 	let {
 		type = 'info',
+		variant, // alias for type
 		icon,
 		title,
-		children,
+		dismissible = false,
+		dismissable, // alias for dismissible
 		onclose,
+		children,
 		class: extraClass = ''
 	}: {
 		type?: 'info' | 'success' | 'warning' | 'error' | 'security';
+		variant?: 'info' | 'success' | 'warning' | 'error' | 'security';
 		icon?: ComponentType | string;
 		title?: string;
-		children: any;
+		dismissible?: boolean;
+		dismissable?: boolean;
 		onclose?: () => void;
+		children: any;
 		class?: string;
 	} = $props();
+
+	// Support both 'type' and 'variant' props
+	const alertType = $derived(variant || type);
+	// Support both 'dismissible' and 'dismissable' props, or infer from onclose
+	const canDismiss = $derived(dismissible || dismissable || !!onclose);
+	let visible = $state(true);
+
+	function handleDismiss() {
+		visible = false;
+		onclose?.();
+	}
 
 	const defaultIcons = {
 		info: Info,
@@ -51,128 +67,44 @@
 
 	const Icon = $derived(
 		!icon
-			? defaultIcons[type]
+			? defaultIcons[alertType]
 			: typeof icon === 'string'
-				? iconNameMap[icon] || defaultIcons[type]
+				? iconNameMap[icon] || defaultIcons[alertType]
 				: icon
 	);
+
+	const alertClass = $derived(
+		alertType === 'security' ? 'alert alert-warning' : `alert alert-${alertType}`
+	);
+
+	const iconColorClass = $derived({
+		info: 'text-info',
+		success: 'text-success',
+		warning: 'text-warning',
+		error: 'text-error',
+		security: 'text-warning'
+	}[alertType]);
 </script>
 
-<div class="alert alert-{type} {extraClass}">
-	<div class="alert-content">
-		<div class="alert-icon-container">
-			<Icon class="alert-icon" />
-		</div>
-		<div class="alert-text">
+{#if visible}
+	<div class="{alertClass} {canDismiss ? 'pr-12' : ''} {extraClass}">
+		<Icon class="h-6 w-6 shrink-0 {iconColorClass}" />
+		<div class="flex flex-col gap-1">
 			{#if title}
-				<h3 class="alert-title">{title}</h3>
+				<h3 class="font-semibold">{title}</h3>
 			{/if}
-			<div class="alert-body">
+			<div class="text-sm">
 				{@render children()}
 			</div>
 		</div>
+		{#if canDismiss}
+			<button
+				type="button"
+				onclick={handleDismiss}
+				class="btn btn-ghost btn-sm btn-circle absolute right-2 top-2"
+			>
+				<XCircle class="h-4 w-4" />
+			</button>
+		{/if}
 	</div>
-	{#if onclose}
-		<button
-			type="button"
-			class="ml-auto -mr-1 -mt-1 p-1 rounded-lg hover:bg-black/10 transition-colors"
-			onclick={onclose}
-			aria-label="Close alert"
-		>
-			<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-			</svg>
-		</button>
-	{/if}
-</div>
-
-<style>
-	@reference "$src/app.css";
-	@layer components.alert {
-		/* ===== Alerts ===== */
-		.alert {
-			@apply rounded-xl p-4 border flex items-start gap-3;
-		}
-
-		.alert-info {
-			background: color-mix(in srgb, var(--color-info) 10%, transparent);
-			border-color: color-mix(in srgb, var(--color-info) 30%, transparent);
-		}
-
-		.alert-success {
-			background: color-mix(in srgb, var(--color-success) 10%, transparent);
-			border-color: color-mix(in srgb, var(--color-success) 30%, transparent);
-		}
-
-		.alert-warning {
-			background: color-mix(in srgb, var(--color-warning) 10%, transparent);
-			border-color: color-mix(in srgb, var(--color-warning) 30%, transparent);
-		}
-
-		.alert-error {
-			background: color-mix(in srgb, var(--color-error) 10%, transparent);
-			border-color: color-mix(in srgb, var(--color-error) 30%, transparent);
-		}
-
-		.alert-security {
-			background: color-mix(in srgb, var(--color-security) 10%, transparent);
-			border-color: color-mix(in srgb, var(--color-security) 30%, transparent);
-		}
-
-		.alert-icon-container {
-			@apply shrink-0 w-10 h-10 rounded-lg flex items-center justify-center;
-		}
-
-		.alert-info .alert-icon-container {
-			background: color-mix(in srgb, var(--color-info) 20%, transparent);
-		}
-		.alert-success .alert-icon-container {
-			background: color-mix(in srgb, var(--color-success) 20%, transparent);
-		}
-		.alert-warning .alert-icon-container {
-			background: color-mix(in srgb, var(--color-warning) 20%, transparent);
-		}
-		.alert-error .alert-icon-container {
-			background: color-mix(in srgb, var(--color-error) 20%, transparent);
-		}
-		.alert-security .alert-icon-container {
-			background: color-mix(in srgb, var(--color-security) 20%, transparent);
-		}
-
-		.alert-content {
-			@apply flex items-start gap-3;
-		}
-
-		.alert-text {
-			@apply flex-1;
-		}
-
-		.alert-icon-container :global(.alert-icon) {
-			@apply w-5 h-5;
-		}
-
-		.alert-info .alert-icon-container :global(.alert-icon) {
-			@apply text-info;
-		}
-		.alert-success .alert-icon-container :global(.alert-icon) {
-			@apply text-success;
-		}
-		.alert-warning .alert-icon-container :global(.alert-icon) {
-			@apply text-warning;
-		}
-		.alert-error .alert-icon-container :global(.alert-icon) {
-			@apply text-error;
-		}
-		.alert-security .alert-icon-container :global(.alert-icon) {
-			@apply text-security;
-		}
-
-		.alert-title {
-			@apply text-sm font-semibold text-text;
-		}
-
-		.alert-body {
-			@apply text-sm text-text-secondary mt-0.5;
-		}
-	}
-</style>
+{/if}

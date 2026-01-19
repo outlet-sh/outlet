@@ -4,18 +4,45 @@
 -->
 
 <script lang="ts">
-	import { cn } from '$lib/utils/cn';
 	import Input from './Input.svelte';
 	import Select from './Select.svelte';
 	import Button from './Button.svelte';
 	import TagInput from './TagInput.svelte';
 	import Checkbox from './Checkbox.svelte';
 	import Spinner from './Spinner.svelte';
-	import { discoverResources } from '$lib/api/ballast';
-	import type { ResourceInfo, OrgInfo, DiscoverResourcesRequest } from '$lib/api/ballastComponents';
 	import Check from 'lucide-svelte/icons/check';
 	import RefreshCw from 'lucide-svelte/icons/refresh-cw';
-	import X from 'lucide-svelte/icons/x';
+
+	// Types for resource_selector (feature requires external API)
+	interface ResourceInfo {
+		id: string;
+		name: string;
+		fullName?: string;
+		description?: string;
+	}
+
+	interface OrgInfo {
+		id: string;
+		name?: string;
+		slug?: string;
+	}
+
+	interface DiscoverResourcesRequest {
+		page?: number;
+		org?: string;
+	}
+
+	interface DiscoverResourcesResponse {
+		resources: ResourceInfo[];
+		organizations?: OrgInfo[];
+		hasMore?: boolean;
+		page: number;
+	}
+
+	// Stub function - resource_selector requires external API integration
+	async function discoverResources(_params: object, _req: DiscoverResourcesRequest, _connectionId: string): Promise<DiscoverResourcesResponse> {
+		throw new Error('Resource selector requires API integration');
+	}
 
 	interface AuthField {
 		name: string;
@@ -71,7 +98,7 @@
 
 	// Track if this is a masked password field (value is placeholder from server)
 	const isPasswordPlaceholder = $derived(
-		(field.type === 'password' || field.secret) && value === '••••••••'
+		(field.type === 'password' || field.secret) && value === '--------'
 	);
 
 	// Clear placeholder when user focuses the field
@@ -257,15 +284,17 @@
 </script>
 
 <div class="space-y-1.5">
-	<label class="flex items-center gap-1.5 text-sm font-medium text-text">
-		{field.title}
-		{#if field.required}
-			<span class="text-red-500">*</span>
-		{/if}
+	<label class="label pb-0">
+		<span class="label-text font-medium flex items-center gap-1.5">
+			{field.title}
+			{#if field.required}
+				<span class="text-error">*</span>
+			{/if}
+		</span>
 	</label>
 
 	{#if field.description}
-		<p class="text-xs text-text-muted">{field.description}</p>
+		<p class="text-xs text-base-content/60">{field.description}</p>
 	{/if}
 
 	{#if field.type === 'password' || field.secret}
@@ -280,7 +309,7 @@
 			/>
 			<button
 				type="button"
-				class="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-text transition-colors"
+				class="absolute right-2 top-1/2 -translate-y-1/2 btn btn-ghost btn-xs btn-circle"
 				onclick={() => (showPassword = !showPassword)}
 			>
 				{#if showPassword}
@@ -324,15 +353,15 @@
 	{:else if field.type === 'resource_selector'}
 		<!-- Resource Selector - Split Screen Layout -->
 		{#if resourceError}
-			<div class="rounded-lg bg-error/10 p-3 border border-error/30">
-				<p class="text-sm text-error">{resourceError}</p>
+			<div class="alert alert-error">
+				<span class="text-sm">{resourceError}</span>
 			</div>
 		{/if}
 
 		{#if isLoadingResources && resources.length === 0}
 			<div class="flex items-center justify-center py-6">
 				<Spinner />
-				<span class="ml-3 text-sm text-text-muted">Loading resources...</span>
+				<span class="ml-3 text-sm text-base-content/60">Loading resources...</span>
 			</div>
 		{:else}
 			<div class="space-y-2">
@@ -366,14 +395,14 @@
 					<!-- LEFT PANEL: Available -->
 					<div class="space-y-1.5">
 						<div class="flex items-center justify-between text-xs">
-							<span class="font-medium text-text-muted">Available ({filteredResources.length})</span>
+							<span class="font-medium text-base-content/60">Available ({filteredResources.length})</span>
 							<Button type="link" size="sm" onclick={selectAllResources} {disabled}>
 								Select all
 							</Button>
 						</div>
-						<div class="h-48 overflow-y-auto rounded-lg bg-bg-secondary border border-border">
+						<div class="h-48 overflow-y-auto rounded-lg bg-base-200 border border-base-300">
 							{#if filteredResources.length === 0}
-								<div class="p-4 text-center text-sm text-text-muted">
+								<div class="p-4 text-center text-sm text-base-content/60">
 									{resourceSearchQuery ? 'No matches' : 'No resources'}
 								</div>
 							{:else}
@@ -385,22 +414,22 @@
 										type="button"
 										onclick={() => toggleResource(resourceValue)}
 										{disabled}
-										class="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-border/50 transition-colors border-b border-border/50 last:border-b-0 text-left {isSelected ? 'bg-primary/10' : ''}"
+										class="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-base-300 transition-colors border-b border-base-300/50 last:border-b-0 text-left {isSelected ? 'bg-primary/10' : ''}"
 									>
 										<div
 											class="h-4 w-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors {isSelected
 												? 'bg-primary border-primary'
-												: 'border-border bg-bg'}"
+												: 'border-base-300 bg-base-100'}"
 										>
 											{#if isSelected}
-												<Check class="h-2.5 w-2.5 text-white" />
+												<Check class="h-2.5 w-2.5 text-primary-content" />
 											{/if}
 										</div>
-										<span class="text-xs text-text truncate">{resourceLabel}</span>
+										<span class="text-xs truncate">{resourceLabel}</span>
 									</button>
 								{/each}
 								{#if hasMoreResources}
-									<div class="border-t border-border p-1.5">
+									<div class="border-t border-base-300 p-1.5">
 										<Button
 											type="link"
 											size="sm"
@@ -424,14 +453,14 @@
 					<!-- RIGHT PANEL: Selected -->
 					<div class="space-y-1.5">
 						<div class="flex items-center justify-between text-xs">
-							<span class="font-medium text-text-muted">Selected ({selectedResources.size})</span>
+							<span class="font-medium text-base-content/60">Selected ({selectedResources.size})</span>
 							<Button type="link" size="sm" onclick={deselectAllResources} {disabled}>
 								Unselect all
 							</Button>
 						</div>
-						<div class="h-48 overflow-y-auto rounded-lg bg-bg-secondary border border-border">
+						<div class="h-48 overflow-y-auto rounded-lg bg-base-200 border border-base-300">
 							{#if selectedResources.size === 0}
-								<div class="p-4 text-center text-sm text-text-muted">
+								<div class="p-4 text-center text-sm text-base-content/60">
 									No repositories selected
 								</div>
 							{:else}
@@ -442,12 +471,12 @@
 										type="button"
 										onclick={() => toggleResource(resourceValue)}
 										{disabled}
-										class="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-border/50 transition-colors border-b border-border/50 last:border-b-0 text-left"
+										class="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-base-300 transition-colors border-b border-base-300/50 last:border-b-0 text-left"
 									>
 										<div class="h-4 w-4 rounded border flex items-center justify-center flex-shrink-0 bg-primary border-primary">
-											<Check class="h-2.5 w-2.5 text-white" />
+											<Check class="h-2.5 w-2.5 text-primary-content" />
 										</div>
-										<span class="text-xs text-text truncate">{resource.fullName || resourceLabel}</span>
+										<span class="text-xs truncate">{resource.fullName || resourceLabel}</span>
 									</button>
 								{/each}
 								{@const loadedValues = new Set(resources.map((r) => getResourceField(r, valueField)))}
@@ -457,12 +486,12 @@
 											type="button"
 											onclick={() => toggleResource(selectedValue)}
 											{disabled}
-											class="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-border/50 transition-colors border-b border-border/50 last:border-b-0 text-left bg-bg-secondary/50"
+											class="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-base-300 transition-colors border-b border-base-300/50 last:border-b-0 text-left bg-base-200/50"
 										>
 											<div class="h-4 w-4 rounded border flex items-center justify-center flex-shrink-0 bg-primary border-primary">
-												<Check class="h-2.5 w-2.5 text-white" />
+												<Check class="h-2.5 w-2.5 text-primary-content" />
 											</div>
-											<span class="text-xs text-text-secondary truncate">{selectedValue}</span>
+											<span class="text-xs text-base-content/60 truncate">{selectedValue}</span>
 										</button>
 									{/if}
 								{/each}
@@ -482,11 +511,3 @@
 		/>
 	{/if}
 </div>
-
-<style>
-@reference "$src/app.css";
-
-@layer components.dynamic-form-field {
-	/* No custom styles needed - using Tailwind utilities */
-}
-</style>

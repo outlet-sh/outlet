@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"fmt"
 
-	"outlet/internal/db"
-	"outlet/internal/svc"
-	"outlet/internal/types"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -27,7 +27,70 @@ func NewUpdateEmailSettingsLogic(ctx context.Context, svcCtx *svc.ServiceContext
 }
 
 func (l *UpdateEmailSettingsLogic) UpdateEmailSettings(req *types.UpdateEmailSettingsRequest) (resp *types.UpdateSettingsResponse, err error) {
-	const category = "email"
+	const awsCategory = "aws"
+	const smtpCategory = "email"
+
+	// Save AWS Access Key (sensitive - encrypted)
+	if req.AwsAccessKey != "" {
+		if l.svcCtx.CryptoService == nil {
+			return nil, fmt.Errorf("encryption service not configured - cannot store sensitive data")
+		}
+
+		encrypted, err := l.svcCtx.CryptoService.EncryptString(req.AwsAccessKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encrypt aws_access_key: %w", err)
+		}
+
+		_, err = l.svcCtx.DB.UpsertPlatformSetting(l.ctx, db.UpsertPlatformSettingParams{
+			Key:            "aws_access_key",
+			ValueEncrypted: sql.NullString{String: string(encrypted), Valid: true},
+			Description:    sql.NullString{String: "AWS IAM Access Key ID", Valid: true},
+			Category:       awsCategory,
+			IsSensitive:    sql.NullInt64{Int64: 1, Valid: true},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to save aws_access_key: %w", err)
+		}
+	}
+
+	// Save AWS Secret Key (sensitive - encrypted)
+	if req.AwsSecretKey != "" {
+		if l.svcCtx.CryptoService == nil {
+			return nil, fmt.Errorf("encryption service not configured - cannot store sensitive data")
+		}
+
+		encrypted, err := l.svcCtx.CryptoService.EncryptString(req.AwsSecretKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encrypt aws_secret_key: %w", err)
+		}
+
+		_, err = l.svcCtx.DB.UpsertPlatformSetting(l.ctx, db.UpsertPlatformSettingParams{
+			Key:            "aws_secret_key",
+			ValueEncrypted: sql.NullString{String: string(encrypted), Valid: true},
+			Description:    sql.NullString{String: "AWS IAM Secret Access Key", Valid: true},
+			Category:       awsCategory,
+			IsSensitive:    sql.NullInt64{Int64: 1, Valid: true},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to save aws_secret_key: %w", err)
+		}
+	}
+
+	// Save AWS Region (non-sensitive)
+	if req.AwsRegion != "" {
+		_, err := l.svcCtx.DB.UpsertPlatformSetting(l.ctx, db.UpsertPlatformSettingParams{
+			Key:         "aws_region",
+			ValueText:   sql.NullString{String: req.AwsRegion, Valid: true},
+			Description: sql.NullString{String: "AWS region for SES", Valid: true},
+			Category:    awsCategory,
+			IsSensitive: sql.NullInt64{Int64: 0, Valid: true},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to save aws_region: %w", err)
+		}
+	}
+
+	// Legacy SMTP settings (deprecated but still supported)
 
 	// Save SMTP host (non-sensitive)
 	if req.SmtpHost != "" {
@@ -35,7 +98,7 @@ func (l *UpdateEmailSettingsLogic) UpdateEmailSettings(req *types.UpdateEmailSet
 			Key:         "smtp_host",
 			ValueText:   sql.NullString{String: req.SmtpHost, Valid: true},
 			Description: sql.NullString{String: "SMTP server hostname", Valid: true},
-			Category:    category,
+			Category:    smtpCategory,
 			IsSensitive: sql.NullInt64{Int64: 0, Valid: true},
 		})
 		if err != nil {
@@ -49,7 +112,7 @@ func (l *UpdateEmailSettingsLogic) UpdateEmailSettings(req *types.UpdateEmailSet
 			Key:         "smtp_port",
 			ValueText:   sql.NullString{String: fmt.Sprintf("%d", req.SmtpPort), Valid: true},
 			Description: sql.NullString{String: "SMTP server port", Valid: true},
-			Category:    category,
+			Category:    smtpCategory,
 			IsSensitive: sql.NullInt64{Int64: 0, Valid: true},
 		})
 		if err != nil {
@@ -63,7 +126,7 @@ func (l *UpdateEmailSettingsLogic) UpdateEmailSettings(req *types.UpdateEmailSet
 			Key:         "smtp_user",
 			ValueText:   sql.NullString{String: req.SmtpUser, Valid: true},
 			Description: sql.NullString{String: "SMTP username", Valid: true},
-			Category:    category,
+			Category:    smtpCategory,
 			IsSensitive: sql.NullInt64{Int64: 0, Valid: true},
 		})
 		if err != nil {
@@ -86,7 +149,7 @@ func (l *UpdateEmailSettingsLogic) UpdateEmailSettings(req *types.UpdateEmailSet
 			Key:            "smtp_password",
 			ValueEncrypted: sql.NullString{String: string(encrypted), Valid: true},
 			Description:    sql.NullString{String: "SMTP password", Valid: true},
-			Category:       category,
+			Category:       smtpCategory,
 			IsSensitive:    sql.NullInt64{Int64: 1, Valid: true},
 		})
 		if err != nil {
@@ -100,7 +163,7 @@ func (l *UpdateEmailSettingsLogic) UpdateEmailSettings(req *types.UpdateEmailSet
 			Key:         "from_email",
 			ValueText:   sql.NullString{String: req.FromEmail, Valid: true},
 			Description: sql.NullString{String: "Default from email address", Valid: true},
-			Category:    category,
+			Category:    smtpCategory,
 			IsSensitive: sql.NullInt64{Int64: 0, Valid: true},
 		})
 		if err != nil {
@@ -114,7 +177,7 @@ func (l *UpdateEmailSettingsLogic) UpdateEmailSettings(req *types.UpdateEmailSet
 			Key:         "from_name",
 			ValueText:   sql.NullString{String: req.FromName, Valid: true},
 			Description: sql.NullString{String: "Default from name", Valid: true},
-			Category:    category,
+			Category:    smtpCategory,
 			IsSensitive: sql.NullInt64{Int64: 0, Valid: true},
 		})
 		if err != nil {
@@ -128,7 +191,7 @@ func (l *UpdateEmailSettingsLogic) UpdateEmailSettings(req *types.UpdateEmailSet
 			Key:         "reply_to",
 			ValueText:   sql.NullString{String: req.ReplyTo, Valid: true},
 			Description: sql.NullString{String: "Default reply-to email address", Valid: true},
-			Category:    category,
+			Category:    smtpCategory,
 			IsSensitive: sql.NullInt64{Int64: 0, Valid: true},
 		})
 		if err != nil {
@@ -138,6 +201,6 @@ func (l *UpdateEmailSettingsLogic) UpdateEmailSettings(req *types.UpdateEmailSet
 
 	return &types.UpdateSettingsResponse{
 		Success: true,
-		Message: "Email settings saved successfully",
+		Message: "Settings saved successfully",
 	}, nil
 }

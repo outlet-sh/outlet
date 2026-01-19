@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"net/http"
 
-	"outlet/internal/db"
-	"outlet/internal/mcp/mcpauth"
-	"outlet/internal/mcp/mcpctx"
-	"outlet/internal/mcp/tools"
-	"outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/mcp/mcpauth"
+	"github.com/outlet-sh/outlet/internal/mcp/mcpctx"
+	"github.com/outlet-sh/outlet/internal/mcp/tools"
+	"github.com/outlet-sh/outlet/internal/svc"
 
 	"github.com/google/uuid"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -71,9 +71,17 @@ func NewServerWithContext(svc *svc.ServiceContext, r *http.Request, onOrgSelect 
 	// Store additional user info in context for tools that need it
 	_ = userInfo // Available via toolCtx.User() methods
 
-	// Register all tools
-	tools.RegisterEmailTools(server, toolCtx)
-	tools.RegisterOrgTools(server, toolCtx)
+	// Register all tools (unified resource/action pattern)
+	tools.RegisterEmailTool(server, toolCtx)
+	tools.RegisterOrgTool(server, toolCtx)
+	tools.RegisterCampaignTool(server, toolCtx)
+	tools.RegisterContactTool(server, toolCtx)
+	tools.RegisterWebhookTool(server, toolCtx)
+	tools.RegisterDesignTool(server, toolCtx)
+	tools.RegisterTransactionalTool(server, toolCtx)
+	tools.RegisterStatsTool(server, toolCtx)
+	tools.RegisterBlocklistTool(server, toolCtx)
+	tools.RegisterGDPRTool(server, toolCtx)
 
 	return server, toolCtx
 }

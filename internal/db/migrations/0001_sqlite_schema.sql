@@ -42,7 +42,7 @@ CREATE INDEX IF NOT EXISTS idx_auth_tokens_token ON auth_tokens(token);
 CREATE INDEX IF NOT EXISTS idx_auth_tokens_user_id ON auth_tokens(user_id);
 
 -- =============================================================================
--- ORGANIZATIONS (Multi-tenancy - like Sendy "Brands")
+-- ORGANIZATIONS (Multi-tenancy)
 -- =============================================================================
 
 CREATE TABLE IF NOT EXISTS organizations (
@@ -216,6 +216,7 @@ CREATE INDEX IF NOT EXISTS idx_contact_tags_tag ON contact_tags(tag);
 
 CREATE TABLE IF NOT EXISTS email_lists (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    public_id TEXT NOT NULL UNIQUE,
     org_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     slug TEXT NOT NULL,
@@ -229,6 +230,7 @@ CREATE TABLE IF NOT EXISTS email_lists (
 );
 
 CREATE INDEX IF NOT EXISTS idx_email_lists_org_id ON email_lists(org_id);
+CREATE INDEX IF NOT EXISTS idx_email_lists_public_id ON email_lists(public_id);
 
 CREATE TABLE IF NOT EXISTS list_subscribers (
     id TEXT PRIMARY KEY,

@@ -3,10 +3,10 @@ package emails
 import (
 	"net/http"
 
+	"github.com/outlet-sh/outlet/internal/logic/sdk/emails"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
-	"outlet/internal/logic/sdk/emails"
-	"outlet/internal/svc"
-	"outlet/internal/types"
 )
 
 func SendEmailHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

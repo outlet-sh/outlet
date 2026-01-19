@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"time"
 
-	"outlet/internal/db"
-	"outlet/internal/events"
-	"outlet/internal/middleware"
-	"outlet/internal/svc"
-	"outlet/internal/types"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/events"
+	"github.com/outlet-sh/outlet/internal/middleware"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
 
 	"github.com/google/uuid"
 	"github.com/zeromicro/go-zero/core/logx"

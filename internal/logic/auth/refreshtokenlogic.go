@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"outlet/internal/svc"
-	"outlet/internal/types"
-	"outlet/internal/utils"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
+	"github.com/outlet-sh/outlet/internal/utils"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )

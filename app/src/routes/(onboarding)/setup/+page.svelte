@@ -1,64 +1,195 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import * as api from '$lib/api';
-	import { Card, Input, Button, Alert, Select } from '$lib/components/ui';
-	import { ChevronRight, ChevronLeft, Mail, Server, Check, Loader2, HelpCircle, Lightbulb, Shield, Zap } from 'lucide-svelte';
+	import { authStore } from '$lib/stores/auth.svelte';
+	import { Card, Input, Alert, Select, Steps } from '$lib/components/ui';
+	import AwsIamPolicy from '$lib/components/admin/AwsIamPolicy.svelte';
+	import type { StepItem } from '$lib/components/ui/Steps.svelte';
+	import { ChevronRight, Check, Loader2, HelpCircle, Shield, Key, Cloud, ExternalLink, Globe } from 'lucide-svelte';
 
-	type Step = 'welcome' | 'smtp' | 'complete';
-	let currentStep = $state<Step>('welcome');
+	type Step = 'loading' | 'admin' | 'aws' | 'complete';
+	let currentStep = $state<Step>('loading');
 	let loading = $state(false);
 	let error = $state('');
-	let testSuccess = $state(false);
 
-	// SMTP form fields
-	let smtpHost = $state('');
-	let smtpPort = $state('587');
-	let smtpUser = $state('');
-	let smtpPassword = $state('');
-	let fromEmail = $state('');
-	let fromName = $state('');
-	let replyTo = $state('');
+	// Track which steps have been completed (can't go back after completion)
+	let completedSteps = $state<Set<Step>>(new Set());
 
-	const portOptions = [
-		{ value: '25', label: '25 (SMTP)' },
-		{ value: '465', label: '465 (SMTPS)' },
-		{ value: '587', label: '587 (Submission)' }
+	// Admin form fields
+	let adminEmail = $state('');
+	let adminPassword = $state('');
+	let adminConfirmPassword = $state('');
+	let adminName = $state('');
+	let adminCompany = $state('');
+	let adminTimezone = $state('');
+
+	// AWS form fields
+	let awsAccessKey = $state('');
+	let awsSecretKey = $state('');
+	let awsRegion = $state('us-east-1');
+
+	const regionOptions = [
+		{ value: 'us-east-1', label: 'US East (N. Virginia)' },
+		{ value: 'us-east-2', label: 'US East (Ohio)' },
+		{ value: 'us-west-1', label: 'US West (N. California)' },
+		{ value: 'us-west-2', label: 'US West (Oregon)' },
+		{ value: 'eu-west-1', label: 'Europe (Ireland)' },
+		{ value: 'eu-west-2', label: 'Europe (London)' },
+		{ value: 'eu-west-3', label: 'Europe (Paris)' },
+		{ value: 'eu-central-1', label: 'Europe (Frankfurt)' },
+		{ value: 'ap-south-1', label: 'Asia Pacific (Mumbai)' },
+		{ value: 'ap-southeast-1', label: 'Asia Pacific (Singapore)' },
+		{ value: 'ap-southeast-2', label: 'Asia Pacific (Sydney)' },
+		{ value: 'ap-northeast-1', label: 'Asia Pacific (Tokyo)' },
+		{ value: 'ap-northeast-2', label: 'Asia Pacific (Seoul)' },
+		{ value: 'sa-east-1', label: 'South America (São Paulo)' },
+		{ value: 'ca-central-1', label: 'Canada (Central)' }
 	];
 
-	function nextStep() {
-		if (currentStep === 'welcome') {
-			currentStep = 'smtp';
-		} else if (currentStep === 'smtp') {
-			saveAndComplete();
+	// Common timezones - grouped by region
+	const timezoneOptions = [
+		// Americas
+		{ value: 'America/New_York', label: 'Eastern Time (US & Canada)' },
+		{ value: 'America/Chicago', label: 'Central Time (US & Canada)' },
+		{ value: 'America/Denver', label: 'Mountain Time (US & Canada)' },
+		{ value: 'America/Los_Angeles', label: 'Pacific Time (US & Canada)' },
+		{ value: 'America/Anchorage', label: 'Alaska' },
+		{ value: 'Pacific/Honolulu', label: 'Hawaii' },
+		{ value: 'America/Toronto', label: 'Eastern Time (Canada)' },
+		{ value: 'America/Vancouver', label: 'Pacific Time (Canada)' },
+		{ value: 'America/Mexico_City', label: 'Mexico City' },
+		{ value: 'America/Sao_Paulo', label: 'São Paulo' },
+		{ value: 'America/Buenos_Aires', label: 'Buenos Aires' },
+		// Europe
+		{ value: 'Europe/London', label: 'London (GMT/BST)' },
+		{ value: 'Europe/Paris', label: 'Paris (CET/CEST)' },
+		{ value: 'Europe/Berlin', label: 'Berlin (CET/CEST)' },
+		{ value: 'Europe/Amsterdam', label: 'Amsterdam (CET/CEST)' },
+		{ value: 'Europe/Madrid', label: 'Madrid (CET/CEST)' },
+		{ value: 'Europe/Rome', label: 'Rome (CET/CEST)' },
+		{ value: 'Europe/Zurich', label: 'Zurich (CET/CEST)' },
+		{ value: 'Europe/Stockholm', label: 'Stockholm (CET/CEST)' },
+		{ value: 'Europe/Moscow', label: 'Moscow (MSK)' },
+		// Asia & Pacific
+		{ value: 'Asia/Dubai', label: 'Dubai (GST)' },
+		{ value: 'Asia/Kolkata', label: 'India (IST)' },
+		{ value: 'Asia/Singapore', label: 'Singapore (SGT)' },
+		{ value: 'Asia/Hong_Kong', label: 'Hong Kong (HKT)' },
+		{ value: 'Asia/Shanghai', label: 'Shanghai (CST)' },
+		{ value: 'Asia/Tokyo', label: 'Tokyo (JST)' },
+		{ value: 'Asia/Seoul', label: 'Seoul (KST)' },
+		{ value: 'Australia/Sydney', label: 'Sydney (AEST/AEDT)' },
+		{ value: 'Australia/Melbourne', label: 'Melbourne (AEST/AEDT)' },
+		{ value: 'Australia/Perth', label: 'Perth (AWST)' },
+		{ value: 'Pacific/Auckland', label: 'Auckland (NZST/NZDT)' },
+		// UTC
+		{ value: 'UTC', label: 'UTC (Coordinated Universal Time)' }
+	];
+
+	onMount(async () => {
+		// Auto-detect user's timezone
+		try {
+			const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+			// Check if detected timezone is in our list
+			if (timezoneOptions.some(tz => tz.value === detectedTimezone)) {
+				adminTimezone = detectedTimezone;
+			} else {
+				// Default to UTC if not found
+				adminTimezone = 'UTC';
+			}
+		} catch {
+			adminTimezone = 'America/New_York';
+		}
+
+		try {
+			const status = await api.getPublicSetupStatus();
+
+			if (!status.has_admin) {
+				currentStep = 'admin';
+			} else if (!status.has_aws) {
+				// Admin exists but no AWS credentials - check if logged in
+				// Mark admin step as already completed
+				completedSteps.add('admin');
+				if (authStore.isAuthenticated) {
+					currentStep = 'aws';
+				} else {
+					goto('/auth/login?redirect=/setup');
+				}
+			} else {
+				// Fully configured
+				goto('/');
+			}
+		} catch (err) {
+			console.error('Failed to check setup status:', err);
+			currentStep = 'admin';
+		}
+	});
+
+	async function createAdmin() {
+		loading = true;
+		error = '';
+
+		if (adminPassword !== adminConfirmPassword) {
+			error = 'Passwords do not match';
+			loading = false;
+			return;
+		}
+
+		if (adminPassword.length < 8) {
+			error = 'Password must be at least 8 characters';
+			loading = false;
+			return;
+		}
+
+		try {
+			await api.createInitialAdmin({
+				email: adminEmail,
+				password: adminPassword,
+				confirm_password: adminConfirmPassword,
+				name: adminName || undefined,
+				company: adminCompany || undefined,
+				timezone: adminTimezone || undefined
+			});
+
+			// Auto-login
+			const loginResponse = await api.login({
+				email: adminEmail,
+				password: adminPassword
+			});
+
+			if (loginResponse.token && loginResponse.user) {
+				authStore.setSession(loginResponse.token, loginResponse.user);
+			}
+
+			// Mark admin step as completed
+			completedSteps.add('admin');
+			currentStep = 'aws';
+		} catch (err: any) {
+			console.error('Failed to create admin:', err);
+			error = err.message || 'Failed to create admin account';
+		} finally {
+			loading = false;
 		}
 	}
 
-	function prevStep() {
-		if (currentStep === 'smtp') {
-			currentStep = 'welcome';
-		}
-	}
-
-	async function saveAndComplete() {
+	async function saveAwsCredentials() {
 		loading = true;
 		error = '';
 
 		try {
 			await api.updateEmailSettings({
-				smtp_host: smtpHost,
-				smtp_port: parseInt(smtpPort),
-				smtp_user: smtpUser,
-				smtp_password: smtpPassword,
-				from_email: fromEmail,
-				from_name: fromName,
-				reply_to: replyTo || fromEmail
+				aws_access_key: awsAccessKey,
+				aws_secret_key: awsSecretKey,
+				aws_region: awsRegion
 			});
 
-			testSuccess = true;
+			// Mark AWS step as completed
+			completedSteps.add('aws');
 			currentStep = 'complete';
 		} catch (err: any) {
-			console.error('Failed to save email settings:', err);
-			error = err.message || 'Failed to save email settings';
+			console.error('Failed to save AWS credentials:', err);
+			error = err.message || 'Failed to save AWS credentials';
 		} finally {
 			loading = false;
 		}
@@ -68,75 +199,52 @@
 		goto('/');
 	}
 
-	function skipForNow() {
-		localStorage.setItem('setupSkipped', 'true');
+	function skipAwsForNow() {
 		goto('/');
 	}
-</script>
+
+	// Steps configuration for the Steps component
+	function getStepStatus(stepKey: Step, completedKey?: Step): StepItem['status'] {
+		if (completedKey && completedSteps.has(completedKey)) return 'complete';
+		if (currentStep === stepKey) return stepKey === 'complete' ? 'complete' : 'current';
+		return 'pending';
+	}
+
+	let setupSteps = $derived<StepItem[]>([
+		{ label: 'Account', status: getStepStatus('admin', 'admin') },
+		{ label: 'Email', status: getStepStatus('aws', 'aws') },
+		{ label: 'Complete', status: getStepStatus('complete') }
+	]);
+
+	</script>
 
 <svelte:head>
 	<title>Setup - Outlet</title>
 </svelte:head>
 
-<div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+{#if currentStep === 'loading'}
+	<div class="flex items-center justify-center py-12">
+		<Loader2 class="w-8 h-8 animate-spin text-primary" />
+	</div>
+{:else}
+<div class="grid grid-cols-1 md:grid-cols-5 gap-8">
 	<!-- Main Content -->
-	<div class="lg:col-span-3">
+	<div class="md:col-span-3">
 		<Card>
 			<!-- Progress indicator -->
-			<div class="mb-8">
-				<div class="flex items-center justify-between text-sm">
-					<span class="text-text-muted">Step {currentStep === 'welcome' ? 1 : currentStep === 'smtp' ? 2 : 3} of 3</span>
-				</div>
-				<div class="mt-2 h-2 bg-border rounded-full overflow-hidden">
-					<div
-						class="h-full bg-primary transition-all duration-300"
-						style="width: {currentStep === 'welcome' ? '33%' : currentStep === 'smtp' ? '66%' : '100%'}"
-					></div>
-				</div>
-			</div>
+			<Steps steps={setupSteps} class="mb-8" />
 
-			{#if currentStep === 'welcome'}
-				<!-- Welcome Step -->
-				<div class="text-center">
-					<div class="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-						<Mail class="w-8 h-8 text-primary" />
-					</div>
-					<h1 class="text-2xl font-bold text-text mb-2">Welcome to Outlet</h1>
-					<p class="text-text-muted mb-8">
-						Let's get you set up to send emails. This will only take a couple of minutes.
-					</p>
-
-					<div class="space-y-4 text-left mb-8">
-						<div class="flex items-start gap-3 p-4 bg-bg-muted rounded-lg">
-							<Server class="w-5 h-5 text-primary mt-0.5" />
-							<div>
-								<p class="font-medium text-text">SMTP Configuration</p>
-								<p class="text-sm text-text-muted">Connect your email server to start sending</p>
-							</div>
-						</div>
-					</div>
-
-					<div class="flex gap-3">
-						<Button type="primary" size="lg" onclick={nextStep} class="flex-1 justify-center">
-							Get Started
-							<ChevronRight class="w-4 h-4 ml-2" />
-						</Button>
-					</div>
-
-					<button
-						type="button"
-						onclick={skipForNow}
-						class="mt-4 text-sm text-text-muted hover:text-text transition-colors"
-					>
-						Skip for now
-					</button>
-				</div>
-			{:else if currentStep === 'smtp'}
-				<!-- SMTP Configuration Step -->
+			{#if currentStep === 'admin'}
+				<!-- Admin Creation Step -->
 				<div>
-					<div class="mb-6">
-						<h2 class="text-xl font-bold text-text">Email Configuration</h2>
-						<p class="text-text-muted mt-1">Enter your SMTP server details</p>
+					<div class="text-center mb-6">
+						<div class="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+							<Shield class="w-8 h-8 text-primary" />
+						</div>
+						<h1 class="text-2xl font-bold text-text mb-2">Create Admin Account</h1>
+						<p class="text-text-muted">
+							Set up your administrator account to get started.
+						</p>
 					</div>
 
 					{#if error}
@@ -145,108 +253,156 @@
 						</Alert>
 					{/if}
 
-					<form class="space-y-5" onsubmit={(e) => { e.preventDefault(); nextStep(); }}>
-						<div class="grid grid-cols-2 gap-4">
-							<div class="col-span-2 sm:col-span-1">
-								<label for="smtp-host" class="form-label">SMTP Host</label>
-								<Input
-									id="smtp-host"
-									type="text"
-									placeholder="smtp.example.com"
-									bind:value={smtpHost}
-									required
-								/>
-							</div>
-							<div class="col-span-2 sm:col-span-1">
-								<label for="smtp-port" class="form-label">SMTP Port</label>
-								<Select
-									id="smtp-port"
-									bind:value={smtpPort}
-									options={portOptions}
-								/>
-							</div>
-						</div>
-
+					<form class="space-y-5" onsubmit={(e) => { e.preventDefault(); createAdmin(); }}>
 						<div>
-							<label for="smtp-user" class="form-label">SMTP Username</label>
+							<label for="admin-company" class="form-label">Company</label>
 							<Input
-								id="smtp-user"
+								id="admin-company"
 								type="text"
-								placeholder="your-username"
-								bind:value={smtpUser}
+								placeholder="Your company name"
+								bind:value={adminCompany}
 								required
 							/>
 						</div>
 
 						<div>
-							<label for="smtp-password" class="form-label">SMTP Password</label>
+							<label for="admin-name" class="form-label">Name</label>
 							<Input
-								id="smtp-password"
+								id="admin-name"
+								type="text"
+								placeholder="Your name"
+								bind:value={adminName}
+								required
+							/>
+						</div>
+
+						<div>
+							<label for="admin-email" class="form-label">Email Address</label>
+							<Input
+								id="admin-email"
+								type="email"
+								placeholder="admin@example.com"
+								bind:value={adminEmail}
+								required
+							/>
+						</div>
+
+						<div>
+							<label for="admin-password" class="form-label">Password</label>
+							<Input
+								id="admin-password"
 								type="password"
-								placeholder="your-password"
-								bind:value={smtpPassword}
+								placeholder="Minimum 8 characters"
+								bind:value={adminPassword}
 								required
 							/>
 						</div>
 
-						<hr class="border-border" />
-
 						<div>
-							<label for="from-email" class="form-label">From Email</label>
+							<label for="admin-confirm-password" class="form-label">Confirm Password</label>
 							<Input
-								id="from-email"
-								type="email"
-								placeholder="noreply@example.com"
-								bind:value={fromEmail}
+								id="admin-confirm-password"
+								type="password"
+								placeholder="Confirm your password"
+								bind:value={adminConfirmPassword}
 								required
 							/>
-							<p class="mt-1 text-xs text-text-muted">Default sender email address</p>
 						</div>
 
 						<div>
-							<label for="from-name" class="form-label">From Name</label>
-							<Input
-								id="from-name"
-								type="text"
-								placeholder="Your Company"
-								bind:value={fromName}
-							/>
+							<label for="admin-timezone" class="form-label">Timezone</label>
+							<Select id="admin-timezone" bind:value={adminTimezone} options={timezoneOptions} />
+							<p class="mt-1 text-xs text-text-muted">Used for scheduling campaigns and reports</p>
 						</div>
 
-						<div>
-							<label for="reply-to" class="form-label">Reply-To Email (optional)</label>
-							<Input
-								id="reply-to"
-								type="email"
-								placeholder="support@example.com"
-								bind:value={replyTo}
-							/>
-						</div>
-
-						<div class="flex gap-3 pt-4">
-							<Button type="secondary" onclick={prevStep} disabled={loading}>
-								<ChevronLeft class="w-4 h-4 mr-2" />
-								Back
-							</Button>
-							<Button htmlType="submit" type="primary" disabled={loading || !smtpHost || !smtpUser || !smtpPassword || !fromEmail} class="flex-1 justify-center">
+						<div class="pt-4">
+							<button
+								type="submit"
+								class="btn btn-primary w-full"
+								disabled={loading || !adminCompany || !adminName || !adminEmail || !adminPassword || !adminConfirmPassword}
+							>
 								{#if loading}
-									<Loader2 class="w-4 h-4 mr-2 animate-spin" />
-									Saving...
+									<Loader2 class="w-4 h-4 animate-spin" />
+									Creating...
 								{:else}
-									Save & Complete
-									<ChevronRight class="w-4 h-4 ml-2" />
+									Continue
+									<ChevronRight class="w-4 h-4" />
 								{/if}
-							</Button>
+							</button>
 						</div>
 					</form>
+				</div>
+			{:else if currentStep === 'aws'}
+				<!-- AWS Credentials Step -->
+				<div>
+					<div class="text-center mb-6">
+						<div class="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+							<Cloud class="w-8 h-8 text-primary" />
+						</div>
+						<h1 class="text-2xl font-bold text-text mb-2">Connect Amazon SES</h1>
+						<p class="text-text-muted">
+							Enter your AWS credentials to enable email sending.
+						</p>
+					</div>
 
-					<button
-						type="button"
-						onclick={skipForNow}
-						class="mt-4 text-sm text-text-muted hover:text-text transition-colors w-full text-center"
-					>
-						Skip for now
-					</button>
+					{#if error}
+						<Alert type="error" title="Error" class="mb-6">
+							<p>{error}</p>
+						</Alert>
+					{/if}
+
+					<form class="space-y-5" onsubmit={(e) => { e.preventDefault(); saveAwsCredentials(); }}>
+						<div>
+							<label for="aws-region" class="form-label">AWS Region</label>
+							<Select id="aws-region" bind:value={awsRegion} options={regionOptions} />
+							<p class="mt-1 text-xs text-text-muted">Choose the region closest to your audience</p>
+						</div>
+
+						<div>
+							<label for="aws-access-key" class="form-label">Access Key ID</label>
+							<Input
+								id="aws-access-key"
+								type="text"
+								placeholder="AKIAIOSFODNN7EXAMPLE"
+								bind:value={awsAccessKey}
+								required
+							/>
+						</div>
+
+						<div>
+							<label for="aws-secret-key" class="form-label">Secret Access Key</label>
+							<Input
+								id="aws-secret-key"
+								type="password"
+								placeholder="Your secret access key"
+								bind:value={awsSecretKey}
+								required
+							/>
+						</div>
+
+						<div class="flex flex-col gap-3 pt-4">
+							<button
+								type="submit"
+								class="btn btn-primary w-full"
+								disabled={loading || !awsAccessKey || !awsSecretKey}
+							>
+								{#if loading}
+									<Loader2 class="w-4 h-4 animate-spin" />
+									Connecting...
+								{:else}
+									Complete Setup
+									<ChevronRight class="w-4 h-4" />
+								{/if}
+							</button>
+							<button
+								type="button"
+								onclick={skipAwsForNow}
+								class="btn btn-ghost btn-sm"
+							>
+								Skip for now
+							</button>
+						</div>
+					</form>
 				</div>
 			{:else if currentStep === 'complete'}
 				<!-- Complete Step -->
@@ -256,133 +412,121 @@
 					</div>
 					<h2 class="text-2xl font-bold text-text mb-2">You're all set!</h2>
 					<p class="text-text-muted mb-8">
-						Your email configuration has been saved. You're ready to start sending emails.
+						Your platform is configured and ready to use. Create your first brand to start sending emails.
 					</p>
 
-					<Button type="primary" size="lg" onclick={goToDashboard} class="w-full justify-center">
+					<button class="btn btn-primary btn-lg w-full" onclick={goToDashboard}>
 						Go to Dashboard
-						<ChevronRight class="w-4 h-4 ml-2" />
-					</Button>
+						<ChevronRight class="w-4 h-4" />
+					</button>
 				</div>
 			{/if}
 		</Card>
 	</div>
 
 	<!-- Help Sidebar -->
-	<div class="lg:col-span-2">
+	<div class="md:col-span-2">
 		<div class="sticky top-8 space-y-6">
-			{#if currentStep === 'welcome'}
-				<!-- Welcome Help -->
+			{#if currentStep === 'admin'}
+				<!-- Admin Help -->
 				<Card>
 					<div class="flex items-center gap-2 mb-4">
-						<HelpCircle class="w-5 h-5 text-primary" />
-						<h3 class="font-semibold text-text">What you'll need</h3>
+						<Shield class="w-5 h-5 text-primary" />
+						<h3 class="font-semibold text-text">Admin Account</h3>
 					</div>
+					<p class="text-sm text-text-muted mb-4">
+						This is the first administrator account for your Outlet installation.
+					</p>
 					<ul class="space-y-3 text-sm text-text-muted">
 						<li class="flex items-start gap-2">
-							<span class="text-primary mt-0.5">1.</span>
-							<span>SMTP server credentials from your email provider</span>
+							<Check class="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
+							<span>Full access to all features</span>
 						</li>
 						<li class="flex items-start gap-2">
-							<span class="text-primary mt-0.5">2.</span>
-							<span>A verified email address to send from</span>
+							<Check class="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
+							<span>Can create additional users</span>
 						</li>
 						<li class="flex items-start gap-2">
-							<span class="text-primary mt-0.5">3.</span>
-							<span>About 2 minutes of your time</span>
+							<Check class="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
+							<span>Manage lists and campaigns</span>
 						</li>
 					</ul>
 				</Card>
 
 				<Card>
 					<div class="flex items-center gap-2 mb-4">
-						<Zap class="w-5 h-5 text-amber-500" />
-						<h3 class="font-semibold text-text">Popular providers</h3>
+						<Globe class="w-5 h-5 text-blue-500" />
+						<h3 class="font-semibold text-text">Timezone Setting</h3>
+					</div>
+					<p class="text-sm text-text-muted mb-2">
+						Your timezone is used for:
+					</p>
+					<ul class="space-y-2 text-sm text-text-muted">
+						<li>• Scheduling campaign sends</li>
+						<li>• Displaying report timestamps</li>
+						<li>• Email queue timing</li>
+					</ul>
+				</Card>
+
+				<Card>
+					<div class="flex items-center gap-2 mb-4">
+						<HelpCircle class="w-5 h-5 text-amber-500" />
+						<h3 class="font-semibold text-text">Password Requirements</h3>
 					</div>
 					<ul class="space-y-2 text-sm text-text-muted">
-						<li>Amazon SES</li>
-						<li>SendGrid</li>
-						<li>Mailgun</li>
-						<li>Postmark</li>
-						<li>Any SMTP server</li>
+						<li>Minimum 8 characters</li>
+						<li>Use a strong, unique password</li>
+						<li>Consider using a password manager</li>
 					</ul>
 				</Card>
-			{:else if currentStep === 'smtp'}
-				<!-- SMTP Help -->
+			{:else if currentStep === 'aws'}
+				<!-- AWS Help -->
 				<Card>
 					<div class="flex items-center gap-2 mb-4">
-						<HelpCircle class="w-5 h-5 text-primary" />
-						<h3 class="font-semibold text-text">SMTP Settings Help</h3>
+						<Key class="w-5 h-5 text-primary" />
+						<h3 class="font-semibold text-text">Getting AWS Credentials</h3>
 					</div>
-					<div class="space-y-4 text-sm">
-						<div>
-							<p class="font-medium text-text">SMTP Host</p>
-							<p class="text-text-muted">The hostname of your SMTP server (e.g., smtp.gmail.com, email-smtp.us-east-1.amazonaws.com)</p>
-						</div>
-						<div>
-							<p class="font-medium text-text">SMTP Port</p>
-							<p class="text-text-muted"><strong>587</strong> is recommended for most providers. Use <strong>465</strong> for SSL/TLS or <strong>25</strong> for unencrypted.</p>
-						</div>
-						<div>
-							<p class="font-medium text-text">Username & Password</p>
-							<p class="text-text-muted">Your SMTP credentials. For AWS SES, these are your IAM SMTP credentials (not your AWS access keys).</p>
-						</div>
-					</div>
+					<ol class="space-y-3 text-sm text-text-muted list-decimal list-inside">
+						<li>Go to AWS IAM Console</li>
+						<li>Create a new IAM user</li>
+						<li>Attach the policy below</li>
+						<li>Copy the Access Key ID and Secret</li>
+					</ol>
+					<a
+						href="https://console.aws.amazon.com/iam/"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="mt-4 inline-flex items-center gap-1 text-sm text-primary hover:underline"
+					>
+						Open IAM Console
+						<ExternalLink class="w-3 h-3" />
+					</a>
 				</Card>
 
-				<Card>
-					<div class="flex items-center gap-2 mb-4">
-						<Lightbulb class="w-5 h-5 text-amber-500" />
-						<h3 class="font-semibold text-text">Quick setup guides</h3>
-					</div>
-					<div class="space-y-3 text-sm">
-						<div class="p-3 bg-bg-muted rounded-lg">
-							<p class="font-medium text-text">Amazon SES</p>
-							<p class="text-text-muted text-xs mt-1">Host: email-smtp.[region].amazonaws.com<br/>Port: 587</p>
-						</div>
-						<div class="p-3 bg-bg-muted rounded-lg">
-							<p class="font-medium text-text">SendGrid</p>
-							<p class="text-text-muted text-xs mt-1">Host: smtp.sendgrid.net<br/>Port: 587<br/>User: apikey</p>
-						</div>
-						<div class="p-3 bg-bg-muted rounded-lg">
-							<p class="font-medium text-text">Mailgun</p>
-							<p class="text-text-muted text-xs mt-1">Host: smtp.mailgun.org<br/>Port: 587</p>
-						</div>
-					</div>
-				</Card>
-
-				<Card>
-					<div class="flex items-center gap-2 mb-4">
-						<Shield class="w-5 h-5 text-green-500" />
-						<h3 class="font-semibold text-text">Security</h3>
-					</div>
-					<p class="text-sm text-text-muted">
-						Your SMTP password is encrypted before being stored. We never log or expose your credentials.
-					</p>
-				</Card>
+				<AwsIamPolicy compact />
 			{:else if currentStep === 'complete'}
 				<!-- Complete Help -->
 				<Card>
 					<div class="flex items-center gap-2 mb-4">
-						<Lightbulb class="w-5 h-5 text-amber-500" />
+						<HelpCircle class="w-5 h-5 text-amber-500" />
 						<h3 class="font-semibold text-text">What's next?</h3>
 					</div>
 					<ul class="space-y-3 text-sm text-text-muted">
 						<li class="flex items-start gap-2">
-							<Check class="w-4 h-4 text-green-500 mt-0.5" />
-							<span>Create your first email list</span>
+							<span class="text-primary font-medium shrink-0">1.</span>
+							<span>Create your first brand with a domain</span>
 						</li>
 						<li class="flex items-start gap-2">
-							<Check class="w-4 h-4 text-green-500 mt-0.5" />
-							<span>Import or add subscribers</span>
+							<span class="text-primary font-medium shrink-0">2.</span>
+							<span>Add DNS records to verify your domain</span>
 						</li>
 						<li class="flex items-start gap-2">
-							<Check class="w-4 h-4 text-green-500 mt-0.5" />
-							<span>Design your first campaign</span>
+							<span class="text-primary font-medium shrink-0">3.</span>
+							<span>Create email lists and start collecting subscribers</span>
 						</li>
 						<li class="flex items-start gap-2">
-							<Check class="w-4 h-4 text-green-500 mt-0.5" />
-							<span>Set up automation sequences</span>
+							<span class="text-primary font-medium shrink-0">4.</span>
+							<span>Send your first campaign!</span>
 						</li>
 					</ul>
 				</Card>
@@ -390,3 +534,4 @@
 		</div>
 	</div>
 </div>
+{/if}

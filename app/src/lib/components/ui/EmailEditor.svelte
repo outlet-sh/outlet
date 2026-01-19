@@ -46,16 +46,17 @@
 	// Editor mode: 'visual' | 'html' | 'text'
 	let editorMode = $state<'visual' | 'html' | 'text'>('visual');
 	let plainTextBody = $state('');
-	let shadowHost: HTMLDivElement;
+	let shadowHost = $state<HTMLDivElement | null>(null);
 	let shadowRoot: ShadowRoot | null = null;
 	let editableDiv: HTMLDivElement | null = null;
 
 	// Initialize shadow DOM for style isolation
-	function initShadowEditor() {
-		if (!shadowHost) return;
+	function initShadowEditor(host?: HTMLDivElement | null) {
+		const hostEl = host || shadowHost;
+		if (!hostEl) return;
 
 		if (!shadowRoot) {
-			shadowRoot = shadowHost.attachShadow({ mode: 'open' });
+			shadowRoot = hostEl.attachShadow({ mode: 'open' });
 		}
 
 		// Base editor styles - minimal, let email's own styles take over
@@ -162,7 +163,7 @@
 	// Svelte action to init shadow DOM on mount
 	function initShadowOnMount(node: HTMLDivElement) {
 		shadowHost = node;
-		initShadowEditor();
+		initShadowEditor(node);
 		return {
 			destroy() {
 				shadowRoot = null;

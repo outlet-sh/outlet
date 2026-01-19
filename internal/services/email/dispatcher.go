@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/db"
 
 	"github.com/zeromicro/go-zero/core/logx"
 	"golang.org/x/time/rate"
@@ -220,12 +220,27 @@ func (d *Dispatcher) worker(id int) {
 func (d *Dispatcher) sendEmail(job EmailJob) error {
 	email := job.Email
 
-	// Process template variables
+	// Build template context
 	tplCtx := TemplateContext{
 		Name:          email.Name,
 		Email:         email.Email,
 		TrackingToken: email.TrackingToken.String,
+		CustomFields:  make(map[string]string),
 	}
+
+	// Fetch custom fields if this is a sequence email with a contact
+	if email.ContactID.Valid && email.TemplateID.Valid {
+		template, err := d.db.GetTemplateByID(d.ctx, email.TemplateID.String)
+		if err == nil && template.SequenceID.Valid {
+			sequence, err := d.db.GetSequenceByID(d.ctx, template.SequenceID.String)
+			if err == nil && sequence.ListID.Valid {
+				tplCtx.CustomFields = d.sequenceService.GetCustomFieldsForContact(
+					d.ctx, email.ContactID.String, sequence.ListID.Int64)
+			}
+		}
+	}
+
+	// Process template variables
 	htmlBody := d.sequenceService.processTemplateVariables(email.HtmlBody, tplCtx)
 	subject := d.sequenceService.processTemplateVariables(email.Subject, tplCtx)
 

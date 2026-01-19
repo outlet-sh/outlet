@@ -132,6 +132,18 @@ export interface BulkSuppressEmailsResponse {
 	errors?: Array<string>
 }
 
+export interface CampaignActivityItem {
+	campaign_id: string
+	campaign_name: string
+	campaign_subject: string
+	status: string
+	sent_at?: string
+	opened_at?: string
+	open_count: number
+	clicked_at?: string
+	click_count: number
+}
+
 export interface CampaignInfo {
 	id: string
 	org_id: string
@@ -233,6 +245,7 @@ export interface ContactStatsPoint {
 }
 
 export interface CreateBackupRequest {
+	format?: string // db (SQLite binary) or sql (SQL dump)
 	compress?: boolean
 	upload_to_s3?: boolean
 	s3_bucket?: string
@@ -264,6 +277,25 @@ export interface CreateCampaignRequest {
 	track_clicks?: boolean
 }
 
+export interface CreateCustomFieldRequest {
+	name: string
+	field_key: string
+	field_type?: string
+	options?: Array<string>
+	required?: boolean
+	default_value?: string
+	placeholder?: string
+	sort_order?: number
+}
+export interface CreateCustomFieldRequestParams {
+}
+
+export interface CreateDomainIdentityRequest {
+	domain: string // If empty, extracted from org's from_email
+}
+export interface CreateDomainIdentityRequestParams {
+}
+
 export interface CreateEmailDesignRequest {
 	name: string
 	slug: string
@@ -279,6 +311,20 @@ export interface CreateEntryRuleRequest {
 	trigger_type: string // list_join, sequence_complete, tag_added, manual
 	source_id?: string
 	priority?: number
+}
+
+export interface CreateInitialAdminRequest {
+	email: string
+	password: string
+	confirm_password: string
+	name?: string
+	company?: string
+	timezone?: string
+}
+
+export interface CreateInitialAdminResponse {
+	success: boolean
+	message: string
 }
 
 export interface CreateListRequest {
@@ -307,6 +353,9 @@ export interface CreateOrgRequest {
 	plan?: string
 	max_contacts?: number
 	app_url?: string
+	from_name?: string
+	from_email?: string
+	reply_to?: string
 }
 
 export interface CreateSequenceRequest {
@@ -354,6 +403,29 @@ export interface CreateUserResponse {
 	user: UserInfo
 }
 
+export interface CustomFieldInfo {
+	id: string
+	list_id: string
+	name: string
+	field_key: string
+	field_type: string
+	options?: Array<string>
+	required: boolean
+	default_value?: string
+	placeholder?: string
+	sort_order: number
+	created_at: string
+	updated_at: string
+}
+
+export interface DNSRecord {
+	type: string // CNAME, TXT, MX
+	name: string // Record name/host
+	value: string // Record value
+	priority: number // For MX records
+	purpose: string // dkim, verification, mail_from
+}
+
 export interface DashboardStatsResponse {
 	// Email stats
 	emails_sent_30d: number
@@ -384,6 +456,16 @@ export interface DeleteBlockedDomainRequestParams {
 export interface DeleteCampaignRequest {
 }
 export interface DeleteCampaignRequestParams {
+}
+
+export interface DeleteCustomFieldRequest {
+}
+export interface DeleteCustomFieldRequestParams {
+}
+
+export interface DeleteDomainIdentityRequest {
+}
+export interface DeleteDomainIdentityRequestParams {
 }
 
 export interface DeleteEmailDesignRequest {
@@ -437,6 +519,18 @@ export interface DetectSESQuotaRequest {
 	aws_secret_key?: string
 }
 export interface DetectSESQuotaRequestParams {
+}
+
+export interface DomainIdentityInfo {
+	id: string
+	org_id: string
+	domain: string
+	verification_status: string // pending, success, failed, temporary_failure, not_started
+	dkim_status: string
+	mail_from_status: string
+	dns_records: Array<DNSRecord>
+	last_checked_at?: string
+	created_at: string
 }
 
 export interface DownloadBackupRequest {
@@ -548,6 +642,7 @@ export interface EmailStatusResponse {
 export interface EmbedCodeResponse {
 	html: string
 	list_id: string
+	public_id: string
 	slug: string
 	base_url: string
 }
@@ -704,11 +799,21 @@ export interface GetContactStatsResponse {
 	net_growth: number // For period
 }
 
+export interface GetCustomFieldRequest {
+}
+export interface GetCustomFieldRequestParams {
+}
+
 export interface GetDashboardStatsRequest {
 }
 export interface GetDashboardStatsRequestParams {
 	from?: string
 	to?: string
+}
+
+export interface GetDomainIdentityRequest {
+}
+export interface GetDomainIdentityRequestParams {
 }
 
 export interface GetEmailDesignRequest {
@@ -797,6 +902,11 @@ export interface GetStatsOverviewRequest {
 export interface GetStatsOverviewRequestParams {
 	start_date?: string // RFC3339
 	end_date?: string // RFC3339
+}
+
+export interface GetSubscriberDetailRequest {
+}
+export interface GetSubscriberDetailRequestParams {
 }
 
 export interface GetTransactionalEmailRequest {
@@ -911,6 +1021,25 @@ export interface ListContactActivityResponse {
 	activities: Array<ContactActivityInfo>
 }
 
+export interface ListCustomFieldsRequest {
+}
+export interface ListCustomFieldsRequestParams {
+}
+
+export interface ListCustomFieldsResponse {
+	fields: Array<CustomFieldInfo>
+	total: number
+}
+
+export interface ListDomainIdentitiesRequest {
+}
+export interface ListDomainIdentitiesRequestParams {
+}
+
+export interface ListDomainIdentitiesResponse {
+	identities: Array<DomainIdentityInfo>
+}
+
 export interface ListEmailDesignsRequest {
 }
 export interface ListEmailDesignsRequestParams {
@@ -947,6 +1076,7 @@ export interface ListImportJobsResponse {
 
 export interface ListInfo {
 	id: string
+	public_id: string
 	org_id: string
 	name: string
 	slug: string
@@ -958,6 +1088,22 @@ export interface ListInfo {
 	subscriber_count: number
 	created_at: string
 	updated_at: string
+	// Redirect URLs
+	thank_you_url?: string
+	confirm_redirect_url?: string
+	already_subscribed_url?: string
+	unsubscribe_redirect_url?: string
+	// Thank you email settings
+	thank_you_email_enabled: boolean
+	thank_you_email_subject?: string
+	thank_you_email_body?: string
+	// Goodbye email settings
+	goodbye_email_enabled: boolean
+	goodbye_email_subject?: string
+	goodbye_email_body?: string
+	// Unsubscribe behavior
+	unsubscribe_behavior?: string
+	unsubscribe_scope?: string
 }
 
 export interface ListListsResponse {
@@ -982,6 +1128,7 @@ export interface ListStatsResponse {
 }
 
 export interface ListSubscriberInfo {
+	id: string
 	contact_id: string
 	email: string
 	name: string
@@ -1131,6 +1278,11 @@ export interface PlatformSettingInfo {
 	is_sensitive: boolean
 }
 
+export interface RefreshDomainIdentityRequest {
+}
+export interface RefreshDomainIdentityRequestParams {
+}
+
 export interface RefreshTokenRequest {
 	refresh_token: string
 }
@@ -1238,6 +1390,8 @@ export interface SESQuotaResponse {
 	max_send_rate: number
 	sent_last_24_hours: number
 	remaining_quota: number
+	region: string
+	timezone?: string
 }
 
 export interface ScheduleCampaignRequest {
@@ -1292,6 +1446,17 @@ export interface SequenceEnrollmentInfo {
 	emails_clicked: number
 }
 
+export interface SequenceEnrollmentItem {
+	sequence_id: string
+	sequence_name: string
+	current_position: number
+	is_active: boolean
+	started_at?: string
+	completed_at?: string
+	paused_at?: string
+	unsubscribed_at?: string
+}
+
 export interface SequenceInfo {
 	id: string
 	list_id?: string
@@ -1304,6 +1469,8 @@ export interface SequenceInfo {
 	is_active: boolean
 	send_hour: number // Hour of day (0-23) to send emails, null = use delay from opt-in
 	send_timezone: string // Timezone for send_hour (e.g., America/New_York)
+	on_completion_sequence_id?: string // Chain to another sequence on completion
+	on_completion_sequence_name?: string // Name of the chained sequence
 	entry_rules?: Array<EntryRuleInfo>
 	created_at: string
 }
@@ -1326,7 +1493,11 @@ export interface SequenceStatsResponse {
 }
 
 export interface SetupStatusResponse {
-	platform_configured: boolean // Has SMTP/email settings
+	setup_required: boolean // True if initial setup needed
+	has_admin: boolean // Has at least one admin user
+	has_aws: boolean // Has AWS credentials configured
+	has_smtp: boolean // Has SMTP configured (deprecated)
+	platform_configured: boolean // Has AWS/email settings
 	missing_settings: Array<string> // List of missing required settings
 }
 
@@ -1354,6 +1525,7 @@ export interface StripeWebhookPathParams {
 export interface SubscribeRequest {
 	email: string
 	name?: string
+	custom_fields?: { [key: string]: string }
 }
 export interface SubscribeRequestParams {
 }
@@ -1361,6 +1533,32 @@ export interface SubscribeRequestParams {
 export interface SubscriberActionRequest {
 }
 export interface SubscriberActionRequestParams {
+}
+
+export interface SubscriberDetailResponse {
+	id: string
+	list_id: string
+	contact_id: string
+	email: string
+	name: string
+	status: string
+	source: string
+	subscribed_at: string
+	verified_at?: string
+	unsubscribed_at?: string
+	email_verified: boolean
+	gdpr_consent: boolean
+	gdpr_consent_at?: string
+	blocked_at?: string
+	emails_sent: number
+	emails_opened: number
+	emails_clicked: number
+	last_email_at?: string
+	last_open_at?: string
+	last_click_at?: string
+	custom_fields: { [key: string]: string }
+	campaign_activity: Array<CampaignActivityItem>
+	sequence_enrollments: Array<SequenceEnrollmentItem>
 }
 
 export interface SubscriberInfo {
@@ -1503,6 +1701,19 @@ export interface UpdateContactRequest {
 export interface UpdateContactRequestParams {
 }
 
+export interface UpdateCustomFieldRequest {
+	name?: string
+	field_key?: string
+	field_type?: string
+	options?: Array<string>
+	required?: boolean
+	default_value?: string
+	placeholder?: string
+	sort_order?: number
+}
+export interface UpdateCustomFieldRequestParams {
+}
+
 export interface UpdateEmailDesignRequest {
 	name?: string
 	slug?: string
@@ -1516,6 +1727,11 @@ export interface UpdateEmailDesignRequestParams {
 }
 
 export interface UpdateEmailSettingsRequest {
+	// AWS SES credentials
+	aws_access_key?: string
+	aws_secret_key?: string
+	aws_region?: string
+	// Legacy SMTP fields (deprecated, use AWS credentials instead)
 	smtp_host?: string
 	smtp_port?: number
 	smtp_user?: string
@@ -1546,6 +1762,22 @@ export interface UpdateListRequest {
 	confirmation_subject?: string
 	confirmation_body?: string
 	confirmation_design_id?: string
+	// Redirect URLs
+	thank_you_url?: string
+	confirm_redirect_url?: string
+	already_subscribed_url?: string
+	unsubscribe_redirect_url?: string
+	// Thank you email settings
+	thank_you_email_enabled?: boolean
+	thank_you_email_subject?: string
+	thank_you_email_body?: string
+	// Goodbye email settings
+	goodbye_email_enabled?: boolean
+	goodbye_email_subject?: string
+	goodbye_email_body?: string
+	// Unsubscribe behavior
+	unsubscribe_behavior?: string
+	unsubscribe_scope?: string
 }
 export interface UpdateListRequestParams {
 }
@@ -1585,11 +1817,13 @@ export interface UpdateOrgRequestParams {
 
 export interface UpdateSequenceRequest {
 	name?: string
+	list_id?: string // Change which list this sequence belongs to
 	trigger_event?: string
 	sequence_type?: string // lifecycle or transactional
 	is_active?: boolean
 	send_hour?: number // Hour of day (0-23) to send emails
 	send_timezone?: string // Timezone for send_hour
+	on_completion_sequence_id?: string // Chain to another sequence (null to clear)
 }
 export interface UpdateSequenceRequestParams {
 }

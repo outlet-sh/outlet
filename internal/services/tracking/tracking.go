@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/db"
 )
 
 var (

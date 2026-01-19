@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"sync"
 
-	"outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/db"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )

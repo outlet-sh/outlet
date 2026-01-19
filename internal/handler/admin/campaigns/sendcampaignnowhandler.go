@@ -3,10 +3,10 @@ package campaigns
 import (
 	"net/http"
 
+	"github.com/outlet-sh/outlet/internal/logic/admin/campaigns"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
-	"outlet/internal/logic/admin/campaigns"
-	"outlet/internal/svc"
-	"outlet/internal/types"
 )
 
 func SendCampaignNowHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

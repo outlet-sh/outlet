@@ -6,21 +6,19 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 
-	"outlet/internal/config"
-	"outlet/internal/db"
-	"outlet/internal/db/migrations"
-	"outlet/internal/events"
-	"outlet/internal/middleware"
-	"outlet/internal/services/crypto"
-	"outlet/internal/services/email"
-	"outlet/internal/services/tracking"
-	"outlet/internal/services/webhook"
+	"github.com/outlet-sh/outlet/internal/config"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/db/migrations"
+	"github.com/outlet-sh/outlet/internal/events"
+	"github.com/outlet-sh/outlet/internal/middleware"
+	"github.com/outlet-sh/outlet/internal/services/crypto"
+	"github.com/outlet-sh/outlet/internal/services/email"
+	"github.com/outlet-sh/outlet/internal/services/tracking"
+	"github.com/outlet-sh/outlet/internal/services/webhook"
+	"github.com/outlet-sh/outlet/internal/websocket"
 
-	"github.com/google/uuid"
 	"github.com/zeromicro/go-zero/rest"
-	"golang.org/x/crypto/bcrypt"
 	_ "modernc.org/sqlite"
 )
 
@@ -36,6 +34,7 @@ type ServiceContext struct {
 	Tracking          *tracking.Service
 	Events            *events.Subject
 	WebhookDispatcher *webhook.Dispatcher
+	WebSocketHub      *websocket.Hub
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -85,22 +84,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	// Create database store
 	store := db.NewStore(conn)
 
-	// Seed super admin user if configured and not already exists
-	log.Printf("DEBUG: Admin config - email=%q, password_len=%d", c.Admin.Email, len(c.Admin.Password))
-	if c.Admin.Email != "" && c.Admin.Password != "" {
-		log.Printf("Admin seeding configured for: %s", c.Admin.Email)
-		seedSuperAdmin(context.Background(), store, c.Admin.Email, c.Admin.Password)
-	} else {
-		log.Printf("Admin seeding skipped - ADMIN_EMAIL or ADMIN_PASSWORD not set (email=%q)", c.Admin.Email)
-	}
-
-	// Initialize Email service (SMTP config loaded from platform_settings in database)
-	emailService := email.NewService(store)
-	if c.App.BaseURL != "" {
-		emailService.SetBaseURL(c.App.BaseURL)
-	}
-
-	// Initialize Crypto service for org credential encryption
+	// Initialize Crypto service for credential encryption (must be before email service)
 	var cryptoService *crypto.Service
 	if c.Encryption.Key != "" {
 		var err error
@@ -112,6 +96,12 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		}
 	} else {
 		log.Printf("Warning: ENCRYPTION_KEY not set - credential storage (Stripe, AI keys) will be disabled")
+	}
+
+	// Initialize Email service (AWS SES preferred, SMTP fallback - config from platform_settings)
+	emailService := email.NewService(store, cryptoService)
+	if c.App.BaseURL != "" {
+		emailService.SetBaseURL(c.App.BaseURL)
 	}
 
 	// Initialize Tracking service
@@ -138,6 +128,11 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		log.Printf("Webhook dispatcher started")
 	}
 
+	// Initialize WebSocket Hub for real-time updates
+	wsHub := websocket.NewHub()
+	go wsHub.Run()
+	log.Printf("WebSocket hub initialized")
+
 	return &ServiceContext{
 		Config:            c,
 		DB:                store,
@@ -150,46 +145,6 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		Tracking:          trackingService,
 		Events:            eventSubject,
 		WebhookDispatcher: webhookDispatcher,
+		WebSocketHub:      wsHub,
 	}
-}
-
-// seedSuperAdmin creates the super admin user if it doesn't already exist
-func seedSuperAdmin(ctx context.Context, store *db.Store, email, password string) {
-	email = strings.ToLower(strings.TrimSpace(email))
-
-	// Check if user already exists
-	exists, err := store.CheckEmailExists(ctx, email)
-	if err != nil {
-		log.Printf("Warning: Failed to check if super admin exists: %v", err)
-		return
-	}
-
-	if exists > 0 {
-		log.Printf("Super admin user already exists: %s", email)
-		return
-	}
-
-	// Hash password
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		log.Printf("Warning: Failed to hash super admin password: %v", err)
-		return
-	}
-
-	// Create super admin user
-	_, err = store.CreateUser(ctx, db.CreateUserParams{
-		ID:            uuid.NewString(),
-		Email:         email,
-		PasswordHash:  string(passwordHash),
-		Name:          "Super Admin",
-		Role:          "super_admin",
-		Status:        "active",
-		EmailVerified: 1,
-	})
-	if err != nil {
-		log.Printf("Warning: Failed to create super admin user: %v", err)
-		return
-	}
-
-	log.Printf("Super admin user created successfully: %s", email)
 }

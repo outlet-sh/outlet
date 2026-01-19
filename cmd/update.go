@@ -13,40 +13,45 @@ import (
 	"strings"
 	"time"
 
-	"outlet/internal/version"
+	"github.com/outlet-sh/outlet/internal/version"
 
 	"github.com/spf13/cobra"
 )
 
 const (
-	// LicenseServerURL is the URL of the license/update server
-	LicenseServerURL = "https://license.outlet.sh"
+	// GitHubReleasesAPI is the URL for checking GitHub releases
+	GitHubReleasesAPI = "https://api.github.com/repos/localrivet/outlet/releases/latest"
 	// UpdateTimeout is the timeout for update operations
 	UpdateTimeout = 5 * time.Minute
 )
 
-// UpdateResponse represents the response from the update check endpoint
+// GitHubRelease represents a GitHub release response
+type GitHubRelease struct {
+	TagName     string         `json:"tag_name"`
+	Name        string         `json:"name"`
+	Body        string         `json:"body"`
+	PublishedAt string         `json:"published_at"`
+	Assets      []GitHubAsset  `json:"assets"`
+	HTMLURL     string         `json:"html_url"`
+}
+
+// GitHubAsset represents a release asset
+type GitHubAsset struct {
+	Name               string `json:"name"`
+	BrowserDownloadURL string `json:"browser_download_url"`
+	Size               int64  `json:"size"`
+}
+
+// UpdateResponse represents the processed update information
 type UpdateResponse struct {
 	Version     string `json:"version"`
 	ReleaseDate string `json:"release_date"`
 	DownloadURL string `json:"download_url"`
-	Checksum    string `json:"checksum"` // SHA256
+	Checksum    string `json:"checksum"` // SHA256 (from checksums.txt asset)
 	Changelog   string `json:"changelog"`
-	Mandatory   bool   `json:"mandatory"`
-}
-
-// LicenseValidation represents a license key validation response
-type LicenseValidation struct {
-	Valid        bool      `json:"valid"`
-	LicenseType  string    `json:"license_type"` // personal, business, enterprise
-	ExpiresAt    time.Time `json:"expires_at"`
-	MaxDomains   int       `json:"max_domains"`
-	UpdatesUntil time.Time `json:"updates_until"`
-	ErrorMessage string    `json:"error,omitempty"`
 }
 
 var (
-	licenseKey  string
 	checkOnly   bool
 	forceUpdate bool
 )
@@ -56,63 +61,28 @@ var updateCmd = &cobra.Command{
 	Short: "Check for and install updates",
 	Long: `Check for available updates and optionally install them.
 
-Requires a valid license key for update access. Set the license key via:
-  - OUTLET_LICENSE_KEY environment variable
-  - --license-key flag
+Outlet is open-source software. Updates are fetched directly from GitHub releases.
 
 Examples:
-  outlet update                    # Check and install updates
-  outlet update --check            # Check only, don't install
-  outlet update --force            # Force update even if on latest
-  outlet update --license-key=xxx  # Use specific license key`,
+  outlet update          # Check and install updates
+  outlet update --check  # Check only, don't install
+  outlet update --force  # Force update even if on latest`,
 	RunE: runUpdate,
 }
 
 func init() {
 	rootCmd.AddCommand(updateCmd)
-	updateCmd.Flags().StringVarP(&licenseKey, "license-key", "l", "", "License key for update access")
 	updateCmd.Flags().BoolVarP(&checkOnly, "check", "c", false, "Check for updates without installing")
 	updateCmd.Flags().BoolVarP(&forceUpdate, "force", "f", false, "Force update even if on latest version")
 }
 
 func runUpdate(cmd *cobra.Command, args []string) error {
-	// Get license key from flag or environment
-	if licenseKey == "" {
-		licenseKey = os.Getenv("OUTLET_LICENSE_KEY")
-	}
-
-	if licenseKey == "" {
-		return fmt.Errorf("license key required. Set OUTLET_LICENSE_KEY or use --license-key flag")
-	}
-
-	fmt.Printf("Outlet.sh Update Checker\n")
+	fmt.Printf("Outlet Update Checker\n")
 	fmt.Printf("Current version: %s\n\n", version.Version)
 
-	// Validate license
-	fmt.Print("Validating license... ")
-	license, err := validateLicense(licenseKey)
-	if err != nil {
-		fmt.Println("FAILED")
-		return fmt.Errorf("license validation failed: %w", err)
-	}
-
-	if !license.Valid {
-		fmt.Println("INVALID")
-		return fmt.Errorf("invalid license: %s", license.ErrorMessage)
-	}
-
-	fmt.Println("OK")
-	fmt.Printf("  License type: %s\n", license.LicenseType)
-	fmt.Printf("  Updates until: %s\n\n", license.UpdatesUntil.Format("2006-01-02"))
-
-	// Check if updates are still available for this license
-	if time.Now().After(license.UpdatesUntil) {
-		return fmt.Errorf("update access expired on %s. Please renew your license", license.UpdatesUntil.Format("2006-01-02"))
-	}
-
-	// Check for updates
+	// Check for updates from GitHub
 	fmt.Print("Checking for updates... ")
-	update, err := checkForUpdates(licenseKey)
+	update, err := checkForUpdates()
 	if err != nil {
 		fmt.Println("FAILED")
 		return fmt.Errorf("update check failed: %w", err)
@@ -155,14 +125,16 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Println("OK")
 
-	// Verify checksum
-	fmt.Print("Verifying checksum... ")
-	if err := verifyChecksum(binaryPath, update.Checksum); err != nil {
-		fmt.Println("FAILED")
-		os.Remove(binaryPath)
-		return fmt.Errorf("checksum verification failed: %w", err)
+	// Verify checksum if available
+	if update.Checksum != "" {
+		fmt.Print("Verifying checksum... ")
+		if err := verifyChecksum(binaryPath, update.Checksum); err != nil {
+			fmt.Println("FAILED")
+			os.Remove(binaryPath)
+			return fmt.Errorf("checksum verification failed: %w", err)
+		}
+		fmt.Println("OK")
 	}
-	fmt.Println("OK")
 
 	// Install update
 	fmt.Print("Installing update... ")
@@ -178,72 +150,105 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func validateLicense(key string) (*LicenseValidation, error) {
+func checkForUpdates() (*UpdateResponse, error) {
 	client := &http.Client{Timeout: 30 * time.Second}
 
-	req, err := http.NewRequest("GET", LicenseServerURL+"/api/v1/license/validate", nil)
+	req, err := http.NewRequest("GET", GitHubReleasesAPI, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	req.Header.Set("Authorization", "Bearer "+key)
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
 	req.Header.Set("User-Agent", fmt.Sprintf("Outlet/%s (%s/%s)", version.Version, runtime.GOOS, runtime.GOARCH))
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to license server: %w", err)
+		return nil, fmt.Errorf("failed to connect to GitHub: %w", err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("license server returned %d: %s", resp.StatusCode, string(body))
-	}
-
-	var license LicenseValidation
-	if err := json.NewDecoder(resp.Body).Decode(&license); err != nil {
-		return nil, fmt.Errorf("failed to parse license response: %w", err)
-	}
-
-	return &license, nil
-}
-
-func checkForUpdates(key string) (*UpdateResponse, error) {
-	client := &http.Client{Timeout: 30 * time.Second}
-
-	url := fmt.Sprintf("%s/api/v1/updates/check?version=%s&os=%s&arch=%s",
-		LicenseServerURL, version.Version, runtime.GOOS, runtime.GOARCH)
-
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Authorization", "Bearer "+key)
-	req.Header.Set("User-Agent", fmt.Sprintf("Outlet/%s (%s/%s)", version.Version, runtime.GOOS, runtime.GOARCH))
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to update server: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusNoContent {
-		// No update available
+	if resp.StatusCode == http.StatusNotFound {
+		// No releases yet
 		return nil, nil
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("update server returned %d: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("GitHub API returned %d: %s", resp.StatusCode, string(body))
 	}
 
-	var update UpdateResponse
-	if err := json.NewDecoder(resp.Body).Decode(&update); err != nil {
-		return nil, fmt.Errorf("failed to parse update response: %w", err)
+	var release GitHubRelease
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return nil, fmt.Errorf("failed to parse GitHub response: %w", err)
 	}
 
-	return &update, nil
+	// Clean up version tag (remove 'v' prefix if present)
+	latestVersion := strings.TrimPrefix(release.TagName, "v")
+	currentVersion := strings.TrimPrefix(version.Version, "v")
+
+	// Compare versions (simple string comparison - assumes semver)
+	if !forceUpdate && latestVersion <= currentVersion {
+		return nil, nil
+	}
+
+	// Find the appropriate asset for this platform
+	assetName := fmt.Sprintf("outlet_%s_%s", runtime.GOOS, runtime.GOARCH)
+	var downloadURL string
+	var checksumURL string
+
+	for _, asset := range release.Assets {
+		if strings.Contains(asset.Name, assetName) && !strings.HasSuffix(asset.Name, ".txt") {
+			downloadURL = asset.BrowserDownloadURL
+		}
+		if asset.Name == "checksums.txt" {
+			checksumURL = asset.BrowserDownloadURL
+		}
+	}
+
+	if downloadURL == "" {
+		return nil, fmt.Errorf("no release asset found for %s/%s", runtime.GOOS, runtime.GOARCH)
+	}
+
+	// Try to get checksum
+	checksum := ""
+	if checksumURL != "" {
+		checksum = fetchChecksum(checksumURL, assetName)
+	}
+
+	return &UpdateResponse{
+		Version:     latestVersion,
+		ReleaseDate: release.PublishedAt,
+		DownloadURL: downloadURL,
+		Checksum:    checksum,
+		Changelog:   release.Body,
+	}, nil
+}
+
+func fetchChecksum(checksumURL, assetName string) string {
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Get(checksumURL)
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ""
+	}
+
+	// Parse checksums.txt format: "checksum  filename"
+	lines := strings.Split(string(body), "\n")
+	for _, line := range lines {
+		if strings.Contains(line, assetName) {
+			parts := strings.Fields(line)
+			if len(parts) >= 1 {
+				return parts[0]
+			}
+		}
+	}
+
+	return ""
 }
 
 func downloadUpdate(update *UpdateResponse) (string, error) {

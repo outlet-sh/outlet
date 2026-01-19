@@ -15,7 +15,7 @@ type Config struct {
 	App struct {
 		BaseURL        string // Base URL for the app (e.g., https://outlet.sh)
 		Domain         string // Production domain for HTTPS (e.g., outlet.sh)
-		ProductionMode bool   // Enable production mode (HTTPS, Let's Encrypt)
+		ProductionMode bool `json:",optional"` // Enable production mode (HTTPS, Let's Encrypt)
 	}
 	Database struct {
 		Path string `json:",default=./data/outlet.db"` // SQLite database file path
@@ -25,10 +25,6 @@ type Config struct {
 		AccessExpire  int64
 		RefreshSecret string
 		RefreshExpire int64
-	}
-	Admin struct {
-		Email    string // Super admin email for initial seeding
-		Password string // Super admin password for initial seeding
 	}
 	Email struct {
 		// High-volume dispatcher settings (per-org SMTP config is in database)

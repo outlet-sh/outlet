@@ -1,6 +1,6 @@
-module outlet
+module github.com/outlet-sh/outlet
 
-go 1.24.4
+go 1.25.6
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.41.1
@@ -11,11 +11,13 @@ require (
 	github.com/emersion/go-smtp v0.24.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/joho/godotenv v1.5.1
 	github.com/mattn/go-sqlite3 v1.14.33
 	github.com/modelcontextprotocol/go-sdk v1.2.0
 	github.com/nats-io/nats.go v1.48.0
 	github.com/pressly/goose/v3 v3.26.0
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	github.com/zeromicro/go-zero v1.9.3

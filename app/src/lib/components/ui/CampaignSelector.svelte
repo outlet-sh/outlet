@@ -17,7 +17,7 @@
 
 	interface Props {
 		show: boolean;
-		onselect?: (selectedIds: number[]) => void;
+		onselect?: (selectedIds: string[]) => void;
 		oncancel?: () => void;
 	}
 
@@ -29,7 +29,7 @@
 
 	// State
 	let campaigns = $state<CampaignInfo[]>([]);
-	let selectedIds = $state<Set<number>>(new Set());
+	let selectedIds = $state<Set<string>>(new Set());
 	let searchQuery = $state('');
 	let statusFilter = $state('all');
 	let loading = $state(false);
@@ -89,7 +89,7 @@
 		}
 	}
 
-	function toggleCampaign(campaignId: number) {
+	function toggleCampaign(campaignId: string) {
 		if (selectedIds.has(campaignId)) {
 			selectedIds.delete(campaignId);
 		} else {

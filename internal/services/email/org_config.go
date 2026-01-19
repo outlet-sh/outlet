@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/db"
 )
 
 // OrgEmailConfig holds per-organization email configuration

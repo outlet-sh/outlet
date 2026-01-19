@@ -9,7 +9,7 @@ import (
 	"sync"
 	"testing"
 
-	"outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/db"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

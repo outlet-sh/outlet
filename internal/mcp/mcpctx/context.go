@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"outlet/internal/db"
-	"outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/svc"
 )
 
 // AuthMode indicates how the MCP session was authenticated.

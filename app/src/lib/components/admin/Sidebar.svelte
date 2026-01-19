@@ -5,12 +5,13 @@
 		LayoutDashboard,
 		Users,
 		Send,
-		Workflow,
 		FileText,
 		Settings,
 		ChevronLeft,
 		ChevronRight,
-		Mail
+		Mail,
+		Ban,
+		Trash2
 	} from 'lucide-svelte';
 
 	interface Props {
@@ -41,13 +42,15 @@
 
 	let basePath = $derived(`/${orgSlug}`);
 
-	// Navigation items - flat, email-focused like Sendy
+	// Navigation items - flat, email-focused
+	// Sequences/Autoresponders live inside Lists now
 	const navItems = [
 		{ id: 'dashboard', label: 'Dashboard', href: '', icon: LayoutDashboard, exact: true },
-		{ id: 'lists', label: 'Lists', href: '/lists', icon: Users },
 		{ id: 'campaigns', label: 'Campaigns', href: '/campaigns', icon: Send },
-		{ id: 'sequences', label: 'Sequences', href: '/sequences', icon: Workflow },
+		{ id: 'lists', label: 'Lists', href: '/lists', icon: Users },
 		{ id: 'templates', label: 'Templates', href: '/templates', icon: FileText },
+		{ id: 'housekeeping', label: 'Housekeeping', href: '/housekeeping', icon: Trash2 },
+		{ id: 'blocklist', label: 'Blocklist', href: '/blocklist', icon: Ban },
 	];
 
 	const bottomItems = [
@@ -81,13 +84,14 @@
 	<!-- Main Navigation -->
 	<nav class="sidebar-nav">
 		{#each navItems as item}
+			{@const Icon = item.icon}
 			<a
 				href="{basePath}{item.href}"
 				class="sidebar-link"
 				class:active={isActive(item.href, item.exact)}
 				title={collapsed ? item.label : undefined}
 			>
-				<svelte:component this={item.icon} class="sidebar-icon" />
+				<Icon class="sidebar-icon" />
 				{#if !collapsed}
 					<span class="sidebar-label">{item.label}</span>
 				{/if}
@@ -101,13 +105,14 @@
 	<!-- Bottom Navigation -->
 	<nav class="sidebar-nav sidebar-nav-bottom">
 		{#each bottomItems as item}
+			{@const Icon = item.icon}
 			<a
 				href="{basePath}{item.href}"
 				class="sidebar-link"
 				class:active={isActive(item.href)}
 				title={collapsed ? item.label : undefined}
 			>
-				<svelte:component this={item.icon} class="sidebar-icon" />
+				<Icon class="sidebar-icon" />
 				{#if !collapsed}
 					<span class="sidebar-label">{item.label}</span>
 				{/if}
@@ -129,89 +134,3 @@
 		</button>
 	</nav>
 </aside>
-
-<style>
-	@reference "$src/app.css";
-	@layer components.sidebar {
-		.sidebar {
-			@apply flex flex-col h-full border-r;
-			width: 220px;
-			background-color: var(--color-bg);
-			border-color: var(--color-border);
-			transition: width 0.2s ease;
-		}
-
-		.sidebar.collapsed {
-			width: 64px;
-		}
-
-		.sidebar-header {
-			@apply flex items-center h-16 px-4 border-b;
-			border-color: var(--color-border);
-		}
-
-		.sidebar-brand {
-			@apply flex items-center gap-3 font-semibold;
-			color: var(--color-text);
-		}
-
-		.sidebar-brand-text {
-			@apply truncate;
-			max-width: 140px;
-		}
-
-		.sidebar-brand-icon {
-			@apply flex items-center justify-center w-full;
-		}
-
-		.sidebar-nav {
-			@apply flex flex-col gap-1 p-3;
-		}
-
-		.sidebar-nav-bottom {
-			@apply border-t pt-3;
-			border-color: var(--color-border);
-		}
-
-		.sidebar-link {
-			@apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all;
-			color: var(--color-text-muted);
-		}
-
-		.sidebar-link:hover {
-			background-color: var(--color-bg-secondary);
-			color: var(--color-text);
-		}
-
-		.sidebar-link.active {
-			background-color: color-mix(in srgb, var(--color-primary) 12%, transparent);
-			color: var(--color-primary);
-		}
-
-		.sidebar.collapsed .sidebar-link {
-			@apply justify-center px-0;
-		}
-
-		.sidebar-icon {
-			@apply h-5 w-5 flex-shrink-0;
-		}
-
-		.sidebar-label {
-			@apply truncate;
-		}
-
-		.sidebar-collapse-btn {
-			@apply flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all w-full;
-			color: var(--color-text-muted);
-		}
-
-		.sidebar-collapse-btn:hover {
-			background-color: var(--color-bg-secondary);
-			color: var(--color-text);
-		}
-
-		.sidebar.collapsed .sidebar-collapse-btn {
-			@apply justify-center px-0;
-		}
-	}
-</style>

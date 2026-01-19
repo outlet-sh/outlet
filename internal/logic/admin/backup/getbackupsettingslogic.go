@@ -4,10 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"strconv"
+	"time"
 
-	"outlet/internal/svc"
-	"outlet/internal/types"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
 
+	"github.com/robfig/cron/v3"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
@@ -33,15 +35,16 @@ func (l *GetBackupSettingsLogic) GetBackupSettings() (resp *types.BackupSettings
 	}
 
 	// Build response from settings
+	// By default, scheduled backups are enabled at 3 AM daily with 30 day retention
 	resp = &types.BackupSettingsResponse{
 		S3Enabled:       false,
 		S3Bucket:        "",
 		S3Region:        "",
 		S3Prefix:        "",
 		HasS3Creds:      false,
-		ScheduleEnabled: false,
-		ScheduleCron:    "0 3 * * *", // Default: 3 AM daily
-		RetentionDays:   30,          // Default: 30 days
+		ScheduleEnabled: true,                // Enabled by default for data safety
+		ScheduleCron:    "0 3 * * *",         // Default: 3 AM daily
+		RetentionDays:   30,                  // Default: 30 days
 	}
 
 	for _, s := range settings {
@@ -77,7 +80,15 @@ func (l *GetBackupSettingsLogic) GetBackupSettings() (resp *types.BackupSettings
 		resp.LastBackupAt = lastBackup.CompletedAt.String
 	}
 
-	// TODO: Calculate next backup time from cron expression
+	// Calculate next backup time from cron expression
+	if resp.ScheduleEnabled && resp.ScheduleCron != "" {
+		parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
+		schedule, err := parser.Parse(resp.ScheduleCron)
+		if err == nil {
+			nextRun := schedule.Next(time.Now())
+			resp.NextBackupAt = nextRun.Format(time.RFC3339)
+		}
+	}
 
 	return resp, nil
 }

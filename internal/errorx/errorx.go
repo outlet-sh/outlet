@@ -90,9 +90,9 @@ func SetupErrorHandler() {
 			// Return ErrorResponse (not CodeError) to avoid error interface check
 			return httpStatus, ErrorResponse{Code: e.Code, Message: e.Message}
 		default:
-			// For any other error, return as 400 with JSON
-			return http.StatusBadRequest, ErrorResponse{
-				Code:    CodeBadRequest,
+			// For any other error, return as 500 with JSON
+			return http.StatusInternalServerError, ErrorResponse{
+				Code:    CodeInternalError,
 				Message: err.Error(),
 			}
 		}

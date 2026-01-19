@@ -3,9 +3,9 @@ package public
 import (
 	"net/http"
 
+	"github.com/outlet-sh/outlet/internal/logic/public"
+	"github.com/outlet-sh/outlet/internal/svc"
 	"github.com/zeromicro/go-zero/rest/httpx"
-	"outlet/internal/logic/public"
-	"outlet/internal/svc"
 )
 
 func HealthHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

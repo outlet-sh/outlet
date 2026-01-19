@@ -1,34 +1,60 @@
 <script lang="ts">
 	import { Copy, Check } from 'lucide-svelte';
-	import Button from './Button.svelte';
-	import Badge from './Badge.svelte';
-	import { cn } from '$lib/utils/cn';
+	import { onMount } from 'svelte';
 
 	let {
 		code,
-		language,
+		language = 'plaintext',
 		badgeText,
 		badgeColor = 'bg-blue-600 hover:bg-blue-600',
 		title,
 		footer,
 		disabled = false,
+		showLineNumbers = true,
 		class: className,
 		style,
 		height
 	}: {
 		code: string;
-		language: string;
+		language?: string;
 		badgeText?: string;
 		badgeColor?: string;
 		title?: string;
 		footer?: any;
 		disabled?: boolean;
+		showLineNumbers?: boolean;
 		class?: string;
 		style?: string;
 		height?: string | number;
 	} = $props();
 
 	let copied = $state(false);
+	let highlightedHtml = $state('');
+
+	onMount(async () => {
+		await highlightCode();
+	});
+
+	async function highlightCode() {
+		try {
+			const { codeToHtml } = await import('shiki');
+			highlightedHtml = await codeToHtml(code, {
+				lang: language,
+				theme: 'github-dark'
+			});
+		} catch (err) {
+			// Fallback to plain code if highlighting fails
+			console.warn('Syntax highlighting failed:', err);
+			highlightedHtml = '';
+		}
+	}
+
+	// Re-highlight when code changes
+	$effect(() => {
+		if (code) {
+			highlightCode();
+		}
+	});
 
 	const handleCopyCode = () => {
 		navigator.clipboard.writeText(code);
@@ -37,62 +63,75 @@
 	};
 
 	// Combine styles including height if provided
-	const containerStyle = height
-		? `${style || ''}; height: ${typeof height === 'number' ? `${height}px` : height}; display: flex; flex-direction: column;`
-		: `${style || ''}; display: flex; flex-direction: column;`;
+	let containerStyle = $derived(
+		height
+			? `${style || ''}; height: ${typeof height === 'number' ? `${height}px` : height}; display: flex; flex-direction: column;`
+			: `${style || ''}; display: flex; flex-direction: column;`
+	);
+
+	// Split code into lines for line numbers
+	let codeLines = $derived(code.split('\n'));
 </script>
 
 <div
-	class={cn(
-		'rounded-md overflow-hidden border border-border bg-bg text-text',
-		className
-	)}
+	class={`rounded-lg overflow-hidden border border-border bg-[#0d1117] ${className || ''}`}
 	style={containerStyle}
 >
-	<div
-		class={cn(
-			'flex items-center px-4 py-2 justify-between border-b border-border'
-		)}
-	>
+	<div class="flex items-center px-4 py-2 justify-between border-b border-border/50 bg-[#161b22]">
 		<div class="flex items-center gap-2">
 			{#if badgeText}
-				<Badge class={`${badgeColor} text-white text-xs px-1.5 py-0 rounded h-5`}>
+				<span class={`${badgeColor} text-white text-xs px-1.5 py-0.5 rounded`}>
 					{badgeText}
-				</Badge>
+				</span>
 			{/if}
 			{#if title}
-				<span class="text-xs font-medium text-text-secondary">{title}</span>
+				<span class="text-xs font-medium text-gray-400">{title}</span>
 			{/if}
 		</div>
-		<Button
-			type="secondary"
+		<button
+			type="button"
 			{disabled}
 			onclick={handleCopyCode}
+			class="flex items-center justify-center w-8 h-8 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
 		>
-			<div class="h-6 w-6 p-0 flex items-center justify-center text-text-muted hover:text-text">
-				{#if copied}
-					<Check class="h-3 w-3" />
-				{:else}
-					<Copy class="h-3 w-3" />
-				{/if}
-			</div>
-		</Button>
+			{#if copied}
+				<Check class="h-4 w-4 text-green-400" />
+			{:else}
+				<Copy class="h-4 w-4" />
+			{/if}
+		</button>
 	</div>
-	<div class="px-4 py-3 flex-1 overflow-auto bg-bg-secondary">
-		<pre class="text-xs font-mono m-0 p-0 text-text"><code>{code}</code></pre>
+	<div class="flex-1 overflow-auto">
+		{#if highlightedHtml && !showLineNumbers}
+			<div class="shiki-container p-4">
+				<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+				{@html highlightedHtml}
+			</div>
+		{:else}
+			<div class="flex text-sm font-mono">
+				{#if showLineNumbers}
+					<div class="flex-shrink-0 py-4 pl-4 pr-2 text-right select-none text-gray-500 border-r border-border/30">
+						{#each codeLines as _, i}
+							<div class="leading-6">{i + 1}</div>
+						{/each}
+					</div>
+				{/if}
+				<div class="flex-1 overflow-x-auto">
+					{#if highlightedHtml}
+						<div class="shiki-container p-4 [&_pre]:!bg-transparent [&_pre]:!p-0 [&_code]:leading-6">
+							<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+							{@html highlightedHtml}
+						</div>
+					{:else}
+						<pre class="p-4 text-gray-300 leading-6"><code>{code}</code></pre>
+					{/if}
+				</div>
+			</div>
+		{/if}
 	</div>
 	{#if footer}
-		<div
-			class="px-4 py-2 border-t border-border text-text-secondary"
-		>
+		<div class="px-4 py-2 border-t border-border/50 text-gray-400 bg-[#161b22]">
 			{@render footer()}
 		</div>
 	{/if}
 </div>
-
-<style>
-	@reference "$src/app.css";
-	@layer components.code-block {
-		/* Code block uses utility classes */
-	}
-</style>

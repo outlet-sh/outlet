@@ -3,10 +3,10 @@ package gdpr
 import (
 	"net/http"
 
+	"github.com/outlet-sh/outlet/internal/logic/admin/gdpr"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
-	"outlet/internal/logic/admin/gdpr"
-	"outlet/internal/svc"
-	"outlet/internal/types"
 )
 
 func LookupContactHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

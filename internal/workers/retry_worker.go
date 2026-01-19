@@ -7,9 +7,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"outlet/internal/db"
-	"outlet/internal/services/email"
-	"outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/services/email"
+	"github.com/outlet-sh/outlet/internal/svc"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )

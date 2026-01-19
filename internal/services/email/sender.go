@@ -7,7 +7,8 @@ import (
 	"strconv"
 	"time"
 
-	"outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/services/crypto"
 )
 
 // SMTPConfig holds SMTP configuration loaded from database
@@ -21,11 +22,12 @@ type SMTPConfig struct {
 	ReplyTo     string
 }
 
-// Service handles email sending via SMTP
-// SMTP configuration is loaded dynamically from the database (platform_settings + org settings)
+// Service handles email sending via SMTP or AWS SES
+// Configuration is loaded dynamically from the database (platform_settings + org settings)
 type Service struct {
-	db      *db.Store
-	baseURL string
+	db           *db.Store
+	baseURL      string
+	cryptoSvc    *crypto.Service
 
 	// Connection pool for high-throughput sending (optional)
 	pool        *SMTPPool
@@ -33,11 +35,74 @@ type Service struct {
 }
 
 // NewService creates a new email service that loads SMTP config from database
-func NewService(store *db.Store) *Service {
+func NewService(store *db.Store, cryptoSvc *crypto.Service) *Service {
 	return &Service{
-		db:      store,
-		baseURL: "", // Set via SetBaseURL from config
+		db:        store,
+		cryptoSvc: cryptoSvc,
+		baseURL:   "", // Set via SetBaseURL from config
 	}
+}
+
+// getSESConfig loads AWS SES configuration from platform_settings
+// AWS credentials are in category 'aws', email settings in category 'email'
+func (s *Service) getSESConfig(ctx context.Context) (*SESConfig, error) {
+	config := &SESConfig{}
+
+	// Get AWS credentials from 'aws' category
+	awsSettings, err := s.db.GetPlatformSettingsByCategory(ctx, "aws")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get AWS settings: %w", err)
+	}
+
+	for _, setting := range awsSettings {
+		switch setting.Key {
+		case "aws_access_key":
+			if setting.ValueEncrypted.Valid && setting.ValueEncrypted.String != "" && s.cryptoSvc != nil {
+				decrypted, err := s.cryptoSvc.DecryptString([]byte(setting.ValueEncrypted.String))
+				if err == nil {
+					config.AccessKey = decrypted
+				}
+			}
+		case "aws_secret_key":
+			if setting.ValueEncrypted.Valid && setting.ValueEncrypted.String != "" && s.cryptoSvc != nil {
+				decrypted, err := s.cryptoSvc.DecryptString([]byte(setting.ValueEncrypted.String))
+				if err == nil {
+					config.SecretKey = decrypted
+				}
+			}
+		case "aws_region":
+			if setting.ValueText.Valid {
+				config.Region = setting.ValueText.String
+			}
+		}
+	}
+
+	// Get email settings from 'email' category (from_email, from_name, reply_to)
+	emailSettings, _ := s.db.GetPlatformSettingsByCategory(ctx, "email")
+	for _, setting := range emailSettings {
+		switch setting.Key {
+		case "from_email":
+			if setting.ValueText.Valid {
+				config.FromAddress = setting.ValueText.String
+			}
+		case "from_name":
+			if setting.ValueText.Valid {
+				config.FromName = setting.ValueText.String
+			}
+		case "reply_to":
+			if setting.ValueText.Valid {
+				config.ReplyTo = setting.ValueText.String
+			}
+		}
+	}
+
+	return config, nil
+}
+
+// hasSESConfig checks if AWS SES credentials are configured
+// Note: FromAddress is typically provided by the caller or org settings, not required here
+func (s *Service) hasSESConfig(sesConfig *SESConfig) bool {
+	return sesConfig.AccessKey != "" && sesConfig.SecretKey != ""
 }
 
 // SetBaseURL sets the base URL for tracking links
@@ -137,26 +202,33 @@ func (s *Service) PoolStats() (pooled, created int) {
 	return 0, 0
 }
 
-// sendEmail sends an HTML email via SMTP
-// Loads SMTP config from platform_settings database
+// sendEmail sends an HTML email via AWS SES (preferred) or SMTP (fallback)
+// Loads config from platform_settings database
 func (s *Service) sendEmail(to, subject, htmlBody string) error {
 	ctx := context.Background()
 
-	// Load SMTP config from database
-	config, err := s.getGlobalSMTPConfig(ctx)
+	// Try AWS SES first (preferred for high-volume sending)
+	sesConfig, err := s.getSESConfig(ctx)
+	if err == nil && s.hasSESConfig(sesConfig) {
+		return SendEmailViaSES(ctx, sesConfig, to, subject, htmlBody)
+	}
+
+	// Fall back to SMTP if SES not configured
+	smtpConfig, err := s.getGlobalSMTPConfig(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get SMTP config: %w", err)
+		return fmt.Errorf("failed to get email config: %w", err)
 	}
 
-	if config.Host == "" || config.User == "" || config.Password == "" {
-		return fmt.Errorf("SMTP not configured - set smtp_host, smtp_user, smtp_password in platform settings")
+	if smtpConfig.Host == "" || smtpConfig.User == "" || smtpConfig.Password == "" {
+		// Neither SES nor SMTP configured
+		return fmt.Errorf("email not configured - set AWS SES credentials or SMTP settings in platform settings")
 	}
 
-	// Build email message
-	headers := fmt.Sprintf("From: %s <%s>\r\n", config.FromName, config.FromAddress)
+	// Build email message for SMTP
+	headers := fmt.Sprintf("From: %s <%s>\r\n", smtpConfig.FromName, smtpConfig.FromAddress)
 	headers += fmt.Sprintf("To: %s\r\n", to)
-	if config.ReplyTo != "" {
-		headers += fmt.Sprintf("Reply-To: %s\r\n", config.ReplyTo)
+	if smtpConfig.ReplyTo != "" {
+		headers += fmt.Sprintf("Reply-To: %s\r\n", smtpConfig.ReplyTo)
 	}
 	headers += fmt.Sprintf("Subject: %s\r\n", subject)
 	headers += "MIME-Version: 1.0\r\n"
@@ -166,12 +238,12 @@ func (s *Service) sendEmail(to, subject, htmlBody string) error {
 	message := []byte(headers + htmlBody)
 
 	// SMTP auth
-	auth := smtp.PlainAuth("", config.User, config.Password, config.Host)
+	auth := smtp.PlainAuth("", smtpConfig.User, smtpConfig.Password, smtpConfig.Host)
 
-	addr := fmt.Sprintf("%s:%d", config.Host, config.Port)
-	err = smtp.SendMail(addr, auth, config.FromAddress, []string{to}, message)
+	addr := fmt.Sprintf("%s:%d", smtpConfig.Host, smtpConfig.Port)
+	err = smtp.SendMail(addr, auth, smtpConfig.FromAddress, []string{to}, message)
 	if err != nil {
-		return fmt.Errorf("failed to send email: %w", err)
+		return fmt.Errorf("failed to send email via SMTP: %w", err)
 	}
 
 	return nil
@@ -333,31 +405,45 @@ func (s *Service) SendEmail(ctx context.Context, to, subject, htmlBody string) e
 }
 
 // SendEmailFrom sends an HTML email with a custom from address
+// Uses AWS SES (preferred) or falls back to SMTP
 func (s *Service) SendEmailFrom(ctx context.Context, fromEmail, fromName, to, subject, htmlBody string) error {
-	// Load SMTP config from database
-	config, err := s.getGlobalSMTPConfig(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get SMTP config: %w", err)
+	// Try AWS SES first (preferred for high-volume sending)
+	sesConfig, err := s.getSESConfig(ctx)
+	if err == nil && s.hasSESConfig(sesConfig) {
+		// Override from address if provided
+		if fromEmail != "" {
+			sesConfig.FromAddress = fromEmail
+		}
+		if fromName != "" {
+			sesConfig.FromName = fromName
+		}
+		return SendEmailViaSES(ctx, sesConfig, to, subject, htmlBody)
 	}
 
-	if config.Host == "" || config.User == "" || config.Password == "" {
-		return fmt.Errorf("SMTP not configured - set smtp_host, smtp_user, smtp_password in platform settings")
+	// Fall back to SMTP
+	smtpConfig, err := s.getGlobalSMTPConfig(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get email config: %w", err)
+	}
+
+	if smtpConfig.Host == "" || smtpConfig.User == "" || smtpConfig.Password == "" {
+		return fmt.Errorf("email not configured - set AWS SES credentials or SMTP settings in platform settings")
 	}
 
 	// Use provided from or fall back to defaults
 	from := fromEmail
 	name := fromName
 	if from == "" {
-		from = config.FromAddress
+		from = smtpConfig.FromAddress
 	}
 	if name == "" {
-		name = config.FromName
+		name = smtpConfig.FromName
 	}
 
 	headers := fmt.Sprintf("From: %s <%s>\r\n", name, from)
 	headers += fmt.Sprintf("To: %s\r\n", to)
-	if config.ReplyTo != "" {
-		headers += fmt.Sprintf("Reply-To: %s\r\n", config.ReplyTo)
+	if smtpConfig.ReplyTo != "" {
+		headers += fmt.Sprintf("Reply-To: %s\r\n", smtpConfig.ReplyTo)
 	}
 	headers += fmt.Sprintf("Subject: %s\r\n", subject)
 	headers += "MIME-Version: 1.0\r\n"
@@ -366,36 +452,52 @@ func (s *Service) SendEmailFrom(ctx context.Context, fromEmail, fromName, to, su
 
 	message := []byte(headers + htmlBody)
 
-	auth := smtp.PlainAuth("", config.User, config.Password, config.Host)
-	addr := fmt.Sprintf("%s:%d", config.Host, config.Port)
+	auth := smtp.PlainAuth("", smtpConfig.User, smtpConfig.Password, smtpConfig.Host)
+	addr := fmt.Sprintf("%s:%d", smtpConfig.Host, smtpConfig.Port)
 
 	return smtp.SendMail(addr, auth, from, []string{to}, message)
 }
 
 // SendCampaignEmail sends a campaign email with custom from/reply-to
-// Uses connection pooling when enabled for high-throughput performance
+// Uses AWS SES (preferred), SMTP connection pooling, or standard SMTP as fallback
 func (s *Service) SendCampaignEmail(to, subject, htmlBody, fromName, fromEmail, replyTo string) error {
 	ctx := context.Background()
 
-	// Load SMTP config from database
-	config, err := s.getGlobalSMTPConfig(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get SMTP config: %w", err)
+	// Try AWS SES first (preferred for high-volume sending)
+	sesConfig, err := s.getSESConfig(ctx)
+	if err == nil && s.hasSESConfig(sesConfig) {
+		// Override from address if provided
+		if fromEmail != "" {
+			sesConfig.FromAddress = fromEmail
+		}
+		if fromName != "" {
+			sesConfig.FromName = fromName
+		}
+		if replyTo != "" {
+			sesConfig.ReplyTo = replyTo
+		}
+		return SendEmailViaSES(ctx, sesConfig, to, subject, htmlBody)
 	}
 
-	if config.Host == "" || config.User == "" || config.Password == "" {
-		return fmt.Errorf("SMTP not configured - set smtp_host, smtp_user, smtp_password in platform settings")
+	// Fall back to SMTP
+	smtpConfig, err := s.getGlobalSMTPConfig(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get email config: %w", err)
+	}
+
+	if smtpConfig.Host == "" || smtpConfig.User == "" || smtpConfig.Password == "" {
+		return fmt.Errorf("email not configured - set AWS SES credentials or SMTP settings in platform settings")
 	}
 
 	// Use provided or fall back to defaults
 	if fromEmail == "" {
-		fromEmail = config.FromAddress
+		fromEmail = smtpConfig.FromAddress
 	}
 	if fromName == "" {
-		fromName = config.FromName
+		fromName = smtpConfig.FromName
 	}
 	if replyTo == "" {
-		replyTo = config.ReplyTo
+		replyTo = smtpConfig.ReplyTo
 	}
 
 	headers := fmt.Sprintf("From: %s <%s>\r\n", fromName, fromEmail)
@@ -410,14 +512,14 @@ func (s *Service) SendCampaignEmail(to, subject, htmlBody, fromName, fromEmail, 
 
 	message := []byte(headers + htmlBody)
 
-	// Use pooled connection if available
+	// Use pooled SMTP connection if available
 	if s.poolEnabled && s.pool != nil {
 		return s.pool.SendWithPool(fromEmail, []string{to}, message)
 	}
 
-	// Fallback to standard sending
-	auth := smtp.PlainAuth("", config.User, config.Password, config.Host)
-	addr := fmt.Sprintf("%s:%d", config.Host, config.Port)
+	// Fallback to standard SMTP sending
+	auth := smtp.PlainAuth("", smtpConfig.User, smtpConfig.Password, smtpConfig.Host)
+	addr := fmt.Sprintf("%s:%d", smtpConfig.Host, smtpConfig.Port)
 
 	return smtp.SendMail(addr, auth, fromEmail, []string{to}, message)
 }

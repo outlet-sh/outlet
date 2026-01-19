@@ -19,7 +19,7 @@
 		withNoise = true,
 		noiseFrequency = 1.2,
 		noiseOctaves = 4,
-		noiseOpacity = 0.03
+		noiseOpacity
 	}: Props = $props();
 
 	let key = $state(Date.now());
@@ -29,17 +29,37 @@
 		key = Date.now();
 	});
 
+	// Determine gradient classes based on theme
+	const gradientClass = $derived(() => {
+		if (typeof window !== 'undefined' && document.documentElement.classList.contains('dark')) {
+			return "from-black via-black to-slate-900/10";
+		} else {
+			return "from-slate-100/40 via-slate-100/40 to-white";
+		}
+	});
+
+	const defaultOpacity = $derived(() => {
+		if (typeof window !== 'undefined' && document.documentElement.classList.contains('dark')) {
+			return 0.05;
+		} else {
+			return 0.03;
+		}
+	});
+
+	const finalOpacity = $derived(noiseOpacity !== undefined ? noiseOpacity : defaultOpacity());
+
 	const noiseUrl = $derived(
 		`data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='${noiseFrequency}' numOctaves='${noiseOctaves}' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E`
 	);
 </script>
 
-<div class="bg-gradient-to-b from-bg-secondary/40 via-bg-secondary/40 to-bg {className} relative">
+<div class="bg-gradient-to-b {gradientClass()} {className} relative">
 	{#if withNoise}
 		{#key key}
 			<div
-				class="absolute top-0 right-0 bottom-0 left-0 pointer-events-none z-0"
-				style="opacity: {noiseOpacity}; background-image: url('{noiseUrl}');"
+				class="absolute inset-0 pointer-events-none z-0 noise-overlay"
+				style:--noise-opacity={finalOpacity}
+				style:--noise-url="url('{noiseUrl}')"
 				aria-hidden="true"
 			></div>
 		{/key}
@@ -48,11 +68,3 @@
 		{@render children()}
 	</div>
 </div>
-
-<style>
-@reference "$src/app.css";
-
-@layer components.gradient-background {
-	/* No custom styles needed - using Tailwind utilities */
-}
-</style>

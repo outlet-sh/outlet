@@ -3,10 +3,10 @@ package tracking
 import (
 	"net/http"
 
+	"github.com/outlet-sh/outlet/internal/logic/sdk/tracking"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
-	"outlet/internal/logic/sdk/tracking"
-	"outlet/internal/svc"
-	"outlet/internal/types"
 )
 
 func TrackConfirmHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

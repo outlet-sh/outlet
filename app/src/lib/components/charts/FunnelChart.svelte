@@ -44,7 +44,7 @@
 		return [];
 	});
 
-	let containerRef: HTMLDivElement;
+	let containerRef = $state<HTMLDivElement | undefined>(undefined);
 	let containerWidth = $state(400);
 	let containerHeight = $state(400);
 
@@ -208,6 +208,7 @@
 	function handleStageMouseEnter(event: MouseEvent, stage: FunnelStage, index: number) {
 		hoveredStage = index;
 
+		if (!containerRef) return;
 		const rect = containerRef.getBoundingClientRect();
 		tooltipX = event.clientX - rect.left;
 		tooltipY = event.clientY - rect.top;
@@ -224,7 +225,7 @@
 	}
 
 	function handleStageMouseMove(event: MouseEvent) {
-		if (tooltipVisible) {
+		if (tooltipVisible && containerRef) {
 			const rect = containerRef.getBoundingClientRect();
 			tooltipX = event.clientX - rect.left;
 			tooltipY = event.clientY - rect.top;
@@ -260,10 +261,10 @@
 	}
 </script>
 
-<div bind:this={containerRef} class="funnel-chart-container flex flex-col w-full h-full relative">
+<div bind:this={containerRef} class="flex flex-col w-full h-full relative">
 	{#if data.length === 0}
-		<div class="empty-state flex-1 flex items-center justify-center">
-			<p class="text-slate-500 text-sm">No data to display</p>
+		<div class="flex-1 flex items-center justify-center">
+			<p class="text-base-500 text-sm">No data to display</p>
 		</div>
 	{:else}
 		<svg width={containerWidth} height={effectiveHeight} class="flex-1">
@@ -275,9 +276,7 @@
 							fill={getColor(i, item.stage)}
 							stroke="#1e293b"
 							stroke-width="2"
-							class="transition-all duration-150 cursor-pointer"
-							class:chart-segment-highlight={isStageHighlighted(i)}
-							class:chart-segment-dim={isStageDimmed(i)}
+							class="transition-all duration-150 cursor-pointer {isStageHighlighted(i) ? 'brightness-110' : ''} {isStageDimmed(i) ? 'opacity-40' : ''}"
 							onmouseenter={(e) => handleStageMouseEnter(e, item.stage, i)}
 							onmousemove={handleStageMouseMove}
 							onmouseleave={handleStageMouseLeave}
@@ -306,7 +305,7 @@
 								x={item.labelX}
 								y={item.centerY - 10}
 								text-anchor="start"
-								class="fill-slate-300 text-xs font-medium pointer-events-none"
+								class="fill-base-400 text-xs font-medium pointer-events-none"
 							>
 								{item.stage.label}
 							</text>
@@ -315,9 +314,9 @@
 									x={item.labelX}
 									y={item.centerY + 8}
 									text-anchor="start"
-									class="fill-slate-500 text-xs pointer-events-none"
+									class="fill-base-500 text-xs pointer-events-none"
 								>
-									{getPercentage(item.stage.value)} of total • {getConversionRate(i)} conv.
+									{getPercentage(item.stage.value)} of total - {getConversionRate(i)} conv.
 								</text>
 							{/if}
 						{/if}
@@ -331,9 +330,7 @@
 							fill={getColor(i, item.stage)}
 							stroke="#1e293b"
 							stroke-width="2"
-							class="transition-all duration-150 cursor-pointer"
-							class:chart-segment-highlight={isStageHighlighted(i)}
-							class:chart-segment-dim={isStageDimmed(i)}
+							class="transition-all duration-150 cursor-pointer {isStageHighlighted(i) ? 'brightness-110' : ''} {isStageDimmed(i) ? 'opacity-40' : ''}"
 							onmouseenter={(e) => handleStageMouseEnter(e, item.stage, i)}
 							onmousemove={handleStageMouseMove}
 							onmouseleave={handleStageMouseLeave}
@@ -362,7 +359,7 @@
 								x={item.centerX}
 								y={item.labelY}
 								text-anchor="middle"
-								class="fill-slate-300 text-xs font-medium pointer-events-none"
+								class="fill-base-400 text-xs font-medium pointer-events-none"
 							>
 								{item.stage.label}
 							</text>
@@ -371,7 +368,7 @@
 									x={item.centerX}
 									y={item.labelY + 14}
 									text-anchor="middle"
-									class="fill-slate-500 text-xs pointer-events-none"
+									class="fill-base-500 text-xs pointer-events-none"
 								>
 									{getPercentage(item.stage.value)}
 								</text>

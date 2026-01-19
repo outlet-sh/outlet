@@ -2,7 +2,6 @@
 	import type { Snippet } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { X } from 'lucide-svelte';
-	import { Button } from '$lib/components/ui';
 
 	interface Props {
 		show: boolean;
@@ -21,64 +20,22 @@
 </script>
 
 {#if show}
-	<div class="slide-form" transition:slide={{ duration: 200 }}>
-		<div class="slide-form-header">
+	<div class="card bg-base-100 border border-base-300 mb-4 overflow-hidden" transition:slide={{ duration: 200 }}>
+		<div class="flex items-center justify-between px-4 py-3 border-b border-base-300 bg-base-200">
 			{#if title}
-				<h3 class="slide-form-title">{title}</h3>
+				<h3 class="text-sm font-semibold">{title}</h3>
 			{/if}
-			<button onclick={handleClose} class="slide-form-close" aria-label="Close">
+			<button onclick={handleClose} class="btn btn-ghost btn-xs btn-circle" aria-label="Close">
 				<X class="h-4 w-4" />
 			</button>
 		</div>
-		<div class="slide-form-content">
+		<div class="p-4">
 			{@render children()}
 		</div>
 		{#if footer}
-			<div class="slide-form-footer">
+			<div class="px-4 py-3 border-t border-base-300 bg-base-200 flex justify-end gap-3">
 				{@render footer()}
 			</div>
 		{/if}
 	</div>
 {/if}
-
-<style>
-	@reference "$src/app.css";
-	@layer components.slide-form {
-		.slide-form {
-			@apply rounded-lg border mb-4 overflow-hidden;
-			background-color: var(--color-bg);
-			border-color: var(--color-border);
-		}
-
-		.slide-form-header {
-			@apply flex items-center justify-between px-4 py-3 border-b;
-			background-color: var(--color-bg-secondary);
-			border-color: var(--color-border);
-		}
-
-		.slide-form-title {
-			@apply text-sm font-semibold;
-			color: var(--color-text);
-		}
-
-		.slide-form-close {
-			@apply p-1 rounded transition-colors;
-			color: var(--color-text-muted);
-		}
-
-		.slide-form-close:hover {
-			background-color: var(--color-bg-tertiary);
-			color: var(--color-text);
-		}
-
-		.slide-form-content {
-			@apply p-4;
-		}
-
-		.slide-form-footer {
-			@apply px-4 py-3 border-t flex justify-end gap-3;
-			background-color: var(--color-bg-secondary);
-			border-color: var(--color-border);
-		}
-	}
-</style>

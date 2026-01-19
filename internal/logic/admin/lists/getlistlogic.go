@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strconv"
 
-	"outlet/internal/db"
-	"outlet/internal/svc"
-	"outlet/internal/types"
-	"outlet/internal/utils"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
+	"github.com/outlet-sh/outlet/internal/utils"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -49,14 +49,29 @@ func (l *GetListLogic) GetList(req *types.GetListRequest) (resp *types.ListInfo,
 	}
 
 	return &types.ListInfo{
-		Id:              strconv.FormatInt(list.ID, 10),
-		OrgId:           list.OrgID,
-		Name:            list.Name,
-		Slug:            list.Slug,
-		Description:     list.Description.String,
-		DoubleOptin:     list.DoubleOptin.Int64 == 1,
-		SubscriberCount: int(subscriberCount),
-		CreatedAt:       utils.FormatNullString(list.CreatedAt),
-		UpdatedAt:       utils.FormatNullString(list.UpdatedAt),
+		Id:                     strconv.FormatInt(list.ID, 10),
+		PublicId:               list.PublicID,
+		OrgId:                  list.OrgID,
+		Name:                   list.Name,
+		Slug:                   list.Slug,
+		Description:            list.Description.String,
+		DoubleOptin:            list.DoubleOptin.Int64 == 1,
+		ConfirmationSubject:    list.ConfirmationEmailSubject.String,
+		ConfirmationBody:       list.ConfirmationEmailBody.String,
+		SubscriberCount:        int(subscriberCount),
+		CreatedAt:              utils.FormatNullString(list.CreatedAt),
+		UpdatedAt:              utils.FormatNullString(list.UpdatedAt),
+		ThankYouUrl:            list.ThankYouUrl.String,
+		ConfirmRedirectUrl:     list.ConfirmRedirectUrl.String,
+		AlreadySubscribedUrl:   list.AlreadySubscribedUrl.String,
+		UnsubscribeRedirectUrl: list.UnsubscribeRedirectUrl.String,
+		ThankYouEmailEnabled:   list.ThankYouEmailEnabled.Int64 == 1,
+		ThankYouEmailSubject:   list.ThankYouEmailSubject.String,
+		ThankYouEmailBody:      list.ThankYouEmailBody.String,
+		GoodbyeEmailEnabled:    list.GoodbyeEmailEnabled.Int64 == 1,
+		GoodbyeEmailSubject:    list.GoodbyeEmailSubject.String,
+		GoodbyeEmailBody:       list.GoodbyeEmailBody.String,
+		UnsubscribeBehavior:    list.UnsubscribeBehavior.String,
+		UnsubscribeScope:       list.UnsubscribeScope.String,
 	}, nil
 }

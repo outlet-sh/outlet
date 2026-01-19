@@ -1,36 +1,15 @@
 import adapter from '@sveltejs/adapter-static';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
-import { mdsvex } from 'mdsvex';
-import { fileURLToPath } from 'url';
-import { dirname, resolve } from 'path';
-import rehypePrettyCode from 'rehype-pretty-code';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
+/** @type {import('@sveltejs/kit').Config} */
 const config = {
-	extensions: ['.svelte', '.md'],
-	preprocess: [
-		vitePreprocess(),
-		mdsvex({
-			extensions: ['.md'],
-			layout: {
-				_: resolve(__dirname, './src/lib/layouts/markdown.svelte')
-			},
-			rehypePlugins: [
-				[
-					rehypePrettyCode,
-					{
-						theme: 'github-dark',
-						keepBackground: true
-					}
-				]
-			]
-		})
-	],
+	// Consult https://svelte.dev/docs/kit/integrations
+	// for more information about preprocessors
+	preprocess: vitePreprocess(),
+
 	kit: {
 		alias: {
-			$content: resolve(__dirname, './src/content')
+			$src: 'src'
 		},
 		adapter: adapter({
 			pages: 'build',

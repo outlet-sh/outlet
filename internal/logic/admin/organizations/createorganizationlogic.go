@@ -5,10 +5,12 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 
-	"outlet/internal/db"
-	"outlet/internal/svc"
-	"outlet/internal/types"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/services/email"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
 
 	"github.com/google/uuid"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -56,6 +58,25 @@ func (l *CreateOrganizationLogic) CreateOrganization(req *types.CreateOrgRequest
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	// Update email settings if provided
+	if req.FromName != "" || req.FromEmail != "" || req.ReplyTo != "" {
+		org, err = l.svcCtx.DB.UpdateOrgEmailSettings(l.ctx, db.UpdateOrgEmailSettingsParams{
+			ID:        org.ID,
+			FromName:  sql.NullString{String: req.FromName, Valid: req.FromName != ""},
+			FromEmail: sql.NullString{String: req.FromEmail, Valid: req.FromEmail != ""},
+			ReplyTo:   sql.NullString{String: req.ReplyTo, Valid: req.ReplyTo != ""},
+		})
+		if err != nil {
+			l.Errorf("Failed to set email settings: %v", err)
+			// Don't fail the whole operation, org was created successfully
+		}
+	}
+
+	// Auto-setup domain identity if email is configured
+	if org.FromEmail.Valid && org.FromEmail.String != "" {
+		l.setupDomainIdentity(org.ID, org.FromEmail.String)
 	}
 
 	// Seed default email designs for the org
@@ -161,5 +182,116 @@ func (l *CreateOrganizationLogic) seedDefaultDesigns(orgID string, orgName strin
 	if err != nil {
 		l.Errorf("Failed to seed branded design: %v", err)
 	}
+}
+
+// setupDomainIdentity auto-creates a domain identity in AWS SES for the organization
+func (l *CreateOrganizationLogic) setupDomainIdentity(orgID string, fromEmail string) {
+	// Extract domain from email
+	domain := email.ExtractDomainFromEmail(fromEmail)
+	if domain == "" {
+		l.Errorf("Could not extract domain from email: %s", fromEmail)
+		return
+	}
+
+	// Get AWS credentials from platform settings
+	region, accessKey, secretKey, err := l.getAWSCredentials()
+	if err != nil {
+		l.Infof("AWS credentials not configured, skipping domain identity setup: %v", err)
+		return
+	}
+
+	// Check if domain identity already exists
+	existing, err := l.svcCtx.DB.GetDomainIdentityByDomain(l.ctx, db.GetDomainIdentityByDomainParams{
+		OrgID:  orgID,
+		Domain: domain,
+	})
+	if err == nil && existing.ID != "" {
+		l.Infof("Domain identity already exists for domain %s", domain)
+		return
+	}
+
+	// Verify domain identity with AWS SES
+	result, err := email.VerifyDomainIdentity(l.ctx, region, accessKey, secretKey, domain)
+	if err != nil {
+		l.Errorf("Failed to verify domain identity with AWS SES: %v", err)
+		return
+	}
+
+	// Convert DNS records to JSON
+	dnsRecordsJSON, err := email.DNSRecordsToJSON(result.DNSRecords)
+	if err != nil {
+		l.Errorf("Failed to serialize DNS records: %v", err)
+		return
+	}
+
+	// Convert DKIM tokens to JSON
+	dkimTokensJSON, err := json.Marshal(result.DKIMTokens)
+	if err != nil {
+		l.Errorf("Failed to serialize DKIM tokens: %v", err)
+		return
+	}
+
+	// Create domain identity record
+	_, err = l.svcCtx.DB.CreateDomainIdentity(l.ctx, db.CreateDomainIdentityParams{
+		ID:                 uuid.New().String(),
+		OrgID:              orgID,
+		Domain:             domain,
+		VerificationStatus: sql.NullString{String: result.VerificationStatus, Valid: true},
+		DkimStatus:         sql.NullString{String: result.DKIMStatus, Valid: true},
+		VerificationToken:  sql.NullString{String: result.VerificationToken, Valid: result.VerificationToken != ""},
+		DkimTokens:         sql.NullString{String: string(dkimTokensJSON), Valid: true},
+		DnsRecords:         sql.NullString{String: dnsRecordsJSON, Valid: true},
+	})
+	if err != nil {
+		l.Errorf("Failed to create domain identity record: %v", err)
+		return
+	}
+
+	l.Infof("Domain identity created for %s", domain)
+}
+
+// getAWSCredentials retrieves AWS credentials from platform settings
+func (l *CreateOrganizationLogic) getAWSCredentials() (region, accessKey, secretKey string, err error) {
+	awsSettings, err := l.svcCtx.DB.GetPlatformSettingsByCategory(l.ctx, "aws")
+	if err != nil {
+		return "", "", "", err
+	}
+
+	region = "us-east-1" // default
+
+	for _, setting := range awsSettings {
+		switch setting.Key {
+		case "aws_access_key":
+			if setting.ValueEncrypted.Valid && setting.ValueEncrypted.String != "" {
+				if l.svcCtx.CryptoService != nil {
+					decrypted, decErr := l.svcCtx.CryptoService.DecryptString([]byte(setting.ValueEncrypted.String))
+					if decErr != nil {
+						return "", "", "", decErr
+					}
+					accessKey = decrypted
+				}
+			}
+		case "aws_secret_key":
+			if setting.ValueEncrypted.Valid && setting.ValueEncrypted.String != "" {
+				if l.svcCtx.CryptoService != nil {
+					decrypted, decErr := l.svcCtx.CryptoService.DecryptString([]byte(setting.ValueEncrypted.String))
+					if decErr != nil {
+						return "", "", "", decErr
+					}
+					secretKey = decrypted
+				}
+			}
+		case "aws_region":
+			if setting.ValueText.Valid && setting.ValueText.String != "" {
+				region = setting.ValueText.String
+			}
+		}
+	}
+
+	if accessKey == "" || secretKey == "" {
+		return "", "", "", sql.ErrNoRows
+	}
+
+	return region, accessKey, secretKey, nil
 }
 

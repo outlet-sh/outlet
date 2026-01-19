@@ -276,6 +276,47 @@ export function deleteEmailDesign(params: components.DeleteEmailDesignRequestPar
  * @description 
  * @param params
  */
+export function listDomainIdentities(params: components.ListDomainIdentitiesRequestParams, org_id: string) {
+	return webapi.get<components.ListDomainIdentitiesResponse>(`/api/admin/organizations/${org_id}/domain-identities`, params)
+}
+
+/**
+ * @description 
+ * @param params
+ * @param req
+ */
+export function createDomainIdentity(params: components.CreateDomainIdentityRequestParams, req: components.CreateDomainIdentityRequest, org_id: string) {
+	return webapi.post<components.DomainIdentityInfo>(`/api/admin/organizations/${org_id}/domain-identities`, params, req)
+}
+
+/**
+ * @description 
+ * @param params
+ */
+export function getDomainIdentity(params: components.GetDomainIdentityRequestParams, org_id: string, id: string) {
+	return webapi.get<components.DomainIdentityInfo>(`/api/admin/organizations/${org_id}/domain-identities/${id}`, params)
+}
+
+/**
+ * @description 
+ * @param params
+ */
+export function deleteDomainIdentity(params: components.DeleteDomainIdentityRequestParams, org_id: string, id: string) {
+	return webapi.delete<components.Response>(`/api/admin/organizations/${org_id}/domain-identities/${id}`, params)
+}
+
+/**
+ * @description 
+ * @param params
+ */
+export function refreshDomainIdentity(params: components.RefreshDomainIdentityRequestParams, org_id: string, id: string) {
+	return webapi.post<components.DomainIdentityInfo>(`/api/admin/organizations/${org_id}/domain-identities/${id}/refresh`, params)
+}
+
+/**
+ * @description 
+ * @param params
+ */
 export function getOrgEmailConfig(params: components.GetOrgEmailConfigRequestParams, org_id: string) {
 	return webapi.get<components.OrgEmailConfigInfo>(`/api/admin/organizations/${org_id}/email-config`, params)
 }
@@ -458,6 +499,56 @@ export function listListSubscribers(params: components.ListSubscribersRequestPar
  */
 export function removeListSubscriber(params: components.RemoveSubscriberRequestParams, id: string, subscriberId: string) {
 	return webapi.delete<components.Response>(`/api/admin/lists/${id}/subscribers/${subscriberId}`, params)
+}
+
+/**
+ * @description 
+ * @param params
+ */
+export function getSubscriberDetail(params: components.GetSubscriberDetailRequestParams, id: string, subscriberId: string) {
+	return webapi.get<components.SubscriberDetailResponse>(`/api/admin/lists/${id}/subscribers/${subscriberId}`, params)
+}
+
+/**
+ * @description 
+ * @param params
+ */
+export function listCustomFields(params: components.ListCustomFieldsRequestParams, listId: string) {
+	return webapi.get<components.ListCustomFieldsResponse>(`/api/admin/lists/${listId}/custom-fields`, params)
+}
+
+/**
+ * @description 
+ * @param params
+ * @param req
+ */
+export function createCustomField(params: components.CreateCustomFieldRequestParams, req: components.CreateCustomFieldRequest, listId: string) {
+	return webapi.post<components.CustomFieldInfo>(`/api/admin/lists/${listId}/custom-fields`, params, req)
+}
+
+/**
+ * @description 
+ * @param params
+ */
+export function getCustomField(params: components.GetCustomFieldRequestParams, listId: string, fieldId: string) {
+	return webapi.get<components.CustomFieldInfo>(`/api/admin/lists/${listId}/custom-fields/${fieldId}`, params)
+}
+
+/**
+ * @description 
+ * @param params
+ * @param req
+ */
+export function updateCustomField(params: components.UpdateCustomFieldRequestParams, req: components.UpdateCustomFieldRequest, listId: string, fieldId: string) {
+	return webapi.put<components.CustomFieldInfo>(`/api/admin/lists/${listId}/custom-fields/${fieldId}`, params, req)
+}
+
+/**
+ * @description 
+ * @param params
+ */
+export function deleteCustomField(params: components.DeleteCustomFieldRequestParams, listId: string, fieldId: string) {
+	return webapi.delete<components.Response>(`/api/admin/lists/${listId}/custom-fields/${fieldId}`, params)
 }
 
 /**
@@ -668,6 +759,13 @@ export function getPlatformSettingsByCategory(params: components.GetPlatformSett
  */
 export function updateEmailSettings(req: components.UpdateEmailSettingsRequest) {
 	return webapi.put<components.UpdateSettingsResponse>(`/api/admin/settings/email`, req)
+}
+
+/**
+ * @description 
+ */
+export function getPlatformSESQuota() {
+	return webapi.get<components.SESQuotaResponse>(`/api/admin/settings/ses-quota`)
 }
 
 /**
@@ -936,6 +1034,21 @@ export function verifyEmail(params: components.VerifyEmailRequestParams) {
  */
 export function health() {
 	return webapi.get<components.HealthResponse>(`/api/v1/health`)
+}
+
+/**
+ * @description "Create initial admin account (only works when no admin exists)"
+ * @param req
+ */
+export function createInitialAdmin(req: components.CreateInitialAdminRequest) {
+	return webapi.post<components.CreateInitialAdminResponse>(`/api/v1/setup/admin`, req)
+}
+
+/**
+ * @description "Check if initial setup is required"
+ */
+export function getPublicSetupStatus() {
+	return webapi.get<components.SetupStatusResponse>(`/api/v1/setup/status`)
 }
 
 /**

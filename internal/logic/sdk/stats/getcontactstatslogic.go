@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"time"
 
-	"outlet/internal/middleware"
-	"outlet/internal/svc"
-	"outlet/internal/types"
+	"github.com/outlet-sh/outlet/internal/middleware"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )

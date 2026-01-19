@@ -5,10 +5,10 @@ import (
 	"database/sql"
 	"strconv"
 
-	"outlet/internal/db"
-	"outlet/internal/svc"
-	"outlet/internal/types"
-	"outlet/internal/utils"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
+	"github.com/outlet-sh/outlet/internal/utils"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -69,14 +69,36 @@ func (l *UpdateSequenceLogic) UpdateSequence(req *types.UpdateSequenceRequest) (
 		isActive = sql.NullInt64{Int64: 0, Valid: true}
 	}
 
+	// Handle on_completion_sequence_id - use existing value if not provided in request
+	onCompletionSequenceId := sequence.OnCompletionSequenceID
+	if req.OnCompletionSequenceId != nil {
+		if *req.OnCompletionSequenceId == "" {
+			// Clear the chained sequence
+			onCompletionSequenceId = sql.NullString{Valid: false}
+		} else {
+			onCompletionSequenceId = sql.NullString{String: *req.OnCompletionSequenceId, Valid: true}
+		}
+	}
+
+	// Handle list_id - use existing value if not provided in request
+	listID := sequence.ListID
+	if req.ListId != nil && *req.ListId != "" {
+		newListID, parseErr := strconv.ParseInt(*req.ListId, 10, 64)
+		if parseErr == nil {
+			listID = sql.NullInt64{Int64: newListID, Valid: true}
+		}
+	}
+
 	err = l.svcCtx.DB.UpdateSequence(l.ctx, db.UpdateSequenceParams{
-		ID:           req.Id,
-		Name:         name,
-		TriggerEvent: triggerEvent,
-		IsActive:     isActive,
-		SendHour:     sendHour,
-		SendTimezone: sendTimezone,
-		SequenceType: sequenceType,
+		ID:                     req.Id,
+		Name:                   name,
+		TriggerEvent:           triggerEvent,
+		IsActive:               isActive,
+		SendHour:               sendHour,
+		SendTimezone:           sendTimezone,
+		SequenceType:           sequenceType,
+		OnCompletionSequenceID: onCompletionSequenceId,
+		ListID:                 listID,
 	})
 	if err != nil {
 		l.Errorf("Failed to update sequence %s: %v", req.Id, err)
@@ -85,9 +107,9 @@ func (l *UpdateSequenceLogic) UpdateSequence(req *types.UpdateSequenceRequest) (
 
 	var listIDStr string
 	var listSlug, listName string
-	if sequence.ListID.Valid {
-		listIDStr = strconv.FormatInt(sequence.ListID.Int64, 10)
-		list, err := l.svcCtx.DB.GetEmailList(l.ctx, sequence.ListID.Int64)
+	if listID.Valid {
+		listIDStr = strconv.FormatInt(listID.Int64, 10)
+		list, err := l.svcCtx.DB.GetEmailList(l.ctx, listID.Int64)
 		if err == nil {
 			listSlug = list.Slug
 			listName = list.Name
@@ -110,18 +132,30 @@ func (l *UpdateSequenceLogic) UpdateSequence(req *types.UpdateSequenceRequest) (
 		respSequenceType = sequenceType.String
 	}
 
+	var respOnCompletionSequenceId, respOnCompletionSequenceName string
+	if onCompletionSequenceId.Valid {
+		respOnCompletionSequenceId = onCompletionSequenceId.String
+		// Fetch the name of the completion sequence
+		completionSequence, err := l.svcCtx.DB.GetSequenceByID(l.ctx, respOnCompletionSequenceId)
+		if err == nil {
+			respOnCompletionSequenceName = completionSequence.Name
+		}
+	}
+
 	return &types.SequenceInfo{
-		Id:           sequence.ID,
-		ListId:       listIDStr,
-		ListSlug:     listSlug,
-		ListName:     listName,
-		Slug:         sequence.Slug,
-		Name:         name,
-		TriggerEvent: triggerEvent,
-		SequenceType: respSequenceType,
-		IsActive:     req.IsActive,
-		SendHour:     respSendHour,
-		SendTimezone: respSendTimezone,
-		CreatedAt:    utils.FormatNullString(sequence.CreatedAt),
+		Id:                       sequence.ID,
+		ListId:                   listIDStr,
+		ListSlug:                 listSlug,
+		ListName:                 listName,
+		Slug:                     sequence.Slug,
+		Name:                     name,
+		TriggerEvent:             triggerEvent,
+		SequenceType:             respSequenceType,
+		IsActive:                 req.IsActive,
+		SendHour:                 respSendHour,
+		SendTimezone:             respSendTimezone,
+		OnCompletionSequenceId:   respOnCompletionSequenceId,
+		OnCompletionSequenceName: respOnCompletionSequenceName,
+		CreatedAt:                utils.FormatNullString(sequence.CreatedAt),
 	}, nil
 }

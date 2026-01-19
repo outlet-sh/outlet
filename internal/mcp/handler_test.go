@@ -6,9 +6,9 @@ import (
 	"sync"
 	"testing"
 
-	"outlet/internal/db"
-	"outlet/internal/mcp/mcpauth"
-	"outlet/internal/mcp/mcpctx"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/mcp/mcpauth"
+	"github.com/outlet-sh/outlet/internal/mcp/mcpctx"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

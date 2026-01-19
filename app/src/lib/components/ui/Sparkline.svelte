@@ -50,7 +50,7 @@
 	});
 </script>
 
-<svg class="sparkline" viewBox="0 0 {width} {height}" preserveAspectRatio="none">
+<svg class="block w-full h-full" viewBox="0 0 {width} {height}" preserveAspectRatio="none">
 	<!-- Subtle grid lines -->
 	<line x1="0" y1="{height / 2}" x2="{width}" y2="{height / 2}" stroke="currentColor" stroke-width="0.5" opacity="0.1" />
 	<line x1="0" y1="{height}" x2="{width}" y2="{height}" stroke="currentColor" stroke-width="0.5" opacity="0.15" />
@@ -74,12 +74,3 @@
 	{/if}
 </svg>
 
-<style>
-	@reference "$src/app.css";
-
-	@layer components.sparkline {
-		.sparkline {
-			@apply block w-full h-full;
-		}
-	}
-</style>

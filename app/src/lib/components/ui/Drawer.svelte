@@ -4,6 +4,8 @@
 -->
 
 <script lang="ts">
+	import { X } from 'lucide-svelte';
+
 	interface Props {
 		open?: boolean;
 		title?: string;
@@ -22,6 +24,9 @@
 		children
 	}: Props = $props();
 
+	// Generate unique ID for the drawer toggle
+	const drawerId = `drawer-${Math.random().toString(36).substr(2, 9)}`;
+
 	function handleClose() {
 		open = false;
 		if (onclose) {
@@ -30,124 +35,40 @@
 	}
 
 	const sizeClasses = {
-		sm: 'max-w-sm',
-		md: 'max-w-md',
-		lg: 'max-w-lg',
-		xl: 'max-w-xl',
-		full: 'max-w-full'
+		sm: 'w-80',
+		md: 'w-96',
+		lg: 'w-[32rem]',
+		xl: 'w-[40rem]',
+		full: 'w-full'
 	};
 </script>
 
-{#if open}
-	<div class="drawer-container" role="dialog" aria-modal="true">
-		<!-- Backdrop -->
-		<button
-			onclick={handleClose}
-			class="drawer-backdrop"
-			aria-label="Close drawer"
-		></button>
+<div class="drawer {position === 'right' ? 'drawer-end' : ''} z-50">
+	<input id={drawerId} type="checkbox" class="drawer-toggle" bind:checked={open} />
 
-		<!-- Panel -->
-		<div class="drawer-panel-wrapper drawer-{position}">
-			<div class="drawer-panel drawer-{size}">
-				<div class="drawer-content">
-					<!-- Header -->
-					{#if title}
-						<div class="drawer-header">
-							<h2 class="drawer-title">{title}</h2>
-							<button
-								type="button"
-								onclick={handleClose}
-								class="drawer-close"
-								aria-label="Close drawer"
-							>
-								<i class="fas fa-times text-xl"></i>
-							</button>
-						</div>
-					{/if}
-
-					<!-- Content -->
-					<div class="drawer-body">
-						{@render children()}
-					</div>
+	<div class="drawer-side">
+		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
+		<label for={drawerId} aria-label="close sidebar" class="drawer-overlay" onclick={handleClose}></label>
+		<div class="menu bg-base-200 text-base-content min-h-full {sizeClasses[size]} p-0">
+			<!-- Header -->
+			{#if title}
+				<div class="flex items-center justify-between px-6 py-4 border-b border-base-300">
+					<h2 class="text-xl font-semibold">{title}</h2>
+					<button
+						type="button"
+						onclick={handleClose}
+						class="btn btn-ghost btn-sm btn-circle"
+						aria-label="Close drawer"
+					>
+						<X class="h-5 w-5" />
+					</button>
 				</div>
+			{/if}
+
+			<!-- Content -->
+			<div class="flex-1 overflow-y-auto p-6">
+				{@render children()}
 			</div>
 		</div>
 	</div>
-{/if}
-
-<style>
-	@reference "$src/app.css";
-	@layer components.drawer {
-		.drawer-container {
-			@apply fixed inset-0 z-50 overflow-hidden;
-		}
-
-		.drawer-backdrop {
-			@apply fixed inset-0 transition-opacity;
-			background: color-mix(in srgb, black 50%, transparent);
-			backdrop-filter: blur(4px);
-		}
-
-		.drawer-panel-wrapper {
-			@apply fixed inset-y-0 flex;
-		}
-
-		.drawer-right {
-			@apply right-0;
-		}
-
-		.drawer-left {
-			@apply left-0;
-		}
-
-		.drawer-panel {
-			@apply pointer-events-auto w-screen transform transition-transform duration-300 ease-in-out;
-		}
-
-		.drawer-sm {
-			@apply max-w-sm;
-		}
-
-		.drawer-md {
-			@apply max-w-md;
-		}
-
-		.drawer-lg {
-			@apply max-w-lg;
-		}
-
-		.drawer-xl {
-			@apply max-w-xl;
-		}
-
-		.drawer-full {
-			@apply max-w-full;
-		}
-
-		.drawer-content {
-			@apply flex h-full flex-col overflow-y-auto shadow-xl bg-bg;
-		}
-
-		.drawer-header {
-			@apply flex items-center justify-between px-6 py-4;
-			border-bottom: 1px solid var(--color-border);
-		}
-
-		.drawer-title {
-			@apply text-xl font-semibold text-text;
-		}
-
-		.drawer-close {
-			@apply rounded-lg p-2 transition-colors text-text-muted;
-
-			&:hover {
-				@apply bg-bg-secondary text-text;
-			}
-		}
-
-		.drawer-body {
-			@apply flex-1 overflow-y-auto p-6;
-		}
-	}
-</style>
+</div>

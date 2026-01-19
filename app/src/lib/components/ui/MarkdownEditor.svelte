@@ -25,7 +25,7 @@
 	let { value = $bindable(''), placeholder = 'Start writing...', class: className = '' }: Props = $props();
 
 	let mode = $state<'visual' | 'source'>('visual');
-	let textareaRef: HTMLTextAreaElement;
+	let textareaRef = $state<HTMLTextAreaElement | null>(null);
 
 	// Configure marked
 	marked.setOptions({
@@ -171,7 +171,7 @@
 						class="p-1.5 rounded hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
 						title={btn.title}
 					>
-						<svelte:component this={btn.icon} size={16} />
+						<btn.icon size={16} />
 					</button>
 				{/if}
 			{/each}

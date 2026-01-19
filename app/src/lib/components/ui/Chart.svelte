@@ -37,8 +37,8 @@
 
 	// Chart dimensions and padding
 	const padding = { top: 40, right: 40, bottom: 60, left: 80 };
-	const chartWidth = width - padding.left - padding.right;
-	const chartHeight = height - padding.top - padding.bottom;
+	const chartWidth = $derived(width - padding.left - padding.right);
+	const chartHeight = $derived(height - padding.top - padding.bottom);
 
 	// Calculate data bounds
 	const xExtent = $derived.by(() => {
@@ -141,7 +141,7 @@
 	});
 </script>
 
-<div class="chart-container">
+<div class="relative">
 	{#if title}
 		<h3 class="text-lg font-medium text-text mb-4 text-center">{title}</h3>
 	{/if}
@@ -301,12 +301,3 @@
 	{/if}
 </div>
 
-<style>
-	@reference "$src/app.css";
-
-	@layer components.chart {
-		.chart-container {
-			@apply relative;
-		}
-	}
-</style>

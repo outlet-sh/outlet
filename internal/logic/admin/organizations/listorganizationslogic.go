@@ -3,8 +3,8 @@ package organizations
 import (
 	"context"
 
-	"outlet/internal/svc"
-	"outlet/internal/types"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -41,6 +41,9 @@ func (l *ListOrganizationsLogic) ListOrganizations() (resp *types.OrgListRespons
 			MaxContacts:      int(org.MaxContacts.Int64),
 			StripeConfigured: false,
 			AppUrl:           org.AppUrl.String,
+			FromName:         org.FromName.String,
+			FromEmail:        org.FromEmail.String,
+			ReplyTo:          org.ReplyTo.String,
 			CreatedAt:        org.CreatedAt.String,
 		}
 	}

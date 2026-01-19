@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"strconv"
 
-	"outlet/internal/middleware"
-	"outlet/internal/svc"
-	"outlet/internal/types"
-	"outlet/internal/utils"
+	"github.com/outlet-sh/outlet/internal/middleware"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
+	"github.com/outlet-sh/outlet/internal/utils"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -70,19 +70,29 @@ func (l *ListSequencesLogic) ListSequences() (resp *types.SequenceListResponse, 
 			sequenceType = row.SequenceType.String
 		}
 
+		var onCompletionSequenceId, onCompletionSequenceName string
+		if row.OnCompletionSequenceID.Valid {
+			onCompletionSequenceId = row.OnCompletionSequenceID.String
+		}
+		if row.OnCompletionSequenceName.Valid {
+			onCompletionSequenceName = row.OnCompletionSequenceName.String
+		}
+
 		sequences = append(sequences, types.SequenceInfo{
-			Id:           row.ID,
-			ListId:       listIDStr,
-			ListSlug:     listSlug,
-			ListName:     listName,
-			Slug:         row.Slug,
-			Name:         row.Name,
-			TriggerEvent: row.TriggerEvent,
-			SequenceType: sequenceType,
-			IsActive:     row.IsActive.Int64 == 1,
-			SendHour:     sendHour,
-			SendTimezone: sendTimezone,
-			CreatedAt:    utils.FormatNullString(row.CreatedAt),
+			Id:                       row.ID,
+			ListId:                   listIDStr,
+			ListSlug:                 listSlug,
+			ListName:                 listName,
+			Slug:                     row.Slug,
+			Name:                     row.Name,
+			TriggerEvent:             row.TriggerEvent,
+			SequenceType:             sequenceType,
+			IsActive:                 row.IsActive.Int64 == 1,
+			SendHour:                 sendHour,
+			SendTimezone:             sendTimezone,
+			OnCompletionSequenceId:   onCompletionSequenceId,
+			OnCompletionSequenceName: onCompletionSequenceName,
+			CreatedAt:                utils.FormatNullString(row.CreatedAt),
 		})
 	}
 

@@ -3,6 +3,6 @@
 	import { browser } from '$app/environment';
 
 	if (browser) {
-		goto('/settings/users', { replaceState: true });
+		goto('/settings/mcp', { replaceState: true });
 	}
 </script>

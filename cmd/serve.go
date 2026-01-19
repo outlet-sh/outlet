@@ -17,20 +17,21 @@ import (
 	"syscall"
 	"time"
 
-	"outlet/app"
-	"outlet/internal/config"
-	"outlet/internal/errorx"
-	"outlet/internal/handler"
-	publiclogic "outlet/internal/logic/public"
-	outletmcp "outlet/internal/mcp"
-	mcpoauth "outlet/internal/mcp/oauth"
-	"outlet/internal/middleware"
-	publicpages "outlet/internal/public"
-	"outlet/internal/svc"
-	"outlet/internal/types"
-	"outlet/internal/webhook"
-	"outlet/internal/workers"
-	outletsmtp "outlet/internal/smtp"
+	"github.com/outlet-sh/outlet/app"
+	"github.com/outlet-sh/outlet/internal/config"
+	"github.com/outlet-sh/outlet/internal/errorx"
+	"github.com/outlet-sh/outlet/internal/handler"
+	publiclogic "github.com/outlet-sh/outlet/internal/logic/public"
+	outletmcp "github.com/outlet-sh/outlet/internal/mcp"
+	mcpoauth "github.com/outlet-sh/outlet/internal/mcp/oauth"
+	"github.com/outlet-sh/outlet/internal/middleware"
+	publicpages "github.com/outlet-sh/outlet/internal/public"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
+	"github.com/outlet-sh/outlet/internal/webhook"
+	"github.com/outlet-sh/outlet/internal/workers"
+	outletsmtp "github.com/outlet-sh/outlet/internal/smtp"
+	outletws "github.com/outlet-sh/outlet/internal/websocket"
 
 	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
@@ -175,6 +176,9 @@ func runServe(cmd *cobra.Command, args []string) {
 	// Public pages (subscribe, confirm, unsubscribe, web view)
 	registerPublicPageRoutes(server, ctx)
 
+	// WebSocket endpoint for real-time updates
+	registerWebSocketRoute(server, ctx)
+
 	// Start email worker in background
 	emailWorker := workers.StartEmailWorker(ctx)
 	fmt.Println("Email worker started")
@@ -182,6 +186,10 @@ func runServe(cmd *cobra.Command, args []string) {
 	// Start campaign scheduler in background
 	campaignScheduler := workers.StartCampaignScheduler(ctx)
 	fmt.Println("Campaign scheduler started")
+
+	// Start domain verification worker in background
+	domainVerificationWorker := workers.StartDomainVerificationWorker(ctx)
+	fmt.Println("Domain verification worker started")
 
 	// Start SMTP ingress server if enabled
 	var smtpServer *outletsmtp.Server
@@ -219,6 +227,10 @@ func runServe(cmd *cobra.Command, args []string) {
 			if campaignScheduler != nil {
 				campaignScheduler.Stop()
 				fmt.Println("Campaign scheduler stopped")
+			}
+			if domainVerificationWorker != nil {
+				domainVerificationWorker.Stop()
+				fmt.Println("Domain verification worker stopped")
 			}
 			if smtpServer != nil {
 				smtpServer.Stop()
@@ -437,6 +449,10 @@ func runServe(cmd *cobra.Command, args []string) {
 	if campaignScheduler != nil {
 		campaignScheduler.Stop()
 		fmt.Println("Campaign scheduler stopped")
+	}
+	if domainVerificationWorker != nil {
+		domainVerificationWorker.Stop()
+		fmt.Println("Domain verification worker stopped")
 	}
 	if smtpServer != nil {
 		smtpServer.Stop()
@@ -843,4 +859,14 @@ func registerPublicPageRoutes(server *rest.Server, ctx *svc.ServiceContext) {
 	})
 
 	fmt.Println("Public pages registered: /s/:slug, /confirm/:token, /u/:token, /w/:token")
+}
+
+// registerWebSocketRoute adds the WebSocket endpoint for real-time updates
+func registerWebSocketRoute(server *rest.Server, ctx *svc.ServiceContext) {
+	server.AddRoute(rest.Route{
+		Method:  http.MethodGet,
+		Path:    "/ws",
+		Handler: outletws.Handler(ctx.WebSocketHub),
+	})
+	fmt.Println("WebSocket endpoint registered at /ws")
 }

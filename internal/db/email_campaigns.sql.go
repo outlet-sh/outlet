@@ -133,7 +133,7 @@ type CreateCampaignParams struct {
 }
 
 // Email Campaigns (One-time Broadcasts)
-// Sendy-style campaign management
+// Campaign management
 func (q *Queries) CreateCampaign(ctx context.Context, arg CreateCampaignParams) (EmailCampaign, error) {
 	row := q.db.QueryRowContext(ctx, createCampaign,
 		arg.ID,

@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"outlet/internal/svc"
-	"outlet/internal/types"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
 
 	"github.com/google/uuid"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -80,7 +80,8 @@ func (l *ExportContactDataLogic) ExportContactData(req *types.GDPRExportRequest)
 		}
 	}
 
-	// TODO: Add email activity, campaign interactions, etc.
+	// Get email activity
+	export.Activity = l.getEmailActivity(contact.ID)
 
 	// Write export to file
 	exportDir := filepath.Join(".", "exports", "gdpr")
@@ -109,4 +110,77 @@ func (l *ExportContactDataLogic) ExportContactData(req *types.GDPRExportRequest)
 		ExpiresAt:   expiresAt.Format(time.RFC3339),
 		Format:      "json",
 	}, nil
+}
+
+// getEmailActivity retrieves all email activity for a contact
+func (l *ExportContactDataLogic) getEmailActivity(contactID string) []map[string]interface{} {
+	var activity []map[string]interface{}
+	contactIDNull := sql.NullString{String: contactID, Valid: true}
+
+	// Get campaign sends
+	campaignSends, err := l.svcCtx.DB.GetContactCampaignSends(l.ctx, contactID)
+	if err == nil {
+		for _, cs := range campaignSends {
+			activity = append(activity, map[string]interface{}{
+				"type":          "campaign",
+				"campaign_id":   cs.CampaignID,
+				"campaign_name": cs.CampaignName.String,
+				"sent_at":       cs.SentAt.String,
+				"opened_at":     cs.OpenedAt.String,
+				"clicked_at":    cs.ClickedAt.String,
+			})
+		}
+	}
+
+	// Get transactional sends
+	transactionalSends, err := l.svcCtx.DB.GetContactTransactionalSends(l.ctx, contactIDNull)
+	if err == nil {
+		for _, ts := range transactionalSends {
+			activity = append(activity, map[string]interface{}{
+				"type":          "transactional",
+				"template_id":   ts.TemplateID,
+				"template_name": ts.TemplateName.String,
+				"to_email":      ts.ToEmail,
+				"status":        ts.Status.String,
+				"opened_at":     ts.OpenedAt.String,
+				"clicked_at":    ts.ClickedAt.String,
+				"created_at":    ts.CreatedAt.String,
+			})
+		}
+	}
+
+	// Get sequence emails
+	sequenceEmails, err := l.svcCtx.DB.GetContactSequenceEmails(l.ctx, contactIDNull)
+	if err == nil {
+		for _, se := range sequenceEmails {
+			activity = append(activity, map[string]interface{}{
+				"type":          "sequence",
+				"sequence_id":   se.SequenceID.String,
+				"sequence_name": se.SequenceName.String,
+				"step_number":   se.StepNumber.Int64,
+				"subject":       se.Subject.String,
+				"status":        se.Status.String,
+				"sent_at":       se.SentAt.String,
+				"opened_at":     se.OpenedAt.String,
+				"clicked_at":    se.ClickedAt.String,
+			})
+		}
+	}
+
+	// Get email clicks
+	clicks, err := l.svcCtx.DB.GetContactEmailClicks(l.ctx, contactIDNull)
+	if err == nil {
+		for _, c := range clicks {
+			activity = append(activity, map[string]interface{}{
+				"type":       "click",
+				"link_url":   c.LinkUrl,
+				"link_name":  c.LinkName.String,
+				"clicked_at": c.ClickedAt,
+				"user_agent": c.UserAgent.String,
+				"ip_address": c.IpAddress.String,
+			})
+		}
+	}
+
+	return activity
 }

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/db"
 
 	"github.com/google/uuid"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -44,6 +44,36 @@ func NewSequenceServiceWithBaseURL(db *db.Store, sender *Service, baseURL string
 		sender:  sender,
 		baseURL: baseURL,
 	}
+}
+
+// GetCustomFieldsForContact retrieves custom field values for a contact in a specific list
+// Used for merge tag replacement in email templates
+func (s *SequenceService) GetCustomFieldsForContact(ctx context.Context, contactID string, listID int64) map[string]string {
+	result := make(map[string]string)
+
+	// Get the subscriber ID from contact + list
+	subscriber, err := s.db.GetListSubscriber(ctx, db.GetListSubscriberParams{
+		ListID:    listID,
+		ContactID: contactID,
+	})
+	if err != nil {
+		return result // Return empty map if subscriber not found
+	}
+
+	// Get custom field values for this subscriber
+	fields, err := s.db.GetSubscriberCustomFieldsForMerge(ctx, subscriber.ID)
+	if err != nil {
+		return result
+	}
+
+	// Build map of field_key -> value
+	for _, field := range fields {
+		if field.Value.Valid {
+			result[field.FieldKey] = field.Value.String
+		}
+	}
+
+	return result
 }
 
 // generateTrackingToken creates a cryptographically secure random token
@@ -305,12 +335,26 @@ func (s *SequenceService) ProcessPendingEmails(ctx context.Context, batchSize in
 
 	sent := 0
 	for _, email := range pendingEmails {
-		// Process template variables
+		// Build template context
 		tplCtx := TemplateContext{
 			Name:          email.Name,
 			Email:         email.Email,
 			TrackingToken: email.TrackingToken.String,
+			CustomFields:  make(map[string]string),
 		}
+
+		// Fetch custom fields if this is a sequence email with a contact
+		if email.ContactID.Valid && email.TemplateID.Valid {
+			template, err := s.db.GetTemplateByID(ctx, email.TemplateID.String)
+			if err == nil && template.SequenceID.Valid {
+				sequence, err := s.db.GetSequenceByID(ctx, template.SequenceID.String)
+				if err == nil && sequence.ListID.Valid {
+					tplCtx.CustomFields = s.GetCustomFieldsForContact(ctx, email.ContactID.String, sequence.ListID.Int64)
+				}
+			}
+		}
+
+		// Process template variables
 		htmlBody := s.processTemplateVariables(email.HtmlBody, tplCtx)
 		subject := s.processTemplateVariables(email.Subject, tplCtx)
 
@@ -390,6 +434,19 @@ func (s *SequenceService) ProcessPendingEmails(ctx context.Context, batchSize in
 							SequenceID: template.SequenceID,
 						})
 						logx.Infof("Completed sequence for contact %s", email.ContactID.String)
+
+						// Check for sequence chaining - auto-enroll in next sequence if configured
+						seq, seqErr := s.db.GetSequenceByID(ctx, template.SequenceID.String)
+						if seqErr == nil && seq.OnCompletionSequenceID.Valid && seq.OnCompletionSequenceID.String != "" {
+							chainErr := s.StartSequenceByID(ctx, email.ContactID.String, seq.OnCompletionSequenceID.String)
+							if chainErr != nil {
+								logx.Errorf("Failed to start chained sequence %s for contact %s: %v",
+									seq.OnCompletionSequenceID.String, email.ContactID.String, chainErr)
+							} else {
+								logx.Infof("Chained contact %s from sequence %s to sequence %s",
+									email.ContactID.String, template.SequenceID.String, seq.OnCompletionSequenceID.String)
+							}
+						}
 					}
 				}
 			}
@@ -405,6 +462,7 @@ type TemplateContext struct {
 	Email             string
 	VerificationToken string
 	TrackingToken     string
+	CustomFields      map[string]string // Custom field values keyed by field_key
 }
 
 // processTemplateVariables replaces placeholders in email content
@@ -425,6 +483,12 @@ func (s *SequenceService) processTemplateVariables(content string, ctx TemplateC
 	if ctx.TrackingToken != "" {
 		unsubscribeURL := fmt.Sprintf("%s/api/e/u/%s", s.baseURL, ctx.TrackingToken)
 		content = strings.ReplaceAll(content, "{{unsubscribe_url}}", unsubscribeURL)
+	}
+
+	// Replace custom field merge tags
+	for fieldKey, value := range ctx.CustomFields {
+		placeholder := "{{" + fieldKey + "}}"
+		content = strings.ReplaceAll(content, placeholder, value)
 	}
 
 	return content

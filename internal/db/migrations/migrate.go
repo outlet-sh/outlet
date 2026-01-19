@@ -17,7 +17,7 @@ var embedMigrations embed.FS
 func Run(db *sql.DB) error {
 	goose.SetBaseFS(embedMigrations)
 
-	if err := goose.SetDialect("postgres"); err != nil {
+	if err := goose.SetDialect("sqlite3"); err != nil {
 		return fmt.Errorf("failed to set dialect: %w", err)
 	}
 
@@ -32,7 +32,7 @@ func Run(db *sql.DB) error {
 func Status(db *sql.DB) error {
 	goose.SetBaseFS(embedMigrations)
 
-	if err := goose.SetDialect("postgres"); err != nil {
+	if err := goose.SetDialect("sqlite3"); err != nil {
 		return fmt.Errorf("failed to set dialect: %w", err)
 	}
 
@@ -43,7 +43,7 @@ func Status(db *sql.DB) error {
 func Down(db *sql.DB) error {
 	goose.SetBaseFS(embedMigrations)
 
-	if err := goose.SetDialect("postgres"); err != nil {
+	if err := goose.SetDialect("sqlite3"); err != nil {
 		return fmt.Errorf("failed to set dialect: %w", err)
 	}
 

@@ -131,6 +131,18 @@ type BulkSuppressEmailsResponse struct {
 	Errors  []string `json:"errors,optional"`
 }
 
+type CampaignActivityItem struct {
+	CampaignId      string `json:"campaign_id"`
+	CampaignName    string `json:"campaign_name"`
+	CampaignSubject string `json:"campaign_subject"`
+	Status          string `json:"status"`
+	SentAt          string `json:"sent_at,omitempty"`
+	OpenedAt        string `json:"opened_at,omitempty"`
+	OpenCount       int64  `json:"open_count"`
+	ClickedAt       string `json:"clicked_at,omitempty"`
+	ClickCount      int64  `json:"click_count"`
+}
+
 type CampaignInfo struct {
 	Id                string   `json:"id"`
 	OrgId             string   `json:"org_id"`
@@ -228,6 +240,7 @@ type ContactStatsPoint struct {
 }
 
 type CreateBackupRequest struct {
+	Format     string `json:"format,optional,default=db"` // db (SQLite binary) or sql (SQL dump)
 	Compress   bool   `json:"compress,optional"`
 	UploadToS3 bool   `json:"upload_to_s3,optional"`
 	S3Bucket   string `json:"s3_bucket,optional"`
@@ -259,6 +272,23 @@ type CreateCampaignRequest struct {
 	TrackClicks    bool     `json:"track_clicks,optional,default=true"`
 }
 
+type CreateCustomFieldRequest struct {
+	ListId       string   `path:"listId"`
+	Name         string   `json:"name"`
+	FieldKey     string   `json:"field_key"`
+	FieldType    string   `json:"field_type,optional,default=text"`
+	Options      []string `json:"options,optional"`
+	Required     bool     `json:"required,optional,default=false"`
+	DefaultValue string   `json:"default_value,optional"`
+	Placeholder  string   `json:"placeholder,optional"`
+	SortOrder    int      `json:"sort_order,optional,default=0"`
+}
+
+type CreateDomainIdentityRequest struct {
+	OrgId  string `path:"org_id"`
+	Domain string `json:"domain"` // If empty, extracted from org's from_email
+}
+
 type CreateEmailDesignRequest struct {
 	Name        string `json:"name"`
 	Slug        string `json:"slug"`
@@ -274,6 +304,20 @@ type CreateEntryRuleRequest struct {
 	TriggerType string `json:"trigger_type"` // list_join, sequence_complete, tag_added, manual
 	SourceId    string `json:"source_id,optional"`
 	Priority    int    `json:"priority,optional,default=0"`
+}
+
+type CreateInitialAdminRequest struct {
+	Email           string `json:"email"`
+	Password        string `json:"password"`
+	ConfirmPassword string `json:"confirm_password"`
+	Name            string `json:"name,optional"`
+	Company         string `json:"company,optional"`
+	Timezone        string `json:"timezone,optional"`
+}
+
+type CreateInitialAdminResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
 }
 
 type CreateListRequest struct {
@@ -302,6 +346,9 @@ type CreateOrgRequest struct {
 	Plan        string `json:"plan,optional"`
 	MaxContacts int    `json:"max_contacts,optional"`
 	AppUrl      string `json:"app_url,optional"`
+	FromName    string `json:"from_name,optional"`
+	FromEmail   string `json:"from_email,optional"`
+	ReplyTo     string `json:"reply_to,optional"`
 }
 
 type CreateSequenceRequest struct {
@@ -349,6 +396,29 @@ type CreateUserResponse struct {
 	User UserInfo `json:"user"`
 }
 
+type CustomFieldInfo struct {
+	Id           string   `json:"id"`
+	ListId       string   `json:"list_id"`
+	Name         string   `json:"name"`
+	FieldKey     string   `json:"field_key"`
+	FieldType    string   `json:"field_type"`
+	Options      []string `json:"options,optional"`
+	Required     bool     `json:"required"`
+	DefaultValue string   `json:"default_value,optional"`
+	Placeholder  string   `json:"placeholder,optional"`
+	SortOrder    int      `json:"sort_order"`
+	CreatedAt    string   `json:"created_at"`
+	UpdatedAt    string   `json:"updated_at"`
+}
+
+type DNSRecord struct {
+	Type     string `json:"type"`     // CNAME, TXT, MX
+	Name     string `json:"name"`     // Record name/host
+	Value    string `json:"value"`    // Record value
+	Priority int    `json:"priority"` // For MX records
+	Purpose  string `json:"purpose"`  // dkim, verification, mail_from
+}
+
 type DashboardStatsResponse struct {
 	EmailsSent30d       int64   `json:"emails_sent_30d"`
 	EmailsOpened30d     int64   `json:"emails_opened_30d"`
@@ -373,6 +443,16 @@ type DeleteBlockedDomainRequest struct {
 
 type DeleteCampaignRequest struct {
 	Id string `path:"id"`
+}
+
+type DeleteCustomFieldRequest struct {
+	ListId  string `path:"listId"`
+	FieldId string `path:"fieldId"`
+}
+
+type DeleteDomainIdentityRequest struct {
+	OrgId string `path:"org_id"`
+	Id    string `path:"id"`
 }
 
 type DeleteEmailDesignRequest struct {
@@ -416,6 +496,18 @@ type DetectSESQuotaRequest struct {
 	AWSRegion    string `json:"aws_region,optional"`
 	AWSAccessKey string `json:"aws_access_key,optional"` // If empty, use org's stored creds
 	AWSSecretKey string `json:"aws_secret_key,optional"`
+}
+
+type DomainIdentityInfo struct {
+	Id                 string      `json:"id"`
+	OrgId              string      `json:"org_id"`
+	Domain             string      `json:"domain"`
+	VerificationStatus string      `json:"verification_status"` // pending, success, failed, temporary_failure, not_started
+	DKIMStatus         string      `json:"dkim_status"`
+	MailFromStatus     string      `json:"mail_from_status"`
+	DNSRecords         []DNSRecord `json:"dns_records"`
+	LastCheckedAt      string      `json:"last_checked_at,optional"`
+	CreatedAt          string      `json:"created_at"`
 }
 
 type DownloadBackupRequest struct {
@@ -518,10 +610,11 @@ type EmailStatusResponse struct {
 }
 
 type EmbedCodeResponse struct {
-	Html    string `json:"html"`
-	ListId  string `json:"list_id"`
-	Slug    string `json:"slug"`
-	BaseUrl string `json:"base_url"`
+	Html     string `json:"html"`
+	ListId   string `json:"list_id"`
+	PublicId string `json:"public_id"`
+	Slug     string `json:"slug"`
+	BaseUrl  string `json:"base_url"`
 }
 
 type EmptyResponse struct {
@@ -664,10 +757,20 @@ type GetContactStatsResponse struct {
 	NetGrowth         int                 `json:"net_growth"` // For period
 }
 
+type GetCustomFieldRequest struct {
+	ListId  string `path:"listId"`
+	FieldId string `path:"fieldId"`
+}
+
 type GetDashboardStatsRequest struct {
 	Id   string `path:"id"` // Organization ID
 	From string `form:"from,optional"`
 	To   string `form:"to,optional"`
+}
+
+type GetDomainIdentityRequest struct {
+	OrgId string `path:"org_id"`
+	Id    string `path:"id"`
 }
 
 type GetEmailDesignRequest struct {
@@ -739,6 +842,11 @@ type GetSequenceRequest struct {
 type GetStatsOverviewRequest struct {
 	StartDate string `form:"start_date,optional"` // RFC3339
 	EndDate   string `form:"end_date,optional"`   // RFC3339
+}
+
+type GetSubscriberDetailRequest struct {
+	Id           string `path:"id"`           // list ID
+	SubscriberId string `path:"subscriberId"` // subscriber ID
 }
 
 type GetTransactionalEmailRequest struct {
@@ -843,6 +951,23 @@ type ListContactActivityResponse struct {
 	Activities []ContactActivityInfo `json:"activities"`
 }
 
+type ListCustomFieldsRequest struct {
+	ListId string `path:"listId"`
+}
+
+type ListCustomFieldsResponse struct {
+	Fields []CustomFieldInfo `json:"fields"`
+	Total  int               `json:"total"`
+}
+
+type ListDomainIdentitiesRequest struct {
+	OrgId string `path:"org_id"`
+}
+
+type ListDomainIdentitiesResponse struct {
+	Identities []DomainIdentityInfo `json:"identities"`
+}
+
 type ListEmailDesignsRequest struct {
 	Category string `form:"category,optional"`
 }
@@ -873,18 +998,31 @@ type ListImportJobsResponse struct {
 }
 
 type ListInfo struct {
-	Id                   string `json:"id"`
-	OrgId                string `json:"org_id"`
-	Name                 string `json:"name"`
-	Slug                 string `json:"slug"`
-	Description          string `json:"description"`
-	DoubleOptin          bool   `json:"double_optin"`
-	ConfirmationSubject  string `json:"confirmation_subject,optional"`
-	ConfirmationBody     string `json:"confirmation_body,optional"`
-	ConfirmationDesignId string `json:"confirmation_design_id,optional"`
-	SubscriberCount      int    `json:"subscriber_count"`
-	CreatedAt            string `json:"created_at"`
-	UpdatedAt            string `json:"updated_at"`
+	Id                     string `json:"id"`
+	PublicId               string `json:"public_id"`
+	OrgId                  string `json:"org_id"`
+	Name                   string `json:"name"`
+	Slug                   string `json:"slug"`
+	Description            string `json:"description"`
+	DoubleOptin            bool   `json:"double_optin"`
+	ConfirmationSubject    string `json:"confirmation_subject,optional"`
+	ConfirmationBody       string `json:"confirmation_body,optional"`
+	ConfirmationDesignId   string `json:"confirmation_design_id,optional"`
+	SubscriberCount        int    `json:"subscriber_count"`
+	CreatedAt              string `json:"created_at"`
+	UpdatedAt              string `json:"updated_at"`
+	ThankYouUrl            string `json:"thank_you_url,optional"`
+	ConfirmRedirectUrl     string `json:"confirm_redirect_url,optional"`
+	AlreadySubscribedUrl   string `json:"already_subscribed_url,optional"`
+	UnsubscribeRedirectUrl string `json:"unsubscribe_redirect_url,optional"`
+	ThankYouEmailEnabled   bool   `json:"thank_you_email_enabled"`
+	ThankYouEmailSubject   string `json:"thank_you_email_subject,optional"`
+	ThankYouEmailBody      string `json:"thank_you_email_body,optional"`
+	GoodbyeEmailEnabled    bool   `json:"goodbye_email_enabled"`
+	GoodbyeEmailSubject    string `json:"goodbye_email_subject,optional"`
+	GoodbyeEmailBody       string `json:"goodbye_email_body,optional"`
+	UnsubscribeBehavior    string `json:"unsubscribe_behavior,optional"`
+	UnsubscribeScope       string `json:"unsubscribe_scope,optional"`
 }
 
 type ListListsResponse struct {
@@ -909,6 +1047,7 @@ type ListStatsResponse struct {
 }
 
 type ListSubscriberInfo struct {
+	Id             string `json:"id"`
 	ContactId      string `json:"contact_id"`
 	Email          string `json:"email"`
 	Name           string `json:"name"`
@@ -1053,6 +1192,11 @@ type PlatformSettingInfo struct {
 	IsSensitive bool   `json:"is_sensitive"`
 }
 
+type RefreshDomainIdentityRequest struct {
+	OrgId string `path:"org_id"`
+	Id    string `path:"id"`
+}
+
 type RefreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
@@ -1155,6 +1299,8 @@ type SESQuotaResponse struct {
 	MaxSendRate     float64 `json:"max_send_rate"`
 	SentLast24Hours float64 `json:"sent_last_24_hours"`
 	RemainingQuota  float64 `json:"remaining_quota"`
+	Region          string  `json:"region"`
+	Timezone        string  `json:"timezone,optional"`
 }
 
 type ScheduleCampaignRequest struct {
@@ -1207,20 +1353,33 @@ type SequenceEnrollmentInfo struct {
 	EmailsClicked int    `json:"emails_clicked"`
 }
 
+type SequenceEnrollmentItem struct {
+	SequenceId      string `json:"sequence_id"`
+	SequenceName    string `json:"sequence_name"`
+	CurrentPosition int64  `json:"current_position"`
+	IsActive        bool   `json:"is_active"`
+	StartedAt       string `json:"started_at,omitempty"`
+	CompletedAt     string `json:"completed_at,omitempty"`
+	PausedAt        string `json:"paused_at,omitempty"`
+	UnsubscribedAt  string `json:"unsubscribed_at,omitempty"`
+}
+
 type SequenceInfo struct {
-	Id           string          `json:"id"`
-	ListId       string          `json:"list_id,optional"`
-	ListSlug     string          `json:"list_slug,optional"`
-	ListName     string          `json:"list_name,optional"`
-	Slug         string          `json:"slug"`
-	Name         string          `json:"name"`
-	TriggerEvent string          `json:"trigger_event"`
-	SequenceType string          `json:"sequence_type"` // lifecycle or transactional
-	IsActive     bool            `json:"is_active"`
-	SendHour     *int            `json:"send_hour"`     // Hour of day (0-23) to send emails, null = use delay from opt-in
-	SendTimezone string          `json:"send_timezone"` // Timezone for send_hour (e.g., America/New_York)
-	EntryRules   []EntryRuleInfo `json:"entry_rules,optional"`
-	CreatedAt    string          `json:"created_at"`
+	Id                       string          `json:"id"`
+	ListId                   string          `json:"list_id,optional"`
+	ListSlug                 string          `json:"list_slug,optional"`
+	ListName                 string          `json:"list_name,optional"`
+	Slug                     string          `json:"slug"`
+	Name                     string          `json:"name"`
+	TriggerEvent             string          `json:"trigger_event"`
+	SequenceType             string          `json:"sequence_type"` // lifecycle or transactional
+	IsActive                 bool            `json:"is_active"`
+	SendHour                 *int            `json:"send_hour"`                            // Hour of day (0-23) to send emails, null = use delay from opt-in
+	SendTimezone             string          `json:"send_timezone"`                        // Timezone for send_hour (e.g., America/New_York)
+	OnCompletionSequenceId   string          `json:"on_completion_sequence_id,optional"`   // Chain to another sequence on completion
+	OnCompletionSequenceName string          `json:"on_completion_sequence_name,optional"` // Name of the chained sequence
+	EntryRules               []EntryRuleInfo `json:"entry_rules,optional"`
+	CreatedAt                string          `json:"created_at"`
 }
 
 type SequenceListResponse struct {
@@ -1240,7 +1399,11 @@ type SequenceStatsResponse struct {
 }
 
 type SetupStatusResponse struct {
-	PlatformConfigured bool     `json:"platform_configured"` // Has SMTP/email settings
+	SetupRequired      bool     `json:"setup_required"`      // True if initial setup needed
+	HasAdmin           bool     `json:"has_admin"`           // Has at least one admin user
+	HasAws             bool     `json:"has_aws"`             // Has AWS credentials configured
+	HasSmtp            bool     `json:"has_smtp"`            // Has SMTP configured (deprecated)
+	PlatformConfigured bool     `json:"platform_configured"` // Has AWS/email settings
 	MissingSettings    []string `json:"missing_settings"`    // List of missing required settings
 }
 
@@ -1263,13 +1426,40 @@ type StripeWebhookPath struct {
 }
 
 type SubscribeRequest struct {
-	Slug  string `path:"slug"`
-	Email string `json:"email"`
-	Name  string `json:"name,optional"`
+	Slug         string            `path:"slug"`
+	Email        string            `json:"email"`
+	Name         string            `json:"name,optional"`
+	CustomFields map[string]string `json:"custom_fields,optional"`
 }
 
 type SubscriberActionRequest struct {
 	Id string `path:"id"`
+}
+
+type SubscriberDetailResponse struct {
+	Id                  string                   `json:"id"`
+	ListId              string                   `json:"list_id"`
+	ContactId           string                   `json:"contact_id"`
+	Email               string                   `json:"email"`
+	Name                string                   `json:"name"`
+	Status              string                   `json:"status"`
+	Source              string                   `json:"source"`
+	SubscribedAt        string                   `json:"subscribed_at"`
+	VerifiedAt          string                   `json:"verified_at,omitempty"`
+	UnsubscribedAt      string                   `json:"unsubscribed_at,omitempty"`
+	EmailVerified       bool                     `json:"email_verified"`
+	GdprConsent         bool                     `json:"gdpr_consent"`
+	GdprConsentAt       string                   `json:"gdpr_consent_at,omitempty"`
+	BlockedAt           string                   `json:"blocked_at,omitempty"`
+	EmailsSent          int64                    `json:"emails_sent"`
+	EmailsOpened        int64                    `json:"emails_opened"`
+	EmailsClicked       int64                    `json:"emails_clicked"`
+	LastEmailAt         string                   `json:"last_email_at,omitempty"`
+	LastOpenAt          string                   `json:"last_open_at,omitempty"`
+	LastClickAt         string                   `json:"last_click_at,omitempty"`
+	CustomFields        map[string]string        `json:"custom_fields"`
+	CampaignActivity    []CampaignActivityItem   `json:"campaign_activity"`
+	SequenceEnrollments []SequenceEnrollmentItem `json:"sequence_enrollments"`
 }
 
 type SubscriberInfo struct {
@@ -1409,6 +1599,19 @@ type UpdateContactRequest struct {
 	CustomFields map[string]string `json:"custom_fields,optional"`
 }
 
+type UpdateCustomFieldRequest struct {
+	ListId       string   `path:"listId"`
+	FieldId      string   `path:"fieldId"`
+	Name         string   `json:"name,optional"`
+	FieldKey     string   `json:"field_key,optional"`
+	FieldType    string   `json:"field_type,optional"`
+	Options      []string `json:"options,optional"`
+	Required     *bool    `json:"required,optional"`
+	DefaultValue string   `json:"default_value,optional"`
+	Placeholder  string   `json:"placeholder,optional"`
+	SortOrder    *int     `json:"sort_order,optional"`
+}
+
 type UpdateEmailDesignRequest struct {
 	Id          string `path:"id"`
 	Name        string `json:"name,optional"`
@@ -1421,6 +1624,9 @@ type UpdateEmailDesignRequest struct {
 }
 
 type UpdateEmailSettingsRequest struct {
+	AwsAccessKey string `json:"aws_access_key,optional"`
+	AwsSecretKey string `json:"aws_secret_key,optional"`
+	AwsRegion    string `json:"aws_region,optional"`
 	SmtpHost     string `json:"smtp_host,optional"`
 	SmtpPort     int    `json:"smtp_port,optional"`
 	SmtpUser     string `json:"smtp_user,optional"`
@@ -1443,13 +1649,25 @@ type UpdateGDPRConsentRequest struct {
 }
 
 type UpdateListRequest struct {
-	Id                   string  `path:"id"`
-	Name                 string  `json:"name,optional"`
-	Description          string  `json:"description,optional"`
-	DoubleOptin          *bool   `json:"double_optin,optional"`
-	ConfirmationSubject  string  `json:"confirmation_subject,optional"`
-	ConfirmationBody     string  `json:"confirmation_body,optional"`
-	ConfirmationDesignId *string `json:"confirmation_design_id,optional"`
+	Id                     string  `path:"id"`
+	Name                   string  `json:"name,optional"`
+	Description            string  `json:"description,optional"`
+	DoubleOptin            *bool   `json:"double_optin,optional"`
+	ConfirmationSubject    string  `json:"confirmation_subject,optional"`
+	ConfirmationBody       string  `json:"confirmation_body,optional"`
+	ConfirmationDesignId   *string `json:"confirmation_design_id,optional"`
+	ThankYouUrl            *string `json:"thank_you_url,optional"`
+	ConfirmRedirectUrl     *string `json:"confirm_redirect_url,optional"`
+	AlreadySubscribedUrl   *string `json:"already_subscribed_url,optional"`
+	UnsubscribeRedirectUrl *string `json:"unsubscribe_redirect_url,optional"`
+	ThankYouEmailEnabled   *bool   `json:"thank_you_email_enabled,optional"`
+	ThankYouEmailSubject   *string `json:"thank_you_email_subject,optional"`
+	ThankYouEmailBody      *string `json:"thank_you_email_body,optional"`
+	GoodbyeEmailEnabled    *bool   `json:"goodbye_email_enabled,optional"`
+	GoodbyeEmailSubject    *string `json:"goodbye_email_subject,optional"`
+	GoodbyeEmailBody       *string `json:"goodbye_email_body,optional"`
+	UnsubscribeBehavior    *string `json:"unsubscribe_behavior,optional"`
+	UnsubscribeScope       *string `json:"unsubscribe_scope,optional"`
 }
 
 type UpdateOrgEmailConfigRequest struct {
@@ -1483,13 +1701,15 @@ type UpdateOrgRequest struct {
 }
 
 type UpdateSequenceRequest struct {
-	Id           string `path:"id"`
-	Name         string `json:"name,optional"`
-	TriggerEvent string `json:"trigger_event,optional"`
-	SequenceType string `json:"sequence_type,optional"` // lifecycle or transactional
-	IsActive     bool   `json:"is_active,optional"`
-	SendHour     *int   `json:"send_hour,optional"`     // Hour of day (0-23) to send emails
-	SendTimezone string `json:"send_timezone,optional"` // Timezone for send_hour
+	Id                     string  `path:"id"`
+	Name                   string  `json:"name,optional"`
+	ListId                 *string `json:"list_id,optional"` // Change which list this sequence belongs to
+	TriggerEvent           string  `json:"trigger_event,optional"`
+	SequenceType           string  `json:"sequence_type,optional"` // lifecycle or transactional
+	IsActive               bool    `json:"is_active,optional"`
+	SendHour               *int    `json:"send_hour,optional"`                 // Hour of day (0-23) to send emails
+	SendTimezone           string  `json:"send_timezone,optional"`             // Timezone for send_hour
+	OnCompletionSequenceId *string `json:"on_completion_sequence_id,optional"` // Chain to another sequence (null to clear)
 }
 
 type UpdateSettingsResponse struct {

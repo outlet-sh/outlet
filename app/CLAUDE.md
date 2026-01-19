@@ -120,21 +120,56 @@ api.adminListCustomers({ page_size: 10 });
 
 Before using any API type, open `src/lib/api/generate/outletComponents.ts` and verify the exact property names.
 
-## Svelte 5 Conventions
+## Svelte 5 Syntax (CRITICAL - NO SVELTE 4)
 
-Uses Svelte 5 runes syntax:
+**This is a Svelte 5 project. NEVER use Svelte 4 syntax.**
 
-- `$state()` for reactive state
-- `$derived()` for computed values
-- `$effect()` for side effects
-- `$props()` for component props
+### Correct Svelte 5 Patterns:
 
 ```svelte
 <script lang="ts">
-  let { data } = $props();
+  // Props - use $props(), NOT export let
+  let { data, onchange, children } = $props();
+
+  // State - use $state(), NOT plain let
   let count = $state(0);
+  let items = $state<string[]>([]);
+
+  // Computed - use $derived(), NOT $: reactive statements
   let doubled = $derived(count * 2);
+  let total = $derived(items.reduce((a, b) => a + b, 0));
+
+  // Side effects - use $effect(), NOT $: blocks
+  $effect(() => {
+    console.log('count changed:', count);
+  });
 </script>
+
+<!-- Render children with @render, NOT <slot> -->
+{@render children?.()}
+```
+
+### WRONG - Do NOT use these Svelte 4 patterns:
+
+```svelte
+<script lang="ts">
+  export let data;              // WRONG: use $props()
+  let count = 0;                // WRONG: use $state()
+  $: doubled = count * 2;       // WRONG: use $derived()
+  $: console.log(count);        // WRONG: use $effect()
+</script>
+
+<slot />                        <!-- WRONG: use {@render children?.()} -->
+```
+
+### Event Handling:
+
+```svelte
+<!-- Svelte 5: Pass callback functions as props -->
+<Button onclick={() => handleClick()}>Click</Button>
+
+<!-- NOT: on:click directive (Svelte 4) -->
+<button on:click={handleClick}>Click</button>
 ```
 
 ## UI Components (CRITICAL)

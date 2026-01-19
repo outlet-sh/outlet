@@ -4,9 +4,9 @@ import (
 	"context"
 	"runtime"
 
-	"outlet/internal/svc"
-	"outlet/internal/types"
-	"outlet/internal/version"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
+	"github.com/outlet-sh/outlet/internal/version"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )

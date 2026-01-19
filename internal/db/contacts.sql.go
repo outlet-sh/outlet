@@ -376,6 +376,237 @@ func (q *Queries) GetContactByVerificationToken(ctx context.Context, token sql.N
 	return i, err
 }
 
+const getContactCampaignSends = `-- name: GetContactCampaignSends :many
+
+SELECT
+    cs.id,
+    cs.campaign_id,
+    ec.name as campaign_name,
+    cs.sent_at,
+    cs.opened_at,
+    cs.clicked_at
+FROM campaign_sends cs
+LEFT JOIN email_campaigns ec ON ec.id = cs.campaign_id
+WHERE cs.contact_id = ?1
+ORDER BY cs.sent_at DESC
+`
+
+type GetContactCampaignSendsRow struct {
+	ID           string         `json:"id"`
+	CampaignID   string         `json:"campaign_id"`
+	CampaignName sql.NullString `json:"campaign_name"`
+	SentAt       sql.NullString `json:"sent_at"`
+	OpenedAt     sql.NullString `json:"opened_at"`
+	ClickedAt    sql.NullString `json:"clicked_at"`
+}
+
+// ============================================
+// GDPR EXPORT QUERIES
+// ============================================
+func (q *Queries) GetContactCampaignSends(ctx context.Context, contactID string) ([]GetContactCampaignSendsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getContactCampaignSends, contactID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetContactCampaignSendsRow
+	for rows.Next() {
+		var i GetContactCampaignSendsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.CampaignName,
+			&i.SentAt,
+			&i.OpenedAt,
+			&i.ClickedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getContactEmailClicks = `-- name: GetContactEmailClicks :many
+SELECT
+    ec.id,
+    ec.link_url,
+    ec.link_name,
+    ec.clicked_at,
+    ec.user_agent,
+    ec.ip_address
+FROM email_clicks ec
+WHERE ec.contact_id = ?1
+ORDER BY ec.clicked_at DESC
+`
+
+type GetContactEmailClicksRow struct {
+	ID        string         `json:"id"`
+	LinkUrl   string         `json:"link_url"`
+	LinkName  sql.NullString `json:"link_name"`
+	ClickedAt string         `json:"clicked_at"`
+	UserAgent sql.NullString `json:"user_agent"`
+	IpAddress sql.NullString `json:"ip_address"`
+}
+
+func (q *Queries) GetContactEmailClicks(ctx context.Context, contactID sql.NullString) ([]GetContactEmailClicksRow, error) {
+	rows, err := q.db.QueryContext(ctx, getContactEmailClicks, contactID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetContactEmailClicksRow
+	for rows.Next() {
+		var i GetContactEmailClicksRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.LinkUrl,
+			&i.LinkName,
+			&i.ClickedAt,
+			&i.UserAgent,
+			&i.IpAddress,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getContactSequenceEmails = `-- name: GetContactSequenceEmails :many
+SELECT
+    eq.id,
+    et.sequence_id,
+    es.name as sequence_name,
+    et.position as step_number,
+    et.subject,
+    eq.status,
+    eq.sent_at,
+    eq.opened_at,
+    eq.clicked_at
+FROM email_queue eq
+LEFT JOIN email_templates et ON et.id = eq.template_id
+LEFT JOIN email_sequences es ON es.id = et.sequence_id
+WHERE eq.contact_id = ?1
+ORDER BY eq.sent_at DESC
+`
+
+type GetContactSequenceEmailsRow struct {
+	ID           string         `json:"id"`
+	SequenceID   sql.NullString `json:"sequence_id"`
+	SequenceName sql.NullString `json:"sequence_name"`
+	StepNumber   sql.NullInt64  `json:"step_number"`
+	Subject      sql.NullString `json:"subject"`
+	Status       sql.NullString `json:"status"`
+	SentAt       sql.NullString `json:"sent_at"`
+	OpenedAt     sql.NullString `json:"opened_at"`
+	ClickedAt    sql.NullString `json:"clicked_at"`
+}
+
+func (q *Queries) GetContactSequenceEmails(ctx context.Context, contactID sql.NullString) ([]GetContactSequenceEmailsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getContactSequenceEmails, contactID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetContactSequenceEmailsRow
+	for rows.Next() {
+		var i GetContactSequenceEmailsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SequenceID,
+			&i.SequenceName,
+			&i.StepNumber,
+			&i.Subject,
+			&i.Status,
+			&i.SentAt,
+			&i.OpenedAt,
+			&i.ClickedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getContactTransactionalSends = `-- name: GetContactTransactionalSends :many
+SELECT
+    ts.id,
+    ts.template_id,
+    te.name as template_name,
+    ts.to_email,
+    ts.status,
+    ts.opened_at,
+    ts.clicked_at,
+    ts.created_at
+FROM transactional_sends ts
+LEFT JOIN transactional_emails te ON te.id = ts.template_id
+WHERE ts.contact_id = ?1
+ORDER BY ts.created_at DESC
+`
+
+type GetContactTransactionalSendsRow struct {
+	ID           string         `json:"id"`
+	TemplateID   string         `json:"template_id"`
+	TemplateName sql.NullString `json:"template_name"`
+	ToEmail      string         `json:"to_email"`
+	Status       sql.NullString `json:"status"`
+	OpenedAt     sql.NullString `json:"opened_at"`
+	ClickedAt    sql.NullString `json:"clicked_at"`
+	CreatedAt    sql.NullString `json:"created_at"`
+}
+
+func (q *Queries) GetContactTransactionalSends(ctx context.Context, contactID sql.NullString) ([]GetContactTransactionalSendsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getContactTransactionalSends, contactID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetContactTransactionalSendsRow
+	for rows.Next() {
+		var i GetContactTransactionalSendsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TemplateID,
+			&i.TemplateName,
+			&i.ToEmail,
+			&i.Status,
+			&i.OpenedAt,
+			&i.ClickedAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getDashboardSubscriberGrowth = `-- name: GetDashboardSubscriberGrowth :one
 SELECT
     COALESCE(

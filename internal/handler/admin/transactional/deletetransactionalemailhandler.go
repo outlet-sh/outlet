@@ -3,10 +3,10 @@ package transactional
 import (
 	"net/http"
 
+	"github.com/outlet-sh/outlet/internal/logic/admin/transactional"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
-	"outlet/internal/logic/admin/transactional"
-	"outlet/internal/svc"
-	"outlet/internal/types"
 )
 
 func DeleteTransactionalEmailHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

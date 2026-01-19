@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strconv"
 
-	"outlet/internal/db"
-	"outlet/internal/middleware"
-	"outlet/internal/svc"
-	"outlet/internal/types"
-	"outlet/internal/utils"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/middleware"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
+	"github.com/outlet-sh/outlet/internal/utils"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -56,9 +56,10 @@ func (l *CreateListLogic) CreateList(req *types.CreateListRequest) (resp *types.
 	}
 
 	list, err := l.svcCtx.DB.CreateEmailList(l.ctx, db.CreateEmailListParams{
-		OrgID: orgID,
-		Name:  req.Name,
-		Slug:  req.Slug,
+		PublicID: utils.GeneratePublicID(),
+		OrgID:    orgID,
+		Name:     req.Name,
+		Slug:     req.Slug,
 		Description: sql.NullString{
 			String: req.Description,
 			Valid:  req.Description != "",
@@ -75,6 +76,7 @@ func (l *CreateListLogic) CreateList(req *types.CreateListRequest) (resp *types.
 
 	return &types.ListInfo{
 		Id:              strconv.FormatInt(list.ID, 10),
+		PublicId:        list.PublicID,
 		OrgId:           list.OrgID,
 		Name:            list.Name,
 		Slug:            list.Slug,

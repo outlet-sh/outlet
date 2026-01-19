@@ -3,9 +3,9 @@ package backup
 import (
 	"net/http"
 
+	"github.com/outlet-sh/outlet/internal/logic/admin/backup"
+	"github.com/outlet-sh/outlet/internal/svc"
 	"github.com/zeromicro/go-zero/rest/httpx"
-	"outlet/internal/logic/admin/backup"
-	"outlet/internal/svc"
 )
 
 func GetBackupSettingsHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

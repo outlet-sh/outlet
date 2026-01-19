@@ -3,7 +3,7 @@ package main
 import (
 	_ "embed"
 
-	"outlet/cmd"
+	"github.com/outlet-sh/outlet/cmd"
 
 	_ "modernc.org/sqlite"
 )

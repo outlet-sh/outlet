@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"outlet/internal/db"
-	"outlet/internal/mcp/mcpauth"
-	"outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/mcp/mcpauth"
+	"github.com/outlet-sh/outlet/internal/svc"
 
 	"golang.org/x/crypto/bcrypt"
 )

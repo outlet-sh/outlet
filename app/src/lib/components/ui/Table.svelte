@@ -3,47 +3,38 @@
 -->
 
 <script lang="ts">
-	let { children }: { children: any } = $props();
+	interface Props {
+		children: any;
+		zebra?: boolean;
+		pinRows?: boolean;
+		pinCols?: boolean;
+		size?: 'xs' | 'sm' | 'md' | 'lg';
+		class?: string;
+	}
+
+	let {
+		children,
+		zebra = false,
+		pinRows = false,
+		pinCols = false,
+		size = 'md',
+		class: className = ''
+	}: Props = $props();
+
+	const sizeClasses: Record<string, string> = {
+		xs: 'table-xs',
+		sm: 'table-sm',
+		md: '',
+		lg: 'table-lg'
+	};
+
+	let tableClass = $derived(
+		`table ${sizeClasses[size]} ${zebra ? 'table-zebra' : ''} ${pinRows ? 'table-pin-rows' : ''} ${pinCols ? 'table-pin-cols' : ''} ${className}`.trim()
+	);
 </script>
 
-<div class="table-container">
-	<table class="table">
+<div class="overflow-x-auto rounded-lg bg-base-200">
+	<table class={tableClass}>
 		{@render children()}
 	</table>
 </div>
-
-<style>
-	@reference "$src/app.css";
-	@layer components.table {
-		.table-container {
-			@apply overflow-x-auto rounded-lg bg-bg;
-			border: 1px solid var(--color-border);
-		}
-
-		.table {
-			@apply w-full text-sm;
-		}
-
-		.table :global(thead) {
-			@apply border-b;
-			border-color: var(--color-border);
-		}
-
-		.table :global(th) {
-			@apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-muted;
-		}
-
-		.table :global(td) {
-			@apply px-4 py-3 text-text;
-		}
-
-		.table :global(tr) {
-			@apply border-b;
-			border-color: color-mix(in srgb, var(--color-border) 50%, transparent);
-		}
-
-		.table :global(tbody tr:hover) {
-			@apply bg-bg-secondary;
-		}
-	}
-</style>

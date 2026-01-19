@@ -4,12 +4,13 @@
 	const { children } = $props();
 
 	const tabs = [
-		{ name: 'Users', href: '/settings/users' },
-		{ name: 'Email', href: '/settings/email' },
-		{ name: 'AI', href: '/settings/ai' },
 		{ name: 'MCP', href: '/settings/mcp' },
-		{ name: 'Google', href: '/settings/google' },
-		{ name: 'API Keys', href: '/settings/api-keys' }
+		{ name: 'API', href: '/settings/api' },
+		{ name: 'SMTP', href: '/settings/smtp' },
+		{ name: 'Integrations', href: '/settings/email' },
+		{ name: 'Users', href: '/settings/users' },
+		{ name: 'Backup', href: '/settings/backup' },
+		{ name: 'Updates', href: '/settings/updates' }
 	];
 
 	function isActive(href: string): boolean {

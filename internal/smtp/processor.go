@@ -14,8 +14,8 @@ import (
 	"net/mail"
 	"strings"
 
-	"outlet/internal/db"
-	"outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/svc"
 
 	"github.com/google/uuid"
 	"github.com/zeromicro/go-zero/core/logx"

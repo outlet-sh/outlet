@@ -83,14 +83,15 @@ func (q *Queries) CountListSubscribers(ctx context.Context, arg CountListSubscri
 
 const createEmailList = `-- name: CreateEmailList :one
 INSERT INTO email_lists (
-    org_id, name, slug, description, double_optin, created_at, updated_at
+    public_id, org_id, name, slug, description, double_optin, created_at, updated_at
 ) VALUES (
-    ?1, ?2, ?3, ?4,
-    ?5, datetime('now'), datetime('now')
-) RETURNING id, org_id, name, slug, description, double_optin, confirmation_email_subject, confirmation_email_body, created_at, updated_at, public_page_enabled, thank_you_url, confirm_redirect_url, unsubscribe_redirect_url
+    ?1, ?2, ?3, ?4, ?5,
+    ?6, datetime('now'), datetime('now')
+) RETURNING id, public_id, org_id, name, slug, description, double_optin, confirmation_email_subject, confirmation_email_body, created_at, updated_at, public_page_enabled, thank_you_url, confirm_redirect_url, unsubscribe_redirect_url, thank_you_email_enabled, thank_you_email_subject, thank_you_email_body, already_subscribed_url, goodbye_email_enabled, goodbye_email_subject, goodbye_email_body, unsubscribe_behavior, unsubscribe_scope
 `
 
 type CreateEmailListParams struct {
+	PublicID    string         `json:"public_id"`
 	OrgID       string         `json:"org_id"`
 	Name        string         `json:"name"`
 	Slug        string         `json:"slug"`
@@ -100,6 +101,7 @@ type CreateEmailListParams struct {
 
 func (q *Queries) CreateEmailList(ctx context.Context, arg CreateEmailListParams) (EmailList, error) {
 	row := q.db.QueryRowContext(ctx, createEmailList,
+		arg.PublicID,
 		arg.OrgID,
 		arg.Name,
 		arg.Slug,
@@ -109,6 +111,7 @@ func (q *Queries) CreateEmailList(ctx context.Context, arg CreateEmailListParams
 	var i EmailList
 	err := row.Scan(
 		&i.ID,
+		&i.PublicID,
 		&i.OrgID,
 		&i.Name,
 		&i.Slug,
@@ -122,6 +125,15 @@ func (q *Queries) CreateEmailList(ctx context.Context, arg CreateEmailListParams
 		&i.ThankYouUrl,
 		&i.ConfirmRedirectUrl,
 		&i.UnsubscribeRedirectUrl,
+		&i.ThankYouEmailEnabled,
+		&i.ThankYouEmailSubject,
+		&i.ThankYouEmailBody,
+		&i.AlreadySubscribedUrl,
+		&i.GoodbyeEmailEnabled,
+		&i.GoodbyeEmailSubject,
+		&i.GoodbyeEmailBody,
+		&i.UnsubscribeBehavior,
+		&i.UnsubscribeScope,
 	)
 	return i, err
 }
@@ -167,7 +179,7 @@ func (q *Queries) DeleteEmailList(ctx context.Context, id int64) error {
 }
 
 const getEmailList = `-- name: GetEmailList :one
-SELECT id, org_id, name, slug, description, double_optin, confirmation_email_subject, confirmation_email_body, created_at, updated_at, public_page_enabled, thank_you_url, confirm_redirect_url, unsubscribe_redirect_url FROM email_lists
+SELECT id, public_id, org_id, name, slug, description, double_optin, confirmation_email_subject, confirmation_email_body, created_at, updated_at, public_page_enabled, thank_you_url, confirm_redirect_url, unsubscribe_redirect_url, thank_you_email_enabled, thank_you_email_subject, thank_you_email_body, already_subscribed_url, goodbye_email_enabled, goodbye_email_subject, goodbye_email_body, unsubscribe_behavior, unsubscribe_scope FROM email_lists
 WHERE id = ?1
 `
 
@@ -176,6 +188,7 @@ func (q *Queries) GetEmailList(ctx context.Context, id int64) (EmailList, error)
 	var i EmailList
 	err := row.Scan(
 		&i.ID,
+		&i.PublicID,
 		&i.OrgID,
 		&i.Name,
 		&i.Slug,
@@ -189,12 +202,21 @@ func (q *Queries) GetEmailList(ctx context.Context, id int64) (EmailList, error)
 		&i.ThankYouUrl,
 		&i.ConfirmRedirectUrl,
 		&i.UnsubscribeRedirectUrl,
+		&i.ThankYouEmailEnabled,
+		&i.ThankYouEmailSubject,
+		&i.ThankYouEmailBody,
+		&i.AlreadySubscribedUrl,
+		&i.GoodbyeEmailEnabled,
+		&i.GoodbyeEmailSubject,
+		&i.GoodbyeEmailBody,
+		&i.UnsubscribeBehavior,
+		&i.UnsubscribeScope,
 	)
 	return i, err
 }
 
 const getEmailListByOrgAndSlug = `-- name: GetEmailListByOrgAndSlug :one
-SELECT id, org_id, name, slug, description, double_optin, confirmation_email_subject, confirmation_email_body, created_at, updated_at, public_page_enabled, thank_you_url, confirm_redirect_url, unsubscribe_redirect_url FROM email_lists
+SELECT id, public_id, org_id, name, slug, description, double_optin, confirmation_email_subject, confirmation_email_body, created_at, updated_at, public_page_enabled, thank_you_url, confirm_redirect_url, unsubscribe_redirect_url, thank_you_email_enabled, thank_you_email_subject, thank_you_email_body, already_subscribed_url, goodbye_email_enabled, goodbye_email_subject, goodbye_email_body, unsubscribe_behavior, unsubscribe_scope FROM email_lists
 WHERE org_id = ?1 AND slug = ?2
 LIMIT 1
 `
@@ -209,6 +231,7 @@ func (q *Queries) GetEmailListByOrgAndSlug(ctx context.Context, arg GetEmailList
 	var i EmailList
 	err := row.Scan(
 		&i.ID,
+		&i.PublicID,
 		&i.OrgID,
 		&i.Name,
 		&i.Slug,
@@ -222,6 +245,52 @@ func (q *Queries) GetEmailListByOrgAndSlug(ctx context.Context, arg GetEmailList
 		&i.ThankYouUrl,
 		&i.ConfirmRedirectUrl,
 		&i.UnsubscribeRedirectUrl,
+		&i.ThankYouEmailEnabled,
+		&i.ThankYouEmailSubject,
+		&i.ThankYouEmailBody,
+		&i.AlreadySubscribedUrl,
+		&i.GoodbyeEmailEnabled,
+		&i.GoodbyeEmailSubject,
+		&i.GoodbyeEmailBody,
+		&i.UnsubscribeBehavior,
+		&i.UnsubscribeScope,
+	)
+	return i, err
+}
+
+const getEmailListByPublicID = `-- name: GetEmailListByPublicID :one
+SELECT id, public_id, org_id, name, slug, description, double_optin, confirmation_email_subject, confirmation_email_body, created_at, updated_at, public_page_enabled, thank_you_url, confirm_redirect_url, unsubscribe_redirect_url, thank_you_email_enabled, thank_you_email_subject, thank_you_email_body, already_subscribed_url, goodbye_email_enabled, goodbye_email_subject, goodbye_email_body, unsubscribe_behavior, unsubscribe_scope FROM email_lists
+WHERE public_id = ?1
+`
+
+func (q *Queries) GetEmailListByPublicID(ctx context.Context, publicID string) (EmailList, error) {
+	row := q.db.QueryRowContext(ctx, getEmailListByPublicID, publicID)
+	var i EmailList
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.OrgID,
+		&i.Name,
+		&i.Slug,
+		&i.Description,
+		&i.DoubleOptin,
+		&i.ConfirmationEmailSubject,
+		&i.ConfirmationEmailBody,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.PublicPageEnabled,
+		&i.ThankYouUrl,
+		&i.ConfirmRedirectUrl,
+		&i.UnsubscribeRedirectUrl,
+		&i.ThankYouEmailEnabled,
+		&i.ThankYouEmailSubject,
+		&i.ThankYouEmailBody,
+		&i.AlreadySubscribedUrl,
+		&i.GoodbyeEmailEnabled,
+		&i.GoodbyeEmailSubject,
+		&i.GoodbyeEmailBody,
+		&i.UnsubscribeBehavior,
+		&i.UnsubscribeScope,
 	)
 	return i, err
 }
@@ -333,8 +402,219 @@ func (q *Queries) GetListSubscriberByToken(ctx context.Context, token sql.NullSt
 	return i, err
 }
 
+const getListSubscriberDetail = `-- name: GetListSubscriberDetail :one
+SELECT
+    ls.id,
+    ls.list_id,
+    ls.contact_id,
+    ls.status,
+    ls.subscribed_at,
+    ls.verified_at,
+    ls.unsubscribed_at,
+    c.email,
+    c.name,
+    c.source,
+    c.created_at as contact_created_at,
+    c.email_verified,
+    c.gdpr_consent,
+    c.gdpr_consent_at,
+    c.blocked_at,
+    -- Email stats: count from campaign_sends for this contact
+    COALESCE((SELECT COUNT(*) FROM campaign_sends cs WHERE cs.contact_id = c.id), 0) as emails_sent,
+    COALESCE((SELECT COUNT(*) FROM campaign_sends cs WHERE cs.contact_id = c.id AND cs.opened_at IS NOT NULL), 0) as emails_opened,
+    COALESCE((SELECT COUNT(*) FROM campaign_sends cs WHERE cs.contact_id = c.id AND cs.clicked_at IS NOT NULL), 0) as emails_clicked,
+    -- Last activity timestamps
+    (SELECT MAX(sent_at) FROM campaign_sends cs WHERE cs.contact_id = c.id) as last_email_at,
+    (SELECT MAX(opened_at) FROM campaign_sends cs WHERE cs.contact_id = c.id AND opened_at IS NOT NULL) as last_open_at,
+    (SELECT MAX(clicked_at) FROM campaign_sends cs WHERE cs.contact_id = c.id AND clicked_at IS NOT NULL) as last_click_at
+FROM list_subscribers ls
+JOIN contacts c ON c.id = ls.contact_id
+WHERE ls.id = ?1
+`
+
+type GetListSubscriberDetailRow struct {
+	ID               string         `json:"id"`
+	ListID           int64          `json:"list_id"`
+	ContactID        string         `json:"contact_id"`
+	Status           sql.NullString `json:"status"`
+	SubscribedAt     sql.NullString `json:"subscribed_at"`
+	VerifiedAt       sql.NullString `json:"verified_at"`
+	UnsubscribedAt   sql.NullString `json:"unsubscribed_at"`
+	Email            string         `json:"email"`
+	Name             string         `json:"name"`
+	Source           sql.NullString `json:"source"`
+	ContactCreatedAt sql.NullString `json:"contact_created_at"`
+	EmailVerified    int64          `json:"email_verified"`
+	GdprConsent      sql.NullInt64  `json:"gdpr_consent"`
+	GdprConsentAt    sql.NullString `json:"gdpr_consent_at"`
+	BlockedAt        sql.NullString `json:"blocked_at"`
+	EmailsSent       interface{}    `json:"emails_sent"`
+	EmailsOpened     interface{}    `json:"emails_opened"`
+	EmailsClicked    interface{}    `json:"emails_clicked"`
+	LastEmailAt      interface{}    `json:"last_email_at"`
+	LastOpenAt       interface{}    `json:"last_open_at"`
+	LastClickAt      interface{}    `json:"last_click_at"`
+}
+
+func (q *Queries) GetListSubscriberDetail(ctx context.Context, id string) (GetListSubscriberDetailRow, error) {
+	row := q.db.QueryRowContext(ctx, getListSubscriberDetail, id)
+	var i GetListSubscriberDetailRow
+	err := row.Scan(
+		&i.ID,
+		&i.ListID,
+		&i.ContactID,
+		&i.Status,
+		&i.SubscribedAt,
+		&i.VerifiedAt,
+		&i.UnsubscribedAt,
+		&i.Email,
+		&i.Name,
+		&i.Source,
+		&i.ContactCreatedAt,
+		&i.EmailVerified,
+		&i.GdprConsent,
+		&i.GdprConsentAt,
+		&i.BlockedAt,
+		&i.EmailsSent,
+		&i.EmailsOpened,
+		&i.EmailsClicked,
+		&i.LastEmailAt,
+		&i.LastOpenAt,
+		&i.LastClickAt,
+	)
+	return i, err
+}
+
+const getSubscriberCampaignActivity = `-- name: GetSubscriberCampaignActivity :many
+SELECT
+    cs.id,
+    cs.campaign_id,
+    ec.name as campaign_name,
+    ec.subject as campaign_subject,
+    cs.status,
+    cs.sent_at,
+    cs.opened_at,
+    cs.open_count,
+    cs.clicked_at,
+    cs.click_count
+FROM campaign_sends cs
+LEFT JOIN email_campaigns ec ON ec.id = cs.campaign_id
+WHERE cs.contact_id = ?1
+ORDER BY cs.sent_at DESC
+LIMIT 50
+`
+
+type GetSubscriberCampaignActivityRow struct {
+	ID              string         `json:"id"`
+	CampaignID      string         `json:"campaign_id"`
+	CampaignName    sql.NullString `json:"campaign_name"`
+	CampaignSubject sql.NullString `json:"campaign_subject"`
+	Status          sql.NullString `json:"status"`
+	SentAt          sql.NullString `json:"sent_at"`
+	OpenedAt        sql.NullString `json:"opened_at"`
+	OpenCount       sql.NullInt64  `json:"open_count"`
+	ClickedAt       sql.NullString `json:"clicked_at"`
+	ClickCount      sql.NullInt64  `json:"click_count"`
+}
+
+func (q *Queries) GetSubscriberCampaignActivity(ctx context.Context, contactID string) ([]GetSubscriberCampaignActivityRow, error) {
+	rows, err := q.db.QueryContext(ctx, getSubscriberCampaignActivity, contactID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetSubscriberCampaignActivityRow
+	for rows.Next() {
+		var i GetSubscriberCampaignActivityRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.CampaignName,
+			&i.CampaignSubject,
+			&i.Status,
+			&i.SentAt,
+			&i.OpenedAt,
+			&i.OpenCount,
+			&i.ClickedAt,
+			&i.ClickCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getSubscriberSequenceEnrollments = `-- name: GetSubscriberSequenceEnrollments :many
+SELECT
+    css.id,
+    css.sequence_id,
+    es.name as sequence_name,
+    css.current_position,
+    css.is_active,
+    css.started_at,
+    css.completed_at,
+    css.paused_at,
+    css.unsubscribed_at
+FROM contact_sequence_state css
+LEFT JOIN email_sequences es ON es.id = css.sequence_id
+WHERE css.contact_id = ?1
+ORDER BY css.started_at DESC
+`
+
+type GetSubscriberSequenceEnrollmentsRow struct {
+	ID              string         `json:"id"`
+	SequenceID      sql.NullString `json:"sequence_id"`
+	SequenceName    sql.NullString `json:"sequence_name"`
+	CurrentPosition sql.NullInt64  `json:"current_position"`
+	IsActive        sql.NullInt64  `json:"is_active"`
+	StartedAt       sql.NullString `json:"started_at"`
+	CompletedAt     sql.NullString `json:"completed_at"`
+	PausedAt        sql.NullString `json:"paused_at"`
+	UnsubscribedAt  sql.NullString `json:"unsubscribed_at"`
+}
+
+func (q *Queries) GetSubscriberSequenceEnrollments(ctx context.Context, contactID sql.NullString) ([]GetSubscriberSequenceEnrollmentsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getSubscriberSequenceEnrollments, contactID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetSubscriberSequenceEnrollmentsRow
+	for rows.Next() {
+		var i GetSubscriberSequenceEnrollmentsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SequenceID,
+			&i.SequenceName,
+			&i.CurrentPosition,
+			&i.IsActive,
+			&i.StartedAt,
+			&i.CompletedAt,
+			&i.PausedAt,
+			&i.UnsubscribedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listEmailLists = `-- name: ListEmailLists :many
-SELECT id, org_id, name, slug, description, double_optin, confirmation_email_subject, confirmation_email_body, created_at, updated_at, public_page_enabled, thank_you_url, confirm_redirect_url, unsubscribe_redirect_url FROM email_lists
+SELECT id, public_id, org_id, name, slug, description, double_optin, confirmation_email_subject, confirmation_email_body, created_at, updated_at, public_page_enabled, thank_you_url, confirm_redirect_url, unsubscribe_redirect_url, thank_you_email_enabled, thank_you_email_subject, thank_you_email_body, already_subscribed_url, goodbye_email_enabled, goodbye_email_subject, goodbye_email_body, unsubscribe_behavior, unsubscribe_scope FROM email_lists
 WHERE org_id = ?1
 ORDER BY created_at DESC
 `
@@ -350,6 +630,7 @@ func (q *Queries) ListEmailLists(ctx context.Context, orgID string) ([]EmailList
 		var i EmailList
 		if err := rows.Scan(
 			&i.ID,
+			&i.PublicID,
 			&i.OrgID,
 			&i.Name,
 			&i.Slug,
@@ -363,6 +644,15 @@ func (q *Queries) ListEmailLists(ctx context.Context, orgID string) ([]EmailList
 			&i.ThankYouUrl,
 			&i.ConfirmRedirectUrl,
 			&i.UnsubscribeRedirectUrl,
+			&i.ThankYouEmailEnabled,
+			&i.ThankYouEmailSubject,
+			&i.ThankYouEmailBody,
+			&i.AlreadySubscribedUrl,
+			&i.GoodbyeEmailEnabled,
+			&i.GoodbyeEmailSubject,
+			&i.GoodbyeEmailBody,
+			&i.UnsubscribeBehavior,
+			&i.UnsubscribeScope,
 		); err != nil {
 			return nil, err
 		}
@@ -573,18 +863,42 @@ SET name = COALESCE(?1, name),
     double_optin = COALESCE(?3, double_optin),
     confirmation_email_subject = COALESCE(NULLIF(?4, ''), confirmation_email_subject),
     confirmation_email_body = COALESCE(NULLIF(?5, ''), confirmation_email_body),
+    thank_you_url = COALESCE(NULLIF(?6, ''), thank_you_url),
+    confirm_redirect_url = COALESCE(NULLIF(?7, ''), confirm_redirect_url),
+    already_subscribed_url = COALESCE(NULLIF(?8, ''), already_subscribed_url),
+    unsubscribe_redirect_url = COALESCE(NULLIF(?9, ''), unsubscribe_redirect_url),
+    thank_you_email_enabled = COALESCE(?10, thank_you_email_enabled),
+    thank_you_email_subject = COALESCE(NULLIF(?11, ''), thank_you_email_subject),
+    thank_you_email_body = COALESCE(NULLIF(?12, ''), thank_you_email_body),
+    goodbye_email_enabled = COALESCE(?13, goodbye_email_enabled),
+    goodbye_email_subject = COALESCE(NULLIF(?14, ''), goodbye_email_subject),
+    goodbye_email_body = COALESCE(NULLIF(?15, ''), goodbye_email_body),
+    unsubscribe_behavior = COALESCE(NULLIF(?16, ''), unsubscribe_behavior),
+    unsubscribe_scope = COALESCE(NULLIF(?17, ''), unsubscribe_scope),
     updated_at = datetime('now')
-WHERE id = ?6
-RETURNING id, org_id, name, slug, description, double_optin, confirmation_email_subject, confirmation_email_body, created_at, updated_at, public_page_enabled, thank_you_url, confirm_redirect_url, unsubscribe_redirect_url
+WHERE id = ?18
+RETURNING id, public_id, org_id, name, slug, description, double_optin, confirmation_email_subject, confirmation_email_body, created_at, updated_at, public_page_enabled, thank_you_url, confirm_redirect_url, unsubscribe_redirect_url, thank_you_email_enabled, thank_you_email_subject, thank_you_email_body, already_subscribed_url, goodbye_email_enabled, goodbye_email_subject, goodbye_email_body, unsubscribe_behavior, unsubscribe_scope
 `
 
 type UpdateEmailListParams struct {
-	Name                string         `json:"name"`
-	Description         sql.NullString `json:"description"`
-	DoubleOptin         sql.NullInt64  `json:"double_optin"`
-	ConfirmationSubject interface{}    `json:"confirmation_subject"`
-	ConfirmationBody    interface{}    `json:"confirmation_body"`
-	ID                  int64          `json:"id"`
+	Name                   string         `json:"name"`
+	Description            sql.NullString `json:"description"`
+	DoubleOptin            sql.NullInt64  `json:"double_optin"`
+	ConfirmationSubject    interface{}    `json:"confirmation_subject"`
+	ConfirmationBody       interface{}    `json:"confirmation_body"`
+	ThankYouUrl            interface{}    `json:"thank_you_url"`
+	ConfirmRedirectUrl     interface{}    `json:"confirm_redirect_url"`
+	AlreadySubscribedUrl   interface{}    `json:"already_subscribed_url"`
+	UnsubscribeRedirectUrl interface{}    `json:"unsubscribe_redirect_url"`
+	ThankYouEmailEnabled   sql.NullInt64  `json:"thank_you_email_enabled"`
+	ThankYouEmailSubject   interface{}    `json:"thank_you_email_subject"`
+	ThankYouEmailBody      interface{}    `json:"thank_you_email_body"`
+	GoodbyeEmailEnabled    sql.NullInt64  `json:"goodbye_email_enabled"`
+	GoodbyeEmailSubject    interface{}    `json:"goodbye_email_subject"`
+	GoodbyeEmailBody       interface{}    `json:"goodbye_email_body"`
+	UnsubscribeBehavior    interface{}    `json:"unsubscribe_behavior"`
+	UnsubscribeScope       interface{}    `json:"unsubscribe_scope"`
+	ID                     int64          `json:"id"`
 }
 
 func (q *Queries) UpdateEmailList(ctx context.Context, arg UpdateEmailListParams) (EmailList, error) {
@@ -594,11 +908,24 @@ func (q *Queries) UpdateEmailList(ctx context.Context, arg UpdateEmailListParams
 		arg.DoubleOptin,
 		arg.ConfirmationSubject,
 		arg.ConfirmationBody,
+		arg.ThankYouUrl,
+		arg.ConfirmRedirectUrl,
+		arg.AlreadySubscribedUrl,
+		arg.UnsubscribeRedirectUrl,
+		arg.ThankYouEmailEnabled,
+		arg.ThankYouEmailSubject,
+		arg.ThankYouEmailBody,
+		arg.GoodbyeEmailEnabled,
+		arg.GoodbyeEmailSubject,
+		arg.GoodbyeEmailBody,
+		arg.UnsubscribeBehavior,
+		arg.UnsubscribeScope,
 		arg.ID,
 	)
 	var i EmailList
 	err := row.Scan(
 		&i.ID,
+		&i.PublicID,
 		&i.OrgID,
 		&i.Name,
 		&i.Slug,
@@ -612,6 +939,15 @@ func (q *Queries) UpdateEmailList(ctx context.Context, arg UpdateEmailListParams
 		&i.ThankYouUrl,
 		&i.ConfirmRedirectUrl,
 		&i.UnsubscribeRedirectUrl,
+		&i.ThankYouEmailEnabled,
+		&i.ThankYouEmailSubject,
+		&i.ThankYouEmailBody,
+		&i.AlreadySubscribedUrl,
+		&i.GoodbyeEmailEnabled,
+		&i.GoodbyeEmailSubject,
+		&i.GoodbyeEmailBody,
+		&i.UnsubscribeBehavior,
+		&i.UnsubscribeScope,
 	)
 	return i, err
 }

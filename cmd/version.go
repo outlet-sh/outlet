@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"runtime"
 
-	"outlet/internal/version"
+	"github.com/outlet-sh/outlet/internal/version"
 
 	"github.com/spf13/cobra"
 )

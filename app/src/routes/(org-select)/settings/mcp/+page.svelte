@@ -1,150 +1,152 @@
 <script lang="ts">
-	import { Card, Button, Input, Alert, LoadingSpinner, Badge, Modal } from '$lib/components/ui';
-	import { Copy, Plus, Trash2, Key, ChevronDown, ChevronRight, CheckCircle } from 'lucide-svelte';
-	import { listMCPAPIKeys, createMCPAPIKey, revokeMCPAPIKey, type MCPAPIKeyInfo } from '$lib/api';
-	import { onMount } from 'svelte';
+	import { Card, Button, Input, Alert, Badge } from '$lib/components/ui';
+	import { Copy, ChevronDown, ChevronRight, CheckCircle } from 'lucide-svelte';
+	import { browser } from '$app/environment';
 
-	let mcpEndpoint = 'https://outlet.sh/mcp';
+	// Dynamic endpoint based on install domain
+	let installDomain = $state(browser ? window.location.origin : 'https://your-domain.com');
+	let mcpEndpoint = $derived(`${installDomain}/mcp`);
 
-	let loading = $state(true);
-	let creating = $state(false);
 	let error = $state('');
 	let success = $state('');
 	let copiedEndpoint = $state(false);
-	let copiedKey = $state('');
-
-	let apiKeys = $state<MCPAPIKeyInfo[]>([]);
-	let showCreateModal = $state(false);
-	let newKeyName = $state('');
-	let newKeyValue = $state('');
 
 	// Setup guide state
 	let activeTab = $state<'claude-desktop' | 'chatgpt' | 'claude-code' | 'cursor'>('claude-desktop');
 
-	// MCP Tools grouped by category
+	// MCP Tools grouped by category - uses unified resource/action pattern
+	// All tools require org(resource: org, action: select) first to select an organization
 	const mcpTools = {
 		Organization: [
-			{ name: 'org_list', desc: 'List organizations you have access to' },
-			{ name: 'org_select', desc: 'Select an organization to work with' },
-			{ name: 'org_get', desc: 'Get organization settings and config' },
-			{ name: 'org_update', desc: 'Update organization settings' },
-			{ name: 'org_payment_setup', desc: 'Configure Stripe credentials' }
+			{ name: 'org(resource: org, action: list)', desc: 'List organizations you have access to' },
+			{ name: 'org(resource: org, action: select)', desc: 'Select an organization to work with' },
+			{ name: 'org(resource: org, action: get)', desc: 'Get current organization details' },
+			{ name: 'org(resource: org, action: update)', desc: 'Update organization settings' },
+			{ name: 'org(resource: org, action: create)', desc: 'Create a new organization' },
+			{ name: 'org(resource: org, action: delete)', desc: 'Delete an organization' },
+			{ name: 'org(resource: org, action: dashboard_stats)', desc: 'Get dashboard statistics' },
+			{ name: 'org(resource: domain, action: list)', desc: 'List domain identities' },
+			{ name: 'org(resource: domain, action: create)', desc: 'Add a domain for email sending' },
+			{ name: 'org(resource: domain, action: get)', desc: 'Get domain verification status' },
+			{ name: 'org(resource: domain, action: refresh)', desc: 'Refresh domain DNS verification' },
+			{ name: 'org(resource: domain, action: delete)', desc: 'Remove a domain identity' }
 		],
-		Products: [
-			{ name: 'product_create', desc: 'Create a new product' },
-			{ name: 'product_list', desc: 'List all products' },
-			{ name: 'product_update', desc: 'Update product details' }
+		'Email Lists & Sequences': [
+			{ name: 'email(resource: list, action: create)', desc: 'Create an email list' },
+			{ name: 'email(resource: list, action: list)', desc: 'List all email lists' },
+			{ name: 'email(resource: list, action: get)', desc: 'Get list details' },
+			{ name: 'email(resource: list, action: stats)', desc: 'Get list statistics' },
+			{ name: 'email(resource: list, action: subscribers)', desc: 'List subscribers in a list' },
+			{ name: 'email(resource: list, action: subscribe)', desc: 'Subscribe contact to list' },
+			{ name: 'email(resource: list, action: unsubscribe)', desc: 'Unsubscribe contact from list' },
+			{ name: 'email(resource: sequence, action: create)', desc: 'Create an email sequence' },
+			{ name: 'email(resource: sequence, action: list)', desc: 'List all sequences' },
+			{ name: 'email(resource: sequence, action: get)', desc: 'Get sequence with templates' },
+			{ name: 'email(resource: sequence, action: stats)', desc: 'Get sequence statistics' },
+			{ name: 'email(resource: template, action: create)', desc: 'Add email to sequence' },
+			{ name: 'email(resource: template, action: list)', desc: 'List sequence emails' },
+			{ name: 'email(resource: template, action: update)', desc: 'Update sequence email' }
 		],
-		Billing: [
-			{ name: 'price_create', desc: 'Create a price for a product' },
-			{ name: 'price_list', desc: 'List all prices' },
-			{ name: 'price_update', desc: 'Update price properties' },
-			{ name: 'price_delete', desc: 'Delete a price' },
-			{ name: 'payment_sync', desc: 'Sync to Stripe' }
+		'Sequence Enrollments': [
+			{ name: 'email(resource: enrollment, action: enroll)', desc: 'Enroll contact in sequence' },
+			{ name: 'email(resource: enrollment, action: unenroll)', desc: 'Remove contact from sequence' },
+			{ name: 'email(resource: enrollment, action: pause)', desc: 'Pause contact\'s sequence' },
+			{ name: 'email(resource: enrollment, action: resume)', desc: 'Resume contact\'s sequence' },
+			{ name: 'email(resource: enrollment, action: list)', desc: 'List contact enrollments' },
+			{ name: 'email(resource: entry_rule, action: create)', desc: 'Create sequence entry rule' },
+			{ name: 'email(resource: entry_rule, action: list)', desc: 'List sequence entry rules' },
+			{ name: 'email(resource: queue, action: list)', desc: 'View pending emails in queue' },
+			{ name: 'email(resource: queue, action: cancel)', desc: 'Cancel a queued email' }
 		],
-		Emails: [
-			{ name: 'email_list_create', desc: 'Create an email list' },
-			{ name: 'email_list_list', desc: 'List all email lists' },
-			{ name: 'sequence_create', desc: 'Create an email sequence' },
-			{ name: 'sequence_list', desc: 'List all sequences' },
-			{ name: 'sequence_email_add', desc: 'Add email to sequence' },
-			{ name: 'sequence_email_update', desc: 'Update sequence email' },
-			{ name: 'sequence_get', desc: 'Get sequence with emails' }
+		Campaigns: [
+			{ name: 'campaign(action: create)', desc: 'Create a new campaign' },
+			{ name: 'campaign(action: list)', desc: 'List all campaigns' },
+			{ name: 'campaign(action: get)', desc: 'Get campaign details' },
+			{ name: 'campaign(action: update)', desc: 'Update campaign content' },
+			{ name: 'campaign(action: delete)', desc: 'Delete a campaign' },
+			{ name: 'campaign(action: schedule)', desc: 'Schedule campaign for future send' },
+			{ name: 'campaign(action: send)', desc: 'Send campaign immediately' },
+			{ name: 'campaign(action: stats)', desc: 'Get campaign statistics' }
 		],
-		'LLM Gateway': [
-			{ name: 'llm_setup', desc: 'Configure LLM provider credentials' },
-			{ name: 'llm_config', desc: 'View/update LLM configuration' },
-			{ name: 'llm_pricing_get', desc: 'View model credit multipliers' },
-			{ name: 'llm_pricing_update', desc: 'Set credit multiplier overrides' },
-			{ name: 'llm_test', desc: 'Test LLM connection' },
-			{ name: 'llm_stats', desc: 'Get LLM usage statistics' }
+		Contacts: [
+			{ name: 'contact(action: create)', desc: 'Create a new contact' },
+			{ name: 'contact(action: list)', desc: 'List contacts with pagination' },
+			{ name: 'contact(action: get)', desc: 'Get contact details' },
+			{ name: 'contact(action: update)', desc: 'Update contact information' },
+			{ name: 'contact(action: add_tags)', desc: 'Add tags to contact' },
+			{ name: 'contact(action: remove_tags)', desc: 'Remove tags from contact' },
+			{ name: 'contact(action: unsubscribe)', desc: 'Unsubscribe contact globally' },
+			{ name: 'contact(action: block)', desc: 'Block a contact' },
+			{ name: 'contact(action: unblock)', desc: 'Unblock a contact' },
+			{ name: 'contact(action: activity)', desc: 'Get contact activity history' }
+		],
+		'Transactional Email': [
+			{ name: 'transactional(action: create)', desc: 'Create transactional template' },
+			{ name: 'transactional(action: list)', desc: 'List transactional templates' },
+			{ name: 'transactional(action: get)', desc: 'Get template details' },
+			{ name: 'transactional(action: update)', desc: 'Update template' },
+			{ name: 'transactional(action: delete)', desc: 'Delete template' },
+			{ name: 'transactional(action: stats)', desc: 'Get template statistics' }
+		],
+		'Email Designs': [
+			{ name: 'design(action: create)', desc: 'Create email design template' },
+			{ name: 'design(action: list)', desc: 'List all designs' },
+			{ name: 'design(action: get)', desc: 'Get design details' },
+			{ name: 'design(action: update)', desc: 'Update design' },
+			{ name: 'design(action: delete)', desc: 'Delete design' }
+		],
+		Statistics: [
+			{ name: 'stats(resource: overview, action: get)', desc: 'Get overall org statistics' },
+			{ name: 'stats(resource: email, action: get)', desc: 'Get email performance stats' },
+			{ name: 'stats(resource: contact, action: get)', desc: 'Get individual contact stats' }
+		],
+		Blocklist: [
+			{ name: 'blocklist(resource: suppression, action: list)', desc: 'List suppressed emails' },
+			{ name: 'blocklist(resource: suppression, action: add)', desc: 'Add email to suppression list' },
+			{ name: 'blocklist(resource: suppression, action: delete)', desc: 'Remove from suppression' },
+			{ name: 'blocklist(resource: suppression, action: bulk_add)', desc: 'Bulk add to suppression' },
+			{ name: 'blocklist(resource: suppression, action: clear)', desc: 'Clear suppression list' },
+			{ name: 'blocklist(resource: domain, action: list)', desc: 'List blocked domains' },
+			{ name: 'blocklist(resource: domain, action: add)', desc: 'Block a domain' },
+			{ name: 'blocklist(resource: domain, action: delete)', desc: 'Unblock domain' },
+			{ name: 'blocklist(resource: domain, action: bulk_add)', desc: 'Bulk block domains' }
+		],
+		GDPR: [
+			{ name: 'gdpr(action: lookup)', desc: 'Look up contact by email' },
+			{ name: 'gdpr(action: export)', desc: 'Export all contact data' },
+			{ name: 'gdpr(action: delete)', desc: 'Delete contact and all data' },
+			{ name: 'gdpr(action: get_consent)', desc: 'Get contact consent status' },
+			{ name: 'gdpr(action: update_consent)', desc: 'Update consent preferences' }
+		],
+		Webhooks: [
+			{ name: 'webhook(action: create)', desc: 'Register a webhook endpoint' },
+			{ name: 'webhook(action: list)', desc: 'List all webhooks' },
+			{ name: 'webhook(action: get)', desc: 'Get webhook details' },
+			{ name: 'webhook(action: update)', desc: 'Update webhook configuration' },
+			{ name: 'webhook(action: delete)', desc: 'Delete webhook' },
+			{ name: 'webhook(action: test)', desc: 'Send test webhook' },
+			{ name: 'webhook(action: logs)', desc: 'View webhook delivery logs' }
 		]
 	};
 
 	let expandedCategories = $state<Record<string, boolean>>({
 		Organization: true,
-		Products: false,
-		Billing: false,
-		Emails: false,
-		'LLM Gateway': false
+		'Email Lists & Sequences': false,
+		'Sequence Enrollments': false,
+		Campaigns: false,
+		Contacts: false,
+		'Transactional Email': false,
+		'Email Designs': false,
+		Statistics: false,
+		Blocklist: false,
+		GDPR: false,
+		Webhooks: false
 	});
 
-	onMount(async () => {
-		await loadKeys();
-	});
-
-	async function loadKeys() {
-		loading = true;
-		error = '';
-		try {
-			const response = await listMCPAPIKeys();
-			apiKeys = response.keys || [];
-		} catch (err: any) {
-			// No keys yet is ok
-			console.log('No MCP keys yet');
-		} finally {
-			loading = false;
-		}
-	}
-
-	async function createKey() {
-		if (!newKeyName.trim()) {
-			error = 'Please enter a name for the API key';
-			return;
-		}
-
-		creating = true;
-		error = '';
-		try {
-			const response = await createMCPAPIKey({ name: newKeyName.trim() });
-			newKeyValue = response.key || '';
-			await loadKeys();
-			success = "API key created successfully. Copy it now - you won't be able to see it again!";
-		} catch (err: any) {
-			error = err.message || 'Failed to create API key';
-		} finally {
-			creating = false;
-		}
-	}
-
-	async function revokeKey(id: string) {
-		if (!confirm('Are you sure you want to revoke this API key? This cannot be undone.')) {
-			return;
-		}
-
-		try {
-			await revokeMCPAPIKey({}, id);
-			await loadKeys();
-			success = 'API key revoked';
-		} catch (err: any) {
-			error = err.message || 'Failed to revoke API key';
-		}
-	}
-
-	function copyToClipboard(text: string, type: 'endpoint' | 'key') {
-		navigator.clipboard.writeText(text);
-		if (type === 'endpoint') {
-			copiedEndpoint = true;
-			setTimeout(() => (copiedEndpoint = false), 2000);
-		} else {
-			copiedKey = text;
-			setTimeout(() => (copiedKey = ''), 2000);
-		}
-	}
-
-	function closeCreateModal() {
-		showCreateModal = false;
-		newKeyName = '';
-		newKeyValue = '';
-	}
-
-	function formatDate(dateStr: string | null | undefined): string {
-		if (!dateStr) return 'Never';
-		return new Date(dateStr).toLocaleDateString('en-US', {
-			month: 'short',
-			day: 'numeric',
-			year: 'numeric'
-		});
+	function copyEndpoint() {
+		navigator.clipboard.writeText(mcpEndpoint);
+		copiedEndpoint = true;
+		setTimeout(() => (copiedEndpoint = false), 2000);
 	}
 
 	function toggleCategory(category: string) {
@@ -188,7 +190,7 @@
 			<label class="form-label">Your MCP Server URL</label>
 			<div class="flex gap-2">
 				<Input type="text" value={mcpEndpoint} readonly class="font-mono text-sm" />
-				<Button type="secondary" onclick={() => copyToClipboard(mcpEndpoint, 'endpoint')}>
+				<Button type="secondary" onclick={copyEndpoint}>
 					{#if copiedEndpoint}
 						<CheckCircle class="h-4 w-4 text-green-500" />
 					{:else}
@@ -196,62 +198,11 @@
 					{/if}
 				</Button>
 			</div>
+			<p class="mt-2 text-sm text-text-muted">
+				MCP uses OAuth for authentication. When connecting, your AI assistant will open a browser
+				window for you to log in.
+			</p>
 		</div>
-	</Card>
-
-	<!-- API Keys -->
-	<Card>
-		<div class="flex items-center justify-between">
-			<div>
-				<h2 class="text-lg font-medium text-text mb-1">API Keys</h2>
-				<p class="text-sm text-text-muted">Manage API keys for MCP authentication</p>
-			</div>
-			<Button type="primary" size="sm" onclick={() => (showCreateModal = true)}>
-				<Plus class="mr-1.5 h-4 w-4" />
-				Create Key
-			</Button>
-		</div>
-
-		{#if loading}
-			<div class="flex justify-center py-8">
-				<LoadingSpinner />
-			</div>
-		{:else if apiKeys.length === 0}
-			<div class="mt-6 text-center py-8 text-text-muted">
-				<Key class="mx-auto h-12 w-12 opacity-50" />
-				<p class="mt-2">No API keys yet</p>
-				<p class="text-sm">Create an API key to connect AI assistants</p>
-			</div>
-		{:else}
-			<div class="mt-6 overflow-x-auto">
-				<table class="w-full text-sm">
-					<thead>
-						<tr class="border-b border-border">
-							<th class="text-left py-2 font-medium text-text-muted">Name</th>
-							<th class="text-left py-2 font-medium text-text-muted">Key</th>
-							<th class="text-left py-2 font-medium text-text-muted">Last Used</th>
-							<th class="text-left py-2 font-medium text-text-muted">Created</th>
-							<th class="text-right py-2 font-medium text-text-muted">Actions</th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each apiKeys as key (key.id)}
-							<tr class="border-b border-border/50">
-								<td class="py-3 font-medium">{key.name}</td>
-								<td class="py-3 font-mono text-text-muted">{key.key_prefix}...</td>
-								<td class="py-3 text-text-muted">{formatDate(key.last_used)}</td>
-								<td class="py-3 text-text-muted">{formatDate(key.created_at)}</td>
-								<td class="py-3 text-right">
-									<Button type="danger" size="icon" onclick={() => revokeKey(key.id)}>
-										<Trash2 class="h-4 w-4" />
-									</Button>
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			</div>
-		{/if}
 	</Card>
 
 	<!-- Setup Instructions -->
@@ -304,19 +255,13 @@
 				<pre class="bg-surface-tertiary p-3 rounded text-sm overflow-x-auto font-mono">{`{
   "mcpServers": {
     "outlet": {
-      "url": "${mcpEndpoint}",
-      "oauth": {
-        "authorize_url": "https://outlet.sh/oauth/authorize",
-        "token_url": "https://outlet.sh/oauth/token",
-        "client_id": "claude-desktop",
-        "scopes": ["mcp:full"]
-      }
+      "url": "${mcpEndpoint}"
     }
   }
 }`}</pre>
 				<p class="mt-3 text-sm text-text-muted">
 					When you connect, Claude Desktop will open a browser window for you to log in and
-					authorize access.
+					authorize access. OAuth discovery is handled automatically.
 				</p>
 			{:else if activeTab === 'chatgpt'}
 				<div class="flex items-center gap-2 mb-3">
@@ -334,68 +279,46 @@
 							>{mcpEndpoint}</code
 						>
 					</li>
-					<li>Select <strong>OAuth</strong> for authentication</li>
-					<li>
-						Use authorize URL: <code class="bg-surface-tertiary px-1 rounded"
-							>https://outlet.sh/oauth/authorize</code
-						>
-					</li>
-					<li>
-						Use token URL: <code class="bg-surface-tertiary px-1 rounded"
-							>https://outlet.sh/oauth/token</code
-						>
-					</li>
 				</ol>
 				<p class="mt-3 text-sm text-text-muted">
-					ChatGPT will prompt you to authorize access when first connecting.
+					ChatGPT will prompt you to authorize access when first connecting. OAuth is discovered automatically from the server.
 				</p>
 			{:else if activeTab === 'claude-code'}
 				<div class="flex items-center gap-2 mb-3">
 					<h4 class="font-medium text-text">Claude Code Setup</h4>
-					<Badge type="neutral" size="sm">API Key</Badge>
+					<Badge type="success" size="sm">OAuth</Badge>
 				</div>
 				<p class="text-sm text-text-muted mb-3">
-					Claude Code (the CLI) uses API keys for authentication. Create an API key above, then add
-					to your <code class="bg-surface-tertiary px-1 rounded">~/.claude/settings.json</code>:
+					Add the following to your <code class="bg-surface-tertiary px-1 rounded">~/.claude/settings.json</code>:
 				</p>
 				<pre class="bg-surface-tertiary p-3 rounded text-sm overflow-x-auto font-mono">{`{
   "mcpServers": {
     "outlet": {
-      "url": "${mcpEndpoint}",
-      "headers": {
-        "Authorization": "Bearer YOUR_API_KEY"
-      }
+      "url": "${mcpEndpoint}"
     }
   }
 }`}</pre>
 				<p class="mt-3 text-sm text-text-muted">
-					Replace <code class="bg-surface-tertiary px-1 rounded">YOUR_API_KEY</code> with an API key created
-					above.
+					Claude Code will open a browser window for you to log in and authorize access.
 				</p>
 			{:else if activeTab === 'cursor'}
 				<div class="flex items-center gap-2 mb-3">
 					<h4 class="font-medium text-text">Cursor / Windsurf / VS Code Setup</h4>
-					<Badge type="neutral" size="sm">API Key</Badge>
+					<Badge type="success" size="sm">OAuth</Badge>
 				</div>
 				<p class="text-sm text-text-muted mb-3">
-					IDE-based tools use API keys for authentication. Create an API key above, then add to your
-					IDE config:
+					Add to your IDE's MCP configuration:
 				</p>
 				<pre class="bg-surface-tertiary p-3 rounded text-sm overflow-x-auto font-mono">{`{
   "mcp.servers": [
     {
       "name": "Outlet",
-      "url": "${mcpEndpoint}",
-      "auth": {
-        "type": "bearer",
-        "token": "YOUR_API_KEY"
-      }
+      "url": "${mcpEndpoint}"
     }
   ]
 }`}</pre>
 				<p class="mt-3 text-sm text-text-muted">
-					Replace <code class="bg-surface-tertiary px-1 rounded">YOUR_API_KEY</code> with an API key created
-					above. Configuration file location varies by IDE.
+					Your IDE will open a browser window for you to log in and authorize access. Configuration file location varies by IDE.
 				</p>
 			{/if}
 		</div>
@@ -444,55 +367,3 @@
 		</div>
 	</Card>
 </div>
-
-<!-- Create Key Modal -->
-<Modal bind:show={showCreateModal} title="Create API Key" onclose={closeCreateModal}>
-	{#if newKeyValue}
-		<div class="space-y-4">
-			<Alert type="warning" title="Save your API key">
-				<p>This is the only time you'll see this key. Copy it now and store it securely.</p>
-			</Alert>
-			<div>
-				<label class="form-label">API Key</label>
-				<div class="flex gap-2">
-					<Input type="text" value={newKeyValue} readonly class="font-mono text-sm" />
-					<Button type="secondary" onclick={() => copyToClipboard(newKeyValue, 'key')}>
-						{#if copiedKey === newKeyValue}
-							<CheckCircle class="h-4 w-4 text-green-500" />
-						{:else}
-							<Copy class="h-4 w-4" />
-						{/if}
-					</Button>
-				</div>
-			</div>
-		</div>
-
-		{#snippet footer()}
-			<div class="flex justify-end">
-				<Button type="primary" onclick={closeCreateModal}>Done</Button>
-			</div>
-		{/snippet}
-	{:else}
-		<div class="space-y-4">
-			<div>
-				<label for="key-name" class="form-label">Key Name</label>
-				<Input
-					type="text"
-					id="key-name"
-					bind:value={newKeyName}
-					placeholder="e.g., Claude Code, My ChatGPT"
-				/>
-				<p class="mt-1 text-xs text-text-muted">A descriptive name to identify this key</p>
-			</div>
-		</div>
-
-		{#snippet footer()}
-			<div class="flex justify-end gap-3">
-				<Button type="secondary" onclick={closeCreateModal}>Cancel</Button>
-				<Button type="primary" onclick={createKey} disabled={creating || !newKeyName.trim()}>
-					{creating ? 'Creating...' : 'Create Key'}
-				</Button>
-			</div>
-		{/snippet}
-	{/if}
-</Modal>

@@ -6,116 +6,30 @@
 <script lang="ts">
 	import Tooltip from './Tooltip.svelte';
 
-	// Status config based on backend shared_models.py status definitions
-	// Using semantic colors for light theme
+	// Status config based on backend status definitions - maps to DaisyUI badge variants
 	const statusConfig = {
 		// Collection statuses
-		"ACTIVE": {
-			color: "bg-success",
-			textColor: "text-success",
-			bgColor: "bg-success/10",
-			label: "Active"
-		},
-		"active": {
-			color: "bg-success",
-			textColor: "text-success",
-			bgColor: "bg-success/10",
-			label: "Active"
-		},
-		"ERROR": {
-			color: "bg-error",
-			textColor: "text-error",
-			bgColor: "bg-error/10",
-			label: "Error"
-		},
-		"error": {
-			color: "bg-error",
-			textColor: "text-error",
-			bgColor: "bg-error/10",
-			label: "Error"
-		},
-		"NEEDS SOURCE": {
-			color: "bg-text-muted",
-			textColor: "text-text-secondary",
-			bgColor: "bg-bg-secondary",
-			label: "Needs Source"
-		},
-		"needs source": {
-			color: "bg-text-muted",
-			textColor: "text-text-secondary",
-			bgColor: "bg-bg-secondary",
-			label: "Needs Source"
-		},
+		"ACTIVE": { variant: "badge-success", label: "Active" },
+		"active": { variant: "badge-success", label: "Active" },
+		"ERROR": { variant: "badge-error", label: "Error" },
+		"error": { variant: "badge-error", label: "Error" },
+		"NEEDS SOURCE": { variant: "badge-ghost", label: "Needs Source" },
+		"needs source": { variant: "badge-ghost", label: "Needs Source" },
 		// Source connection statuses
-		"IN_PROGRESS": {
-			color: "bg-info",
-			textColor: "text-info",
-			bgColor: "bg-info/10",
-			label: "Syncing"
-		},
-		"in_progress": {
-			color: "bg-info",
-			textColor: "text-info",
-			bgColor: "bg-info/10",
-			label: "In Progress"
-		},
-		"failing": {
-			color: "bg-error",
-			textColor: "text-error",
-			bgColor: "bg-error/10",
-			label: "Failing"
-		},
+		"IN_PROGRESS": { variant: "badge-info", label: "Syncing" },
+		"in_progress": { variant: "badge-info", label: "In Progress" },
+		"failing": { variant: "badge-error", label: "Failing" },
 		// Sync job statuses
-		"pending": {
-			color: "bg-warning",
-			textColor: "text-warning",
-			bgColor: "bg-warning/10",
-			label: "Pending"
-		},
-		"completed": {
-			color: "bg-success",
-			textColor: "text-success",
-			bgColor: "bg-success/10",
-			label: "Completed"
-		},
-		"failed": {
-			color: "bg-error",
-			textColor: "text-error",
-			bgColor: "bg-error/10",
-			label: "Failed"
-		},
-		"cancelled": {
-			color: "bg-error",
-			textColor: "text-error",
-			bgColor: "bg-error/10",
-			label: "Cancelled"
-		},
+		"pending": { variant: "badge-warning", label: "Pending" },
+		"completed": { variant: "badge-success", label: "Completed" },
+		"failed": { variant: "badge-error", label: "Failed" },
+		"cancelled": { variant: "badge-error", label: "Cancelled" },
 		// API Key statuses
-		"EXPIRED": {
-			color: "bg-error",
-			textColor: "text-error",
-			bgColor: "bg-error/10",
-			label: "Expired"
-		},
-		"EXPIRING_SOON": {
-			color: "bg-warning",
-			textColor: "text-warning",
-			bgColor: "bg-warning/10",
-			label: "Expiring Soon"
-		},
-		"UNKNOWN": {
-			color: "bg-text-muted",
-			textColor: "text-text-secondary",
-			bgColor: "bg-bg-secondary",
-			label: "Unknown"
-		},
+		"EXPIRED": { variant: "badge-error", label: "Expired" },
+		"EXPIRING_SOON": { variant: "badge-warning", label: "Expiring Soon" },
+		"UNKNOWN": { variant: "badge-ghost", label: "Unknown" },
 		// Fallback for unknown statuses
-		"default": {
-			color: "bg-text-muted",
-			textColor: "text-text-secondary",
-			bgColor: "bg-bg-secondary",
-			label: "Unknown"
-		}
+		"default": { variant: "badge-ghost", label: "Unknown" }
 	};
 
 	type TooltipContext = "collection" | "apiKey";
@@ -193,25 +107,14 @@
 
 {#if showTooltip && description}
 	<Tooltip content={description}>
-		<div class="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full {config.bgColor} {className}">
-			<div class="h-2 w-2 rounded-full {config.color}"></div>
-			<span class="text-xs font-medium {config.textColor}">
-				{config.label}
-			</span>
+		<div class="badge badge-sm {config.variant} gap-1.5 {className}">
+			<div class="h-2 w-2 rounded-full bg-current opacity-70"></div>
+			<span>{config.label}</span>
 		</div>
 	</Tooltip>
 {:else}
-	<div class="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full {config.bgColor} {className}">
-		<div class="h-2 w-2 rounded-full {config.color}"></div>
-		<span class="text-xs font-medium {config.textColor}">
-			{config.label}
-		</span>
+	<div class="badge badge-sm {config.variant} gap-1.5 {className}">
+		<div class="h-2 w-2 rounded-full bg-current opacity-70"></div>
+		<span>{config.label}</span>
 	</div>
 {/if}
-
-<style>
-	@reference "$src/app.css";
-	@layer components.status-badge {
-		/* Status badge uses utility classes */
-	}
-</style>

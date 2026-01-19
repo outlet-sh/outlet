@@ -5,13 +5,14 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strings"
 
-	"outlet/internal/db"
-	"outlet/internal/middleware"
-	"outlet/internal/svc"
-	"outlet/internal/types"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/middleware"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
 
 	"github.com/google/uuid"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -110,6 +111,24 @@ func (l *SubscribeToListLogic) SubscribeToList(req *types.SubscribeRequest) (res
 		if subscriber.Status.String == "active" {
 			l.Infof("Already subscribed: %s to list %s", req.Email, req.Slug)
 			return &types.Response{Success: true, Message: "Already subscribed"}, nil
+		}
+
+		// Save custom field values if provided
+		if len(req.CustomFields) > 0 {
+			valuesJSON, err := json.Marshal(req.CustomFields)
+			if err != nil {
+				l.Errorf("Failed to marshal custom fields: %v", err)
+			} else {
+				err = l.svcCtx.DB.BulkCreateCustomFieldValues(l.ctx, db.BulkCreateCustomFieldValuesParams{
+					SubscriberID: subscriber.ID,
+					ValuesJson:   string(valuesJSON),
+					ListID:       list.ID,
+				})
+				if err != nil {
+					l.Errorf("Failed to save custom field values: %v", err)
+					// Non-fatal error - subscription still succeeded
+				}
+			}
 		}
 
 		// Capture values for goroutine
@@ -230,7 +249,7 @@ func (l *SubscribeToListLogic) SubscribeToList(req *types.SubscribeRequest) (res
 	}
 
 	// Add subscriber to list (immediate active)
-	_, err = l.svcCtx.DB.SubscribeToList(l.ctx, db.SubscribeToListParams{
+	subscriber, err := l.svcCtx.DB.SubscribeToList(l.ctx, db.SubscribeToListParams{
 		ID:        uuid.New().String(),
 		ListID:    list.ID,
 		ContactID: contact.ID,
@@ -238,6 +257,24 @@ func (l *SubscribeToListLogic) SubscribeToList(req *types.SubscribeRequest) (res
 	if err != nil {
 		l.Errorf("Failed to add subscriber: %v", err)
 		return &types.Response{Success: false, Message: "Failed to subscribe"}, nil
+	}
+
+	// Save custom field values if provided
+	if len(req.CustomFields) > 0 {
+		valuesJSON, err := json.Marshal(req.CustomFields)
+		if err != nil {
+			l.Errorf("Failed to marshal custom fields: %v", err)
+		} else {
+			err = l.svcCtx.DB.BulkCreateCustomFieldValues(l.ctx, db.BulkCreateCustomFieldValuesParams{
+				SubscriberID: subscriber.ID,
+				ValuesJson:   string(valuesJSON),
+				ListID:       list.ID,
+			})
+			if err != nil {
+				l.Errorf("Failed to save custom field values: %v", err)
+				// Non-fatal error - subscription still succeeded
+			}
+		}
 	}
 
 	l.Infof("Subscribed: org=%s email=%s list=%s", orgID, req.Email, req.Slug)

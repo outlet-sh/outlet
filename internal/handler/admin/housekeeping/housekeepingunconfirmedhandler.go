@@ -3,10 +3,10 @@ package housekeeping
 import (
 	"net/http"
 
+	"github.com/outlet-sh/outlet/internal/logic/admin/housekeeping"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
-	"outlet/internal/logic/admin/housekeeping"
-	"outlet/internal/svc"
-	"outlet/internal/types"
 )
 
 func HousekeepingUnconfirmedHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

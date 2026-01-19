@@ -4,11 +4,11 @@ import (
 	"context"
 	"strconv"
 
-	"outlet/internal/db"
-	"outlet/internal/middleware"
-	"outlet/internal/svc"
-	"outlet/internal/types"
-	"outlet/internal/utils"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/middleware"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
+	"github.com/outlet-sh/outlet/internal/utils"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -55,6 +55,7 @@ func (l *ListListsLogic) ListLists() (resp *types.ListListsResponse, err error) 
 
 		lists = append(lists, types.ListInfo{
 			Id:              strconv.FormatInt(row.ID, 10),
+			PublicId:        row.PublicID,
 			OrgId:           row.OrgID,
 			Name:            row.Name,
 			Slug:            row.Slug,

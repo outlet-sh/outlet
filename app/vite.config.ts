@@ -1,51 +1,51 @@
-import tailwindcss from '@tailwindcss/vite';
-import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
-import { fileURLToPath } from 'url';
-import path from 'path';
-/// <reference types="vitest" />
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import { sveltekit } from '@sveltejs/kit/vite';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
 
 	resolve: {
 		alias: {
-			$src: path.resolve(__dirname, 'src')
+			$src: 'src'
 		}
 	},
-
-	optimizeDeps: {
-		include: []
-	},
-
-	build: {
-		rollupOptions: {}
-	},
-
-	define: {
-		global: 'globalThis'
-	},
-
-
 
 	server: {
-		fs: {
-			allow: ['..']
-		},
+		host: '0.0.0.0',
 		proxy: {
+			// Proxy API requests to Go backend during development
 			'/api': {
-				target: 'http://localhost:9888',
-				changeOrigin: true,
-				ws: true
+				target: 'http://localhost:20202',
+				changeOrigin: true
+			},
+			// Proxy health check
+			'/health': {
+				target: 'http://localhost:20202',
+				changeOrigin: true
+			},
+			// Proxy subscription forms
+			'/s/': {
+				target: 'http://localhost:20202',
+				changeOrigin: true
+			},
+			// Proxy subscription forms
+			'/confirm/': {
+				target: 'http://localhost:20202',
+				changeOrigin: true
+			},
+			// Proxy subscription forms
+			'/u/': {
+				target: 'http://localhost:20202',
+				changeOrigin: true
+			},
+
+			// Proxy WebSocket connections
+			'/ws': {
+				target: 'ws://localhost:20202',
+				ws: true,
+				changeOrigin: true
 			}
 		}
-	},
-
-	test: {
-		environment: 'jsdom',
-		globals: true,
-		setupFiles: ['src/test/setup.ts']
 	}
 });

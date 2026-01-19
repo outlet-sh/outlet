@@ -4,35 +4,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Outlet.sh is a self-hosted email platform (marketing + transactional) built with go-zero framework and SvelteKit. Single binary deployment with embedded frontend, SQLite database (WAL mode), and MCP (Model Context Protocol) integration for AI assistants.
+Outlet is a self-hosted email platform (marketing + transactional) built with go-zero framework and SvelteKit. Single binary deployment with embedded frontend, SQLite database (WAL mode), and MCP (Model Context Protocol) integration for AI assistants.
+
+**Module**: `github.com/outlet-sh/outlet`
 
 ## Commands
 
 ### Backend (Go)
 ```bash
 make build        # Build main binary to bin/outlet
-make run          # Build and run
+make run          # Build and run (uses air for hot reload)
 make test         # Run Go tests
 make gen          # Regenerate API code from outlet.api (NEVER run goctl directly)
 make sqlc-gen     # Generate type-safe Go code from SQL queries
-make gen-all      # Generate all code (API + sqlc + proto)
+make gen-sdk      # Generate SDK clients (TypeScript, Python, Go, PHP)
 ```
 
 ### Frontend (SvelteKit)
 ```bash
 cd app
-pnpm dev          # Start dev server (port 5173)
+pnpm dev          # Start dev server (proxies to Go backend on :8888)
 pnpm build        # Build static site to build/
 pnpm check        # Type check
 pnpm test         # Run tests with Vitest
-```
-
-### Database (SQLite)
-Database migrations run automatically on startup via embedded Goose migrations. No manual migration commands needed.
-
-To manually interact with the database:
-```bash
-sqlite3 ./data/outlet.db   # Open SQLite CLI
 ```
 
 ### Running Tests
@@ -47,7 +41,7 @@ cd app && pnpm test                     # Frontend tests
 
 ### Go Backend Structure
 ```
-outlet.go              # Main entry point - embedded config, HTTP/HTTPS/gRPC servers
+outlet.go              # Main entry point - embedded config, HTTP/HTTPS servers
 outlet.api             # API definition file - defines all routes and types
 internal/
 ├── config/            # Configuration structs (loaded from etc/outlet.yaml)
@@ -60,21 +54,21 @@ internal/
 ├── types/             # Auto-generated request/response types (DO NOT EDIT)
 ├── svc/               # ServiceContext - dependency injection container
 ├── db/                # Database layer
-│   ├── migrations/    # Goose SQL migrations (auto-run on startup)
+│   ├── migrations/    # Embedded SQL migrations (auto-run on startup)
 │   ├── queries/       # SQL query files for sqlc
 │   └── *.sql.go       # sqlc-generated query code
 ├── services/          # Domain services
 │   ├── email/         # Email sending (SMTP, AWS SES)
 │   ├── crypto/        # Credential encryption
 │   ├── emailval/      # Email validation
-│   ├── rules/         # Business rules engine
 │   ├── tracking/      # Email open/click tracking
 │   └── webhook/       # Outbound webhook dispatcher
 ├── mcp/               # MCP server for AI integrations
 ├── middleware/        # Auth, rate limiting, API key validation
 ├── events/            # Event bus for internal pub/sub
 ├── workers/           # Background workers (email sending, retries)
-└── webhook/           # Inbound webhook handlers
+├── errorx/            # Custom error types with JSON responses
+└── smtp/              # SMTP ingress server
 ```
 
 ### Frontend Structure
@@ -83,46 +77,87 @@ See `app/CLAUDE.md` for detailed frontend guidance.
 ### Key Patterns
 
 **API Code Generation**: The `outlet.api` file defines all routes and types. Running `make gen` generates:
-- `internal/handler/` - HTTP handlers
-- `internal/types/` - Request/response structs
+- `internal/handler/` - HTTP handlers (DO NOT EDIT)
+- `internal/types/` - Request/response structs (DO NOT EDIT)
 - `app/src/lib/api/generate/` - TypeScript client
 
 **Database Layer**: sqlc generates type-safe Go from SQL:
 - Write queries in `internal/db/queries/*.sql`
 - Run `make sqlc-gen` to regenerate `internal/db/*.sql.go`
-- Migrations in `internal/db/migrations/` auto-run on startup
+- Migrations in `internal/db/migrations/` auto-run on startup (numbered SQL files)
 
 **ServiceContext**: All services are initialized in `internal/svc/servicecontext.go` and passed to handlers via dependency injection.
 
-**Production Mode**: In production, the binary:
+**Error Handling**: All API errors return JSON via `internal/errorx/errorx.go`. Use `errorx.NewBadRequestError()`, `errorx.NewNotFoundError()`, etc.
+
+**Production Mode**: When `ProductionMode: true` in config:
 - Serves Let's Encrypt HTTPS on :443
 - Embeds the SvelteKit static build
 - Redirects www → non-www, HTTP → HTTPS
-- Routes /api/*, /sdk/*, /mcp to go-zero backend
 
-**Development Mode**: When `PRODUCTION_MODE` is unset:
-- Go backend on port 9888
-- Frontend dev server on port 5173 (run separately)
-- gRPC on port 9889
+**Development Mode**: When `ProductionMode: false`:
+- Go backend on port 8888 (air hot reloads automatically)
+- Frontend dev server on port 5173 (run separately with `cd app && pnpm dev`)
 
 ## Critical Rules
 
 1. **NEVER run goctl commands directly** - Always use `make gen` to regenerate API code
 2. **Use pnpm** for all frontend package management
-3. **No hot reload needed** - Project uses air for Go hot reloading
+3. **No restart needed** - Project uses air for Go hot reloading
 4. **Always build before pushing** - Run `make build` and `cd app && pnpm build`
 5. **Idiomatic Go only** - One function with parameters, not multiple function variants
 6. **Styles in app.css only** - No inline styles or `<style>` blocks in Svelte files
 7. **Minimal changes** - Only modify code directly related to the task
 8. **Never assume code is unused** - Code may be called from frontend, other services, or future features
+9. **Always return JSON** - All API responses must be valid JSON, including errors
+10. **Svelte 5 ONLY** - This is a Svelte 5 project. NEVER use Svelte 4 syntax.
+
+## Svelte 5 Syntax (IMPORTANT)
+
+This project uses **Svelte 5 with runes**. Do NOT use Svelte 4 patterns.
+
+```svelte
+<!-- CORRECT: Svelte 5 -->
+<script lang="ts">
+  let { data, onchange } = $props();     // Props via $props()
+  let count = $state(0);                  // Reactive state via $state()
+  let doubled = $derived(count * 2);      // Computed via $derived()
+
+  $effect(() => {                         // Side effects via $effect()
+    console.log(count);
+  });
+</script>
+
+<!-- WRONG: Svelte 4 (DO NOT USE) -->
+<script lang="ts">
+  export let data;                        // NO: old prop syntax
+  let count = 0;                          // NO: not reactive
+  $: doubled = count * 2;                 // NO: reactive statements
+</script>
+```
+
+**Key differences:**
+- Props: `let { prop } = $props()` NOT `export let prop`
+- State: `let x = $state(0)` NOT `let x = 0`
+- Computed: `let y = $derived(x * 2)` NOT `$: y = x * 2`
+- Effects: `$effect(() => {})` NOT `$: { }`
+- Event handlers: Pass functions as props, not `createEventDispatcher`
 
 ## Environment Configuration
 
-Configuration is embedded from `etc/outlet.yaml` with environment variable expansion. Key variables:
-- `DATABASE_PATH` - SQLite database path (default: `./data/outlet.db`)
-- `JWT_SECRET`, `JWT_REFRESH_SECRET` - Auth tokens
-- `ANTHROPIC_API_KEY` - Claude AI integration
-- `ENCRYPTION_KEY` - 32-byte hex key for credential encryption
-- `PRODUCTION_MODE` - Enable HTTPS/Let's Encrypt
-- `APP_DOMAIN` - Domain for production (e.g., outlet.sh)
-- `ADMIN_EMAIL`, `ADMIN_PASSWORD` - Super admin seeding on first startup
+Configuration loaded from `etc/outlet.yaml` or environment variables. Key settings:
+- `DATABASE_PATH` / `Database.Path` - SQLite database path (default: `./data/outlet.db`)
+- `JWT_SECRET` / `Auth.AccessSecret` - JWT access token secret
+- `JWT_REFRESH_SECRET` / `Auth.RefreshSecret` - JWT refresh token secret
+- `PRODUCTION_MODE` / `App.ProductionMode` - Enable HTTPS/Let's Encrypt
+- `APP_DOMAIN` / `App.Domain` - Domain for production
+
+go-zero config uses struct tags:
+- `json:",optional"` - field not required
+- `json:",default=value"` - default value if missing
+
+## First Run Setup
+
+On first launch, navigate to `/setup` to:
+1. Create the admin account (email/password)
+2. Configure SMTP settings for email sending

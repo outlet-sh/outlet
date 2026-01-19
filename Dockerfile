@@ -3,7 +3,7 @@
 # Usage: docker build -t outlet .
 
 # Development stage with Air for hot reloading
-FROM golang:1.24-alpine AS development
+FROM golang:1.25-alpine AS development
 
 WORKDIR /app
 
@@ -27,7 +27,7 @@ COPY . .
 RUN cd app && CI=true pnpm install && pnpm run build
 
 # Expose port
-EXPOSE 9888
+EXPOSE 8888
 
 # Use Air for hot reloading in development
 CMD ["air"]
@@ -53,7 +53,7 @@ COPY app/svelte.config.js app/vite.config.ts app/tsconfig.json ./
 RUN pnpm exec svelte-kit sync && pnpm run build
 
 # Production builder stage
-FROM golang:1.24-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
@@ -66,6 +66,7 @@ RUN go mod download
 
 # Copy Go source code and internal packages
 COPY *.go ./
+COPY cmd/ ./cmd/
 COPY internal/ ./internal/
 COPY app/ ./app/
 COPY etc/ ./etc/
@@ -91,18 +92,18 @@ COPY --from=builder /app/bin/outlet ./outlet
 # Copy configuration files
 COPY etc/ ./etc/
 
-# Copy database migrations
-COPY internal/migrations/ ./internal/migrations/
+# Note: Migrations are embedded in the binary via internal/db/migrations/
+# No separate copy needed - they're included in the Go build
 
 # Create necessary directories
 RUN mkdir -p /app/certs /app/backups
 
-# Expose ports (80 for HTTP redirect, 443 for HTTPS, 9888 for backend)
-EXPOSE 80 443 9888
+# Expose ports (80 for HTTP redirect, 443 for HTTPS, 8888 for backend)
+EXPOSE 80 443 8888
 
 # Health check on internal backend port
 HEALTHCHECK --interval=10s --timeout=3s --retries=3 --start-period=40s \
-  CMD curl -sf http://localhost:9888/health || exit 1
+  CMD curl -sf http://localhost:8888/health || exit 1
 
 # Run the server
-CMD ["./outlet"]
+CMD ["./outlet", "serve"]

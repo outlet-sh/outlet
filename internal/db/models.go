@@ -129,6 +129,46 @@ type ContactTag struct {
 	CreatedAt sql.NullString `json:"created_at"`
 }
 
+type CustomField struct {
+	ID           string         `json:"id"`
+	ListID       int64          `json:"list_id"`
+	Name         string         `json:"name"`
+	FieldKey     string         `json:"field_key"`
+	FieldType    string         `json:"field_type"`
+	Options      sql.NullString `json:"options"`
+	Required     int64          `json:"required"`
+	DefaultValue sql.NullString `json:"default_value"`
+	Placeholder  sql.NullString `json:"placeholder"`
+	SortOrder    int64          `json:"sort_order"`
+	CreatedAt    sql.NullString `json:"created_at"`
+	UpdatedAt    sql.NullString `json:"updated_at"`
+}
+
+type CustomFieldValue struct {
+	ID           string         `json:"id"`
+	SubscriberID string         `json:"subscriber_id"`
+	FieldID      string         `json:"field_id"`
+	Value        sql.NullString `json:"value"`
+	CreatedAt    sql.NullString `json:"created_at"`
+	UpdatedAt    sql.NullString `json:"updated_at"`
+}
+
+type DomainIdentity struct {
+	ID                 string         `json:"id"`
+	OrgID              string         `json:"org_id"`
+	Domain             string         `json:"domain"`
+	VerificationStatus sql.NullString `json:"verification_status"`
+	DkimStatus         sql.NullString `json:"dkim_status"`
+	VerificationToken  sql.NullString `json:"verification_token"`
+	DkimTokens         sql.NullString `json:"dkim_tokens"`
+	DnsRecords         sql.NullString `json:"dns_records"`
+	MailFromDomain     sql.NullString `json:"mail_from_domain"`
+	MailFromStatus     sql.NullString `json:"mail_from_status"`
+	LastCheckedAt      sql.NullString `json:"last_checked_at"`
+	CreatedAt          sql.NullString `json:"created_at"`
+	UpdatedAt          sql.NullString `json:"updated_at"`
+}
+
 type EmailBounce struct {
 	ID              string         `json:"id"`
 	Email           string         `json:"email"`
@@ -215,6 +255,7 @@ type EmailDesign struct {
 
 type EmailList struct {
 	ID                       int64          `json:"id"`
+	PublicID                 string         `json:"public_id"`
 	OrgID                    string         `json:"org_id"`
 	Name                     string         `json:"name"`
 	Slug                     string         `json:"slug"`
@@ -228,6 +269,15 @@ type EmailList struct {
 	ThankYouUrl              sql.NullString `json:"thank_you_url"`
 	ConfirmRedirectUrl       sql.NullString `json:"confirm_redirect_url"`
 	UnsubscribeRedirectUrl   sql.NullString `json:"unsubscribe_redirect_url"`
+	ThankYouEmailEnabled     sql.NullInt64  `json:"thank_you_email_enabled"`
+	ThankYouEmailSubject     sql.NullString `json:"thank_you_email_subject"`
+	ThankYouEmailBody        sql.NullString `json:"thank_you_email_body"`
+	AlreadySubscribedUrl     sql.NullString `json:"already_subscribed_url"`
+	GoodbyeEmailEnabled      sql.NullInt64  `json:"goodbye_email_enabled"`
+	GoodbyeEmailSubject      sql.NullString `json:"goodbye_email_subject"`
+	GoodbyeEmailBody         sql.NullString `json:"goodbye_email_body"`
+	UnsubscribeBehavior      sql.NullString `json:"unsubscribe_behavior"`
+	UnsubscribeScope         sql.NullString `json:"unsubscribe_scope"`
 }
 
 type EmailQueue struct {
@@ -247,17 +297,18 @@ type EmailQueue struct {
 }
 
 type EmailSequence struct {
-	ID           string         `json:"id"`
-	OrgID        sql.NullString `json:"org_id"`
-	ListID       sql.NullInt64  `json:"list_id"`
-	Slug         string         `json:"slug"`
-	Name         string         `json:"name"`
-	TriggerEvent string         `json:"trigger_event"`
-	IsActive     sql.NullInt64  `json:"is_active"`
-	SendHour     sql.NullInt64  `json:"send_hour"`
-	SendTimezone sql.NullString `json:"send_timezone"`
-	SequenceType sql.NullString `json:"sequence_type"`
-	CreatedAt    sql.NullString `json:"created_at"`
+	ID                     string         `json:"id"`
+	OrgID                  sql.NullString `json:"org_id"`
+	ListID                 sql.NullInt64  `json:"list_id"`
+	Slug                   string         `json:"slug"`
+	Name                   string         `json:"name"`
+	TriggerEvent           string         `json:"trigger_event"`
+	IsActive               sql.NullInt64  `json:"is_active"`
+	SendHour               sql.NullInt64  `json:"send_hour"`
+	SendTimezone           sql.NullString `json:"send_timezone"`
+	SequenceType           sql.NullString `json:"sequence_type"`
+	CreatedAt              sql.NullString `json:"created_at"`
+	OnCompletionSequenceID sql.NullString `json:"on_completion_sequence_id"`
 }
 
 type EmailTemplate struct {

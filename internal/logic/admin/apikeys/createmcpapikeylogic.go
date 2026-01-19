@@ -7,11 +7,11 @@ import (
 	"encoding/base64"
 	"time"
 
-	"outlet/internal/db"
-	"outlet/internal/errorx"
-	"outlet/internal/mcp/mcpauth"
-	"outlet/internal/svc"
-	"outlet/internal/types"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/errorx"
+	"github.com/outlet-sh/outlet/internal/mcp/mcpauth"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
 
 	"github.com/google/uuid"
 	"github.com/zeromicro/go-zero/core/logx"

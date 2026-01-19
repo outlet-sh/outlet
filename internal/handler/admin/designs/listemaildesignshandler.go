@@ -3,10 +3,10 @@ package designs
 import (
 	"net/http"
 
+	"github.com/outlet-sh/outlet/internal/logic/admin/designs"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
-	"outlet/internal/logic/admin/designs"
-	"outlet/internal/svc"
-	"outlet/internal/types"
 )
 
 func ListEmailDesignsHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

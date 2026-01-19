@@ -3,10 +3,10 @@ package webhooks
 import (
 	"net/http"
 
+	"github.com/outlet-sh/outlet/internal/logic/sdk/webhooks"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
-	"outlet/internal/logic/sdk/webhooks"
-	"outlet/internal/svc"
-	"outlet/internal/types"
 )
 
 func TestWebhookHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

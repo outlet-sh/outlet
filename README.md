@@ -10,6 +10,7 @@ The modern, self-hosted email platform for indie hackers and creators. Marketing
 - **AI-native MCP integration** — Build email sequences by talking to Claude.
 - **Built-in backup system** — One-click download or automated S3 backups.
 - **Full source code included** — No obfuscation, modify anything you need.
+- **SMTP ingress server** — Drop-in replacement for any SMTP setup. Point Postfix, your app, or any mail client at Outlet.
 
 ## Quick Start
 
@@ -108,7 +109,72 @@ sudo systemctl start outlet
 - Dedicated sending queue (separate from marketing)
 - Per-template analytics
 - Webhook callbacks for delivery events
-- Auto-generated SDKs (TypeScript, Go)
+- Auto-generated SDKs (TypeScript, Python, Go, PHP)
+
+### SMTP Ingress Server
+
+Send emails through Outlet using standard SMTP protocol — a **100% drop-in replacement** for any existing SMTP setup. Point your application, Postfix relay, or any mail client at Outlet and get all the platform features automatically.
+
+**Authentication:**
+- Username: `api` (or your org slug)
+- Password: Your organization API key
+
+**Custom Headers** for advanced control:
+
+| Header | Purpose | Example |
+|--------|---------|---------|
+| `X-Outlet-List` | Associate with a list | `newsletter` |
+| `X-Outlet-Tags` | Comma-separated tags | `welcome,onboarding` |
+| `X-Outlet-Template` | Use a template | `order-confirmation` |
+| `X-Outlet-Type` | `marketing` or `transactional` | `transactional` |
+| `X-Outlet-Track` | `opens,clicks` or `none` | `opens,clicks` |
+| `X-Outlet-Meta-*` | Custom metadata | `X-Outlet-Meta-OrderID: 12345` |
+
+**Example with swaks:**
+
+```bash
+swaks --to user@example.com \
+      --from hello@yourdomain.com \
+      --server mail.yourdomain.com:587 \
+      --auth PLAIN \
+      --auth-user api \
+      --auth-password "your-api-key" \
+      --tls \
+      --header "X-Outlet-List: customers" \
+      --header "X-Outlet-Tags: purchase,vip" \
+      --body "Thanks for your order!"
+```
+
+**Example with Python:**
+
+```python
+import smtplib
+from email.mime.text import MIMEText
+
+msg = MIMEText("<h1>Welcome!</h1><p>Thanks for signing up.</p>", "html")
+msg["Subject"] = "Welcome to our platform"
+msg["From"] = "hello@yourdomain.com"
+msg["To"] = "user@example.com"
+msg["X-Outlet-List"] = "newsletter"
+msg["X-Outlet-Tags"] = "welcome,new-user"
+
+with smtplib.SMTP("mail.yourdomain.com", 587) as server:
+    server.starttls()
+    server.login("api", "your-api-key")
+    server.send_message(msg)
+```
+
+**Configuration** (in `etc/outlet.yaml`):
+
+```yaml
+SMTP:
+  Enabled: true
+  Port: 587              # Standard submission port
+  TLSCert: /path/to/cert.pem
+  TLSKey: /path/to/key.pem
+  MaxMessageBytes: 26214400  # 25MB
+  MaxRecipients: 100
+```
 
 ### Automation
 - Autoresponder sequences
@@ -190,16 +256,13 @@ Outlet.sh provides a REST API with auto-generated clients:
 ### Transactional Email Example (TypeScript)
 
 ```typescript
-import { OutletSDK } from '@outlet/sdk';
+import { Outlet } from '@outlet/sdk';
 
-const outlet = new OutletSDK({
-  baseUrl: 'https://mail.yourdomain.com',
-  apiKey: 'your-api-key'
-});
+const outlet = new Outlet('your-api-key', 'https://mail.yourdomain.com');
 
-await outlet.transactional.send({
+await outlet.emails.sendEmail({
   to: 'user@example.com',
-  template_id: 'welcome-email',
+  template_slug: 'welcome-email',
   variables: {
     name: 'John',
     activation_link: 'https://...'
@@ -210,13 +273,13 @@ await outlet.transactional.send({
 ### Transactional Email Example (Go)
 
 ```go
-import "github.com/outlet/outlet-go"
+import "github.com/outlet-sh/outlet/sdk/go"
 
-client := outlet.NewClient("https://mail.yourdomain.com", "your-api-key")
+client := outlet.NewClient("your-api-key", "https://mail.yourdomain.com")
 
-err := client.Transactional.Send(ctx, outlet.SendRequest{
-    To:         "user@example.com",
-    TemplateID: "welcome-email",
+err := client.Emails.SendEmail(ctx, outlet.SendEmailRequest{
+    To:           "user@example.com",
+    TemplateSlug: "welcome-email",
     Variables: map[string]string{
         "name":            "John",
         "activation_link": "https://...",
@@ -227,44 +290,29 @@ err := client.Transactional.Send(ctx, outlet.SendRequest{
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     Single Binary                           │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │  SvelteKit  │  │   go-zero   │  │    MCP Server       │  │
-│  │  Frontend   │  │   REST API  │  │  (AI Integration)   │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │   Email     │  │   Rules     │  │     Webhook         │  │
-│  │   Workers   │  │   Engine    │  │    Dispatcher       │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
-├─────────────────────────────────────────────────────────────┤
-│                    SQLite (WAL Mode)                        │
-│                    ./data/outlet.db                         │
-└─────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────┐
+│                         Single Binary                              │
+├───────────────────────────────────────────────────────────────────┤
+│  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────────┐   │
+│  │ SvelteKit │  │  go-zero  │  │   SMTP    │  │  MCP Server   │   │
+│  │ Frontend  │  │  REST API │  │  Ingress  │  │ (AI Integration)│  │
+│  └───────────┘  └───────────┘  └───────────┘  └───────────────┘   │
+├───────────────────────────────────────────────────────────────────┤
+│  ┌───────────────┐  ┌───────────────┐  ┌───────────────────────┐  │
+│  │ Email Workers │  │ Rules Engine  │  │  Webhook Dispatcher   │  │
+│  └───────────────┘  └───────────────┘  └───────────────────────┘  │
+├───────────────────────────────────────────────────────────────────┤
+│                       SQLite (WAL Mode)                            │
+│                       ./data/outlet.db                             │
+└───────────────────────────────────────────────────────────────────┘
 ```
 
 - **Frontend**: Embedded SvelteKit 5 static build
-- **Backend**: go-zero framework with auto-generated handlers
+- **REST API**: go-zero framework with auto-generated handlers
+- **SMTP Ingress**: Standard SMTP server (port 587) for drop-in integration
 - **Database**: SQLite with WAL mode, auto-migrations on startup
 - **Workers**: Background email sending with rate limiting
-- **MCP**: Model Context Protocol server with embedded OAuth
-
-## Comparison
-
-| Feature | Sendy | ListMonk | Outlet.sh |
-|---------|-------|----------|-----------|
-| Price | $69 | Free | $99 |
-| Stack | PHP/MySQL | Go/Postgres | Go/SQLite |
-| Deployment | Complex | Medium | Single binary |
-| Marketing emails | Yes | Yes | Yes |
-| Transactional | No | Yes | Yes |
-| Auto-updates | Manual | Manual | Built-in |
-| Source code | Obfuscated | Open | Full source |
-| AI/MCP integration | No | No | Yes |
-| Built-in backup | No | No | Yes (+ S3) |
-| External DB required | Yes | Yes | No |
+- **MCP**: Model Context Protocol server for AI assistants
 
 ## Development
 
@@ -278,8 +326,8 @@ err := client.Transactional.Send(ctx, outlet.SendRequest{
 
 ```bash
 # Clone the repository
-git clone https://github.com/outlet/outlet.sh
-cd outlet.sh
+git clone https://github.com/outlet-sh/outlet
+cd outlet
 
 # Install dependencies
 go mod download
@@ -335,17 +383,16 @@ cd app && pnpm test
 
 ## License
 
-Outlet.sh is a commercial product with full source code included. See [LICENSE](LICENSE) for details.
+Outlet is open source under the [AGPL-3.0 License](LICENSE).
 
-- Personal and commercial use allowed
-- Instance limits per license tier (honor system)
-- Self-host forever (works without license server)
-- All v1.x updates included free
+- Self-host freely for personal or commercial use
+- Modifications must be shared under AGPL if distributed or offered as a service
+- Commercial licensing available for companies needing different terms
 
 ## Support
 
 - Documentation: https://outlet.sh/docs
-- Issues: https://github.com/outlet/outlet.sh/issues
+- Issues: https://github.com/outlet-sh/outlet/issues
 - Email: support@outlet.sh
 
 ---

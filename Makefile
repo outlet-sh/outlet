@@ -30,7 +30,7 @@ help:
 	@echo "  test           - Run tests"
 	@echo "  deps           - Download dependencies"
 	@echo "  gen            - Generate code (go-zero)"
-	@echo "  gen-sdk        - Generate SDK clients (all 11 languages)"
+	@echo "  gen-sdk        - Generate SDK clients (TypeScript, Python, Go, PHP)"
 	@echo "  models         - Generate PostgreSQL models for all tables"
 	@echo "  swagger        - Validate and display Swagger documentation info"
 	@echo "  install-updater - Install go-selfupdate CLI tool"
@@ -140,42 +140,21 @@ gen: ## Generate API code from .api file
 	@echo "✅ API code generation complete!"
 
 # SDK generation
-gen-sdk: ## Generate SDK clients from .api file (all 11 languages)
+gen-sdk: ## Generate SDK clients from .api file (4 languages)
 	@echo "📦 Generating SDK clients..."
 	@echo "Generating TypeScript SDK..."
-	goctl api plugin -plugin "goctl-sdk -format typescript -prefix /sdk/v1" \
-		-api $(EXECUTABLE).api -dir ../outlet-ts/src
+	goctl api plugin -plugin "goctl-sdk -format typescript -prefix /sdk/v1 -name Outlet" \
+		-api $(EXECUTABLE).api -dir ./sdk/typescript/src
 	@echo "Generating Python SDK..."
-	goctl api plugin -plugin "goctl-sdk -format python -prefix /sdk/v1" \
-		-api $(EXECUTABLE).api -dir ../outlet-python/src/outlet_sdk
+	goctl api plugin -plugin "goctl-sdk -format python -prefix /sdk/v1 -name Outlet" \
+		-api $(EXECUTABLE).api -dir ./sdk/python/src/outlet_sdk
 	@echo "Generating Go SDK..."
-	goctl api plugin -plugin "goctl-sdk -format golang -prefix /sdk/v1" \
-		-api $(EXECUTABLE).api -dir ../outlet-go
-	@echo "Generating C# SDK..."
-	goctl api plugin -plugin "goctl-sdk -format csharp -prefix /sdk/v1" \
-		-api $(EXECUTABLE).api -dir ../outlet-csharp
+	goctl api plugin -plugin "goctl-sdk -format golang -prefix /sdk/v1 -name Outlet" \
+		-api $(EXECUTABLE).api -dir ./sdk/go
 	@echo "Generating PHP SDK..."
-	goctl api plugin -plugin "goctl-sdk -format php -prefix /sdk/v1" \
-		-api $(EXECUTABLE).api -dir ../outlet-php/src
-	@echo "Generating Rust SDK..."
-	goctl api plugin -plugin "goctl-sdk -format rust -prefix /sdk/v1" \
-		-api $(EXECUTABLE).api -dir ../outlet-rust/src
-	@echo "Generating Java SDK..."
-	goctl api plugin -plugin "goctl-sdk -format java -prefix /sdk/v1" \
-		-api $(EXECUTABLE).api -dir ../outlet-java/src/main/java/com/outlet/sdk
-	@echo "Generating Kotlin SDK..."
-	goctl api plugin -plugin "goctl-sdk -format kotlin -prefix /sdk/v1" \
-		-api $(EXECUTABLE).api -dir ../outlet-kotlin/src/main/kotlin/com/outlet/sdk
-	@echo "Generating Ruby SDK..."
-	goctl api plugin -plugin "goctl-sdk -format ruby -prefix /sdk/v1" \
-		-api $(EXECUTABLE).api -dir ../outlet-ruby/lib/outlet
-	@echo "Generating Dart SDK..."
-	goctl api plugin -plugin "goctl-sdk -format dart -prefix /sdk/v1" \
-		-api $(EXECUTABLE).api -dir ../outlet-dart/lib/src
-	@echo "Generating Swift SDK..."
-	goctl api plugin -plugin "goctl-sdk -format swift -prefix /sdk/v1" \
-		-api $(EXECUTABLE).api -dir ../outlet-swift/Sources/OutletSDK
-	@echo "✅ SDK generation complete (11 languages)!"
+	goctl api plugin -plugin "goctl-sdk -format php -prefix /sdk/v1 -name Outlet" \
+		-api $(EXECUTABLE).api -dir ./sdk/php/src
+	@echo "✅ SDK generation complete (4 languages)!"
 
 # Database code generation
 sqlc-gen: ## Generate type-safe Go code from SQL queries

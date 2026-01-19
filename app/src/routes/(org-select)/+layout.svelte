@@ -1,12 +1,38 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 	import { getCurrentUser, logout } from '$lib/auth';
 	import AuthGuard from '$lib/components/admin/AuthGuard.svelte';
+	import { listOrganizations, createOrganization, type OrgInfo } from '$lib/api';
+	import { Modal, Input, Button, Alert } from '$lib/components/ui';
+	import { ChevronDown, Check, Plus, Settings } from 'lucide-svelte';
 
 	const { children } = $props();
 
 	let user = $state(getCurrentUser());
 	let showUserMenu = $state(false);
+	let allOrgs = $state<OrgInfo[]>([]);
+	let showWorkspaceSwitcher = $state(false);
+
+	// Create workspace modal state
+	let showCreateWorkspace = $state(false);
+	let newWorkspaceName = $state('');
+	let newWorkspaceSlug = $state('');
+	let creatingWorkspace = $state(false);
+	let createWorkspaceError = $state('');
+
+	$effect(() => {
+		loadOrgs();
+	});
+
+	async function loadOrgs() {
+		try {
+			const result = await listOrganizations();
+			allOrgs = result.organizations || [];
+		} catch (err) {
+			console.error('Failed to load organizations:', err);
+		}
+	}
 
 	function handleLogout() {
 		logout();
@@ -16,6 +42,48 @@
 		const target = event.target as HTMLElement;
 		if (!target.closest('.user-menu-container')) {
 			showUserMenu = false;
+		}
+		if (!target.closest('.workspace-switcher')) {
+			showWorkspaceSwitcher = false;
+		}
+	}
+
+	function navigateToOrg(slug: string) {
+		showWorkspaceSwitcher = false;
+		goto(`/${slug}`);
+	}
+
+	function generateSlug(name: string): string {
+		return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+	}
+
+	function handleWorkspaceNameInput() {
+		newWorkspaceSlug = generateSlug(newWorkspaceName);
+	}
+
+	function openCreateWorkspace() {
+		showWorkspaceSwitcher = false;
+		newWorkspaceName = '';
+		newWorkspaceSlug = '';
+		createWorkspaceError = '';
+		showCreateWorkspace = true;
+	}
+
+	async function handleCreateWorkspace() {
+		if (!newWorkspaceName.trim() || !newWorkspaceSlug.trim()) return;
+		creatingWorkspace = true;
+		createWorkspaceError = '';
+		try {
+			const newOrg = await createOrganization({
+				name: newWorkspaceName.trim(),
+				slug: newWorkspaceSlug.trim()
+			});
+			showCreateWorkspace = false;
+			goto(`/${newOrg.slug}/welcome`);
+		} catch (err: any) {
+			createWorkspaceError = err.message || 'Failed to create workspace';
+		} finally {
+			creatingWorkspace = false;
 		}
 	}
 </script>
@@ -28,39 +96,70 @@
 </svelte:head>
 
 <AuthGuard>
-<div class="min-h-screen bg-gray-50">
+<div class="min-h-screen bg-base-50">
 	<!-- Minimal navbar for org selection / global settings -->
-	<nav class="navbar">
+	<nav class="border-b border-base-200 bg-white">
 		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 			<div class="flex h-16 justify-between">
 				<div class="flex items-center">
-					<a href="/" class="navbar-brand">Outlet</a>
+					<a href="/" class="text-xl font-bold text-primary">Outlet</a>
 				</div>
 
 				<div class="flex items-center space-x-4">
-					<!-- Global Settings Link -->
-					<a
-						href="/settings/email"
-						class="navbar-link {$page.url.pathname.startsWith('/settings') ? 'active' : ''}"
-					>
-						<svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-						</svg>
-						Settings
-					</a>
+					<!-- Workspace Switcher -->
+					<div class="workspace-switcher relative">
+						<button
+							onclick={(e) => { e.stopPropagation(); showUserMenu = false; showWorkspaceSwitcher = !showWorkspaceSwitcher; }}
+							class="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors hover:bg-base-100 group"
+						>
+							<span class="flex items-center justify-center h-7 w-7 rounded-md text-xs font-semibold text-white bg-primary">W</span>
+							<span class="font-medium text-sm">Workspaces</span>
+							<ChevronDown class="h-4 w-4 text-text-muted group-hover:text-text transition-colors" />
+						</button>
+						{#if showWorkspaceSwitcher}
+							<div class="absolute right-0 top-full mt-2 w-64 rounded-lg shadow-lg py-1 z-50 bg-white border border-base-200">
+								<div class="px-3 py-2 border-b border-border">
+									<p class="text-xs font-medium text-text-muted uppercase tracking-wide">Workspaces</p>
+								</div>
+								<div class="max-h-64 overflow-y-auto">
+									{#each allOrgs as workspace}
+										<button
+											onclick={() => navigateToOrg(workspace.slug)}
+											class="w-full px-3 py-2 flex items-center gap-3 text-left transition-colors hover:bg-base-100"
+										>
+											<span class="flex items-center justify-center h-8 w-8 rounded-md text-xs font-semibold text-white bg-primary flex-shrink-0">
+												{workspace.name[0].toUpperCase()}
+											</span>
+											<span class="flex-1 text-sm font-medium text-text truncate">{workspace.name}</span>
+										</button>
+									{/each}
+								</div>
+								<div class="border-t border-border mt-1 pt-1">
+									<button
+										onclick={openCreateWorkspace}
+										class="w-full px-3 py-2 flex items-center gap-3 text-left transition-colors hover:bg-base-100 text-text-muted hover:text-text"
+									>
+										<span class="flex items-center justify-center h-8 w-8 rounded-md border-2 border-dashed border-base-300 flex-shrink-0">
+											<Plus class="h-4 w-4" />
+										</span>
+										<span class="text-sm">Add workspace</span>
+									</button>
+								</div>
+							</div>
+						{/if}
+					</div>
 
 					<!-- User Menu -->
 					<div class="user-menu-container relative ml-3">
 						<div>
 							<button
-								onclick={(e) => { e.stopPropagation(); showUserMenu = !showUserMenu; }}
-								class="navbar-user-btn"
+								onclick={(e) => { e.stopPropagation(); showWorkspaceSwitcher = false; showUserMenu = !showUserMenu; }}
+								class="flex items-center rounded-full text-sm transition-colors focus:outline-none"
 								aria-expanded={showUserMenu}
 								aria-haspopup="true"
 							>
 								<span class="sr-only">Open user menu</span>
-								<div class="navbar-avatar">
+								<div class="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white">
 									<span class="text-sm font-medium text-white">
 										{(user?.name || user?.email || 'U')[0].toUpperCase()}
 									</span>
@@ -69,14 +168,24 @@
 						</div>
 
 						{#if showUserMenu}
-							<div class="navbar-dropdown" role="menu" aria-orientation="vertical">
+							<div class="absolute right-0 z-50 mt-2 w-56 origin-top-right rounded-lg py-1 bg-white border border-base-200 shadow-lg" role="menu" aria-orientation="vertical">
 								<div class="px-4 py-3 border-b border-border">
 									<p class="text-sm font-medium text-text truncate">{user?.name || user?.email}</p>
 									<p class="text-xs text-text-muted capitalize">{user?.role}</p>
 								</div>
+								<a
+									href="/settings"
+									class="flex items-center gap-2 px-4 py-2 text-sm transition-colors text-base-700 hover:bg-base-100 hover:text-base-900"
+									role="menuitem"
+									onclick={() => showUserMenu = false}
+								>
+									<Settings class="h-4 w-4" />
+									Settings
+								</a>
+								<div class="border-t border-border my-1"></div>
 								<button
 									onclick={handleLogout}
-									class="navbar-dropdown-item w-full text-left"
+									class="block px-4 py-2 text-sm transition-colors text-base-700 hover:bg-base-100 hover:text-base-900 w-full text-left"
 									role="menuitem"
 								>
 									Sign out
@@ -95,62 +204,37 @@
 </div>
 </AuthGuard>
 
-<style>
-	@reference "$src/app.css";
-	@layer components.navbar {
-		.navbar {
-			@apply border-b shadow-sm;
-			border-color: var(--color-border);
-			background-color: var(--color-bg);
-		}
-
-		.navbar-brand {
-			@apply text-xl font-bold;
-			color: var(--color-primary);
-		}
-
-		.navbar-link {
-			@apply inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors;
-			color: var(--color-text-muted);
-		}
-
-		.navbar-link:hover {
-			background-color: var(--color-bg-secondary);
-			color: var(--color-text);
-		}
-
-		.navbar-link.active {
-			background-color: var(--color-bg-secondary);
-			color: var(--color-text);
-		}
-
-		.navbar-user-btn {
-			@apply flex items-center rounded-full text-sm transition-colors;
-		}
-
-		.navbar-user-btn:focus {
-			@apply outline-none;
-		}
-
-		.navbar-avatar {
-			@apply flex h-8 w-8 items-center justify-center rounded-full;
-			background-color: var(--color-primary);
-		}
-
-		.navbar-dropdown {
-			@apply absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-md py-1 shadow-lg;
-			background-color: var(--color-bg);
-			box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-			border: 1px solid var(--color-border);
-		}
-
-		.navbar-dropdown-item {
-			@apply block px-4 py-2 text-sm transition-colors;
-			color: var(--color-text);
-		}
-
-		.navbar-dropdown-item:hover {
-			background-color: var(--color-bg-secondary);
-		}
-	}
-</style>
+<!-- Create Workspace Modal -->
+<Modal bind:show={showCreateWorkspace} title="Create Workspace">
+	<div class="space-y-4">
+		{#if createWorkspaceError}
+			<Alert type="error">{createWorkspaceError}</Alert>
+		{/if}
+		<div>
+			<label for="workspace-name" class="block text-sm font-medium text-text mb-1">Workspace Name</label>
+			<Input
+				id="workspace-name"
+				bind:value={newWorkspaceName}
+				oninput={handleWorkspaceNameInput}
+				placeholder="My Company"
+			/>
+		</div>
+		<div>
+			<label for="workspace-slug" class="block text-sm font-medium text-text mb-1">URL Slug</label>
+			<Input
+				id="workspace-slug"
+				bind:value={newWorkspaceSlug}
+				placeholder="my-company"
+			/>
+			<p class="text-xs text-text-muted mt-1">This will be used in the URL: /{newWorkspaceSlug || 'my-company'}</p>
+		</div>
+	</div>
+	{#snippet footer()}
+		<Button type="secondary" onclick={() => showCreateWorkspace = false} disabled={creatingWorkspace}>
+			Cancel
+		</Button>
+		<Button type="primary" onclick={handleCreateWorkspace} disabled={!newWorkspaceName.trim() || !newWorkspaceSlug.trim() || creatingWorkspace}>
+			{creatingWorkspace ? 'Creating...' : 'Create Workspace'}
+		</Button>
+	{/snippet}
+</Modal>

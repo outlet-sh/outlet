@@ -189,9 +189,9 @@ const upsertPlatformSetting = `-- name: UpsertPlatformSetting :one
 INSERT INTO platform_settings (key, value_encrypted, value_text, description, category, is_sensitive, created_at, updated_at)
 VALUES (?1, ?2, ?3, ?4, ?5, ?6, datetime('now'), datetime('now'))
 ON CONFLICT (key) DO UPDATE SET
-    value_encrypted = CASE WHEN sqlc.arg(value_encrypted) IS NOT NULL THEN sqlc.arg(value_encrypted) ELSE platform_settings.value_encrypted END,
-    value_text = CASE WHEN sqlc.arg(value_text) IS NOT NULL THEN sqlc.arg(value_text) ELSE platform_settings.value_text END,
-    description = COALESCE(sqlc.arg(description), platform_settings.description),
+    value_encrypted = CASE WHEN excluded.value_encrypted IS NOT NULL THEN excluded.value_encrypted ELSE platform_settings.value_encrypted END,
+    value_text = CASE WHEN excluded.value_text IS NOT NULL THEN excluded.value_text ELSE platform_settings.value_text END,
+    description = COALESCE(excluded.description, platform_settings.description),
     updated_at = datetime('now')
 RETURNING "key", value_encrypted, value_text, description, category, is_sensitive, created_at, updated_at
 `

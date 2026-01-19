@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync"
 
-	"outlet/internal/mcp/mcpctx"
+	"github.com/outlet-sh/outlet/internal/mcp/mcpctx"
 )
 
 // ToolFunc is a function that executes a tool with JSON args.
@@ -76,8 +76,17 @@ func (r *ToolRegistry) List() []string {
 func NewRegistryWithTools(toolCtx *mcpctx.ToolContext) *ToolRegistry {
 	registry := NewToolRegistry()
 
-	// Register all tool handlers
-	registerEmailToolsToRegistry(registry, toolCtx)
+	// Register all tool handlers (unified resource/action pattern)
+	registerEmailToolToRegistry(registry, toolCtx)
+	registerOrgToolToRegistry(registry, toolCtx)
+	registerCampaignToolToRegistry(registry, toolCtx)
+	registerContactToolToRegistry(registry, toolCtx)
+	registerWebhookToolToRegistry(registry, toolCtx)
+	registerDesignToolToRegistry(registry, toolCtx)
+	registerTransactionalToolToRegistry(registry, toolCtx)
+	registerStatsToolToRegistry(registry, toolCtx)
+	registerBlocklistToolToRegistry(registry, toolCtx)
+	registerGDPRToolToRegistry(registry, toolCtx)
 
 	return registry
 }

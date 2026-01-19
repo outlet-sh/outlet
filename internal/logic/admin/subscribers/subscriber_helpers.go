@@ -1,8 +1,8 @@
 package subscribers
 
 import (
-	"outlet/internal/db"
-	"outlet/internal/types"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/types"
 )
 
 // contactToSubscriberInfo converts a database contact to a SubscriberInfo response

@@ -8,8 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"outlet/internal/config"
-	"outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/config"
+	"github.com/outlet-sh/outlet/internal/svc"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

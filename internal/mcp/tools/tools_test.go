@@ -3,8 +3,8 @@ package tools
 import (
 	"testing"
 
-	"outlet/internal/db"
-	"outlet/internal/mcp/mcpctx"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/mcp/mcpctx"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -31,38 +31,76 @@ func createTestUser(id string, email, role string) db.User {
 	}
 }
 
-// ========== ListCreateInput Tests ==========
+// ========== EmailInput Tests (Unified Pattern) ==========
 
-func TestListCreateInput_Required(t *testing.T) {
-	input := ListCreateInput{
-		Name: "Newsletter",
-	}
-
-	assert.Equal(t, "Newsletter", input.Name)
-	assert.Empty(t, input.Description)
-	assert.Nil(t, input.DoubleOptin)
-}
-
-func TestListCreateInput_WithOptions(t *testing.T) {
+func TestEmailInput_ListCreate(t *testing.T) {
 	doubleOptin := true
-	input := ListCreateInput{
+	input := EmailInput{
+		Resource:    "list",
+		Action:      "create",
 		Name:        "Newsletter",
 		Description: "Weekly updates",
 		DoubleOptin: &doubleOptin,
 	}
 
+	assert.Equal(t, "list", input.Resource)
+	assert.Equal(t, "create", input.Action)
 	assert.Equal(t, "Newsletter", input.Name)
 	assert.Equal(t, "Weekly updates", input.Description)
 	assert.NotNil(t, input.DoubleOptin)
 	assert.True(t, *input.DoubleOptin)
 }
 
-func TestListCreateInput_EmptyName(t *testing.T) {
-	input := ListCreateInput{
-		Name: "", // Empty name should fail validation
+func TestEmailInput_ListGet(t *testing.T) {
+	input := EmailInput{
+		Resource: "list",
+		Action:   "get",
+		ID:       "123",
 	}
 
-	assert.Empty(t, input.Name)
+	assert.Equal(t, "list", input.Resource)
+	assert.Equal(t, "get", input.Action)
+	assert.Equal(t, "123", input.ID)
+}
+
+func TestEmailInput_SequenceCreate(t *testing.T) {
+	active := true
+	input := EmailInput{
+		Resource:     "sequence",
+		Action:       "create",
+		Name:         "Welcome Series",
+		ListID:       "123",
+		TriggerEvent: "on_subscribe",
+		SequenceType: "lifecycle",
+		Active:       &active,
+	}
+
+	assert.Equal(t, "sequence", input.Resource)
+	assert.Equal(t, "create", input.Action)
+	assert.Equal(t, "Welcome Series", input.Name)
+	assert.Equal(t, "123", input.ListID)
+	assert.Equal(t, "on_subscribe", input.TriggerEvent)
+	assert.Equal(t, "lifecycle", input.SequenceType)
+	assert.NotNil(t, input.Active)
+	assert.True(t, *input.Active)
+}
+
+func TestEmailInput_TemplateCreate(t *testing.T) {
+	input := EmailInput{
+		Resource:   "template",
+		Action:     "create",
+		SequenceID: uuid.New().String(),
+		Subject:    "Welcome!",
+		HTMLBody:   "<h1>Hello</h1>",
+		DelayHours: 24,
+	}
+
+	assert.Equal(t, "template", input.Resource)
+	assert.Equal(t, "create", input.Action)
+	assert.NotEmpty(t, input.SequenceID)
+	assert.Equal(t, "Welcome!", input.Subject)
+	assert.Equal(t, "<h1>Hello</h1>", input.HTMLBody)
+	assert.Equal(t, 24, input.DelayHours)
 }
 
 // ========== ListCreateOutput Tests ==========
@@ -74,6 +112,7 @@ func TestListCreateOutput_Structure(t *testing.T) {
 		Slug:        "newsletter",
 		Description: "Weekly updates",
 		DoubleOptin: true,
+		Created:     true,
 	}
 
 	assert.Equal(t, "1", output.ID)
@@ -81,6 +120,7 @@ func TestListCreateOutput_Structure(t *testing.T) {
 	assert.Equal(t, "newsletter", output.Slug)
 	assert.Equal(t, "Weekly updates", output.Description)
 	assert.True(t, output.DoubleOptin)
+	assert.True(t, output.Created)
 }
 
 // ========== ListItem Tests ==========
@@ -117,61 +157,14 @@ func TestListListOutput_Structure(t *testing.T) {
 	assert.Equal(t, 2, output.Total)
 }
 
-// ========== SequenceCreateInput Tests ==========
+// ========== SequenceItem Tests ==========
 
-func TestSequenceCreateInput_Structure(t *testing.T) {
-	input := SequenceCreateInput{
-		Name:         "Welcome Series",
-		ListID:       "123",
-		SequenceType: "lifecycle",
-		TriggerEvent: "on_subscribe",
-	}
-
-	assert.Equal(t, "Welcome Series", input.Name)
-	assert.Equal(t, "123", input.ListID)
-	assert.Equal(t, "lifecycle", input.SequenceType)
-	assert.Equal(t, "on_subscribe", input.TriggerEvent)
-}
-
-func TestSequenceCreateInput_WithActive(t *testing.T) {
-	active := true
-	input := SequenceCreateInput{
-		Name:   "Onboarding",
-		ListID: "456",
-		Active: &active,
-	}
-
-	assert.Equal(t, "Onboarding", input.Name)
-	assert.NotNil(t, input.Active)
-	assert.True(t, *input.Active)
-}
-
-// ========== SequenceCreateOutput Tests ==========
-
-func TestSequenceCreateOutput_Structure(t *testing.T) {
-	output := SequenceCreateOutput{
-		ID:           uuid.New().String(),
-		Name:         "Welcome Series",
-		Slug:         "welcome-series",
-		ListID:       "123",
-		TriggerEvent: "on_subscribe",
-		SequenceType: "lifecycle",
-		Active:       true,
-	}
-
-	assert.NotEmpty(t, output.ID)
-	assert.Equal(t, "Welcome Series", output.Name)
-	assert.Equal(t, "welcome-series", output.Slug)
-	assert.Equal(t, "123", output.ListID)
-	assert.True(t, output.Active)
-}
-
-// ========== SequenceListItem Tests ==========
-
-func TestSequenceListItem_Structure(t *testing.T) {
-	output := SequenceListItem{
+func TestSequenceItem_Structure(t *testing.T) {
+	output := SequenceItem{
 		ID:           uuid.New().String(),
 		Name:         "Welcome",
+		Slug:         "welcome",
+		ListID:       "123",
 		SequenceType: "lifecycle",
 		TriggerEvent: "on_subscribe",
 		Active:       true,
@@ -188,7 +181,7 @@ func TestSequenceListItem_Structure(t *testing.T) {
 
 func TestSequenceListOutput_Structure(t *testing.T) {
 	output := SequenceListOutput{
-		Sequences: []SequenceListItem{
+		Sequences: []SequenceItem{
 			{ID: uuid.New().String(), Name: "Welcome", Active: true, EmailCount: 5},
 			{ID: uuid.New().String(), Name: "Onboarding", Active: false, EmailCount: 3},
 		},
@@ -201,49 +194,39 @@ func TestSequenceListOutput_Structure(t *testing.T) {
 	assert.Equal(t, 2, output.Total)
 }
 
-// ========== SequenceEmailAddInput Tests ==========
+// ========== SequenceCreateOutput Tests ==========
 
-func TestSequenceEmailAddInput_Structure(t *testing.T) {
-	input := SequenceEmailAddInput{
-		SequenceID: uuid.New().String(),
-		Subject:    "Welcome!",
-		HTMLBody:   "<h1>Hello</h1>",
-		DelayHours: 24,
+func TestSequenceCreateOutput_Structure(t *testing.T) {
+	output := SequenceCreateOutput{
+		ID:           uuid.New().String(),
+		Name:         "Welcome Series",
+		Slug:         "welcome-series",
+		ListID:       "123",
+		TriggerEvent: "on_subscribe",
+		SequenceType: "lifecycle",
+		Active:       true,
+		Created:      true,
 	}
 
-	assert.NotEmpty(t, input.SequenceID)
-	assert.Equal(t, "Welcome!", input.Subject)
-	assert.Equal(t, "<h1>Hello</h1>", input.HTMLBody)
-	assert.Equal(t, 24, input.DelayHours)
+	assert.NotEmpty(t, output.ID)
+	assert.Equal(t, "Welcome Series", output.Name)
+	assert.Equal(t, "welcome-series", output.Slug)
+	assert.Equal(t, "123", output.ListID)
+	assert.True(t, output.Active)
+	assert.True(t, output.Created)
 }
 
-func TestSequenceEmailAddInput_WithOptionalFields(t *testing.T) {
-	active := true
-	input := SequenceEmailAddInput{
-		SequenceID: uuid.New().String(),
-		Subject:    "Welcome!",
-		HTMLBody:   "<h1>Hello</h1>",
-		PlainText:  "Hello",
-		Position:   1,
-		Active:     &active,
-	}
+// ========== TemplateCreateOutput Tests ==========
 
-	assert.Equal(t, "Hello", input.PlainText)
-	assert.Equal(t, 1, input.Position)
-	assert.NotNil(t, input.Active)
-	assert.True(t, *input.Active)
-}
-
-// ========== SequenceEmailAddOutput Tests ==========
-
-func TestSequenceEmailAddOutput_Structure(t *testing.T) {
-	output := SequenceEmailAddOutput{
+func TestTemplateCreateOutput_Structure(t *testing.T) {
+	output := TemplateCreateOutput{
 		ID:         uuid.New().String(),
 		SequenceID: uuid.New().String(),
 		Subject:    "Welcome!",
 		Position:   1,
 		DelayHours: 0,
 		Active:     true,
+		Created:    true,
 	}
 
 	assert.NotEmpty(t, output.ID)
@@ -251,6 +234,7 @@ func TestSequenceEmailAddOutput_Structure(t *testing.T) {
 	assert.Equal(t, "Welcome!", output.Subject)
 	assert.Equal(t, 1, output.Position)
 	assert.True(t, output.Active)
+	assert.True(t, output.Created)
 }
 
 // ========== Tool Context Requirement Tests ==========
@@ -272,6 +256,62 @@ func TestToolContext_RequireOrg_WithoutOrg(t *testing.T) {
 	err := tc.RequireOrg()
 	assert.Error(t, err, "RequireOrg should error when no org selected")
 	assert.Equal(t, mcpctx.ErrNoOrgSelected, err)
+}
+
+// ========== OrgInput Tests (Unified Pattern) ==========
+
+func TestOrgInput_List(t *testing.T) {
+	input := OrgInput{
+		Resource: "org",
+		Action:   "list",
+	}
+
+	assert.Equal(t, "org", input.Resource)
+	assert.Equal(t, "list", input.Action)
+}
+
+func TestOrgInput_Select_WithID(t *testing.T) {
+	input := OrgInput{
+		Resource: "org",
+		Action:   "select",
+		OrgID:    uuid.New().String(),
+	}
+
+	assert.Equal(t, "org", input.Resource)
+	assert.Equal(t, "select", input.Action)
+	assert.NotEmpty(t, input.OrgID)
+	assert.Empty(t, input.Slug)
+}
+
+func TestOrgInput_Select_WithSlug(t *testing.T) {
+	input := OrgInput{
+		Resource: "org",
+		Action:   "select",
+		Slug:     "my-org",
+	}
+
+	assert.Equal(t, "org", input.Resource)
+	assert.Equal(t, "select", input.Action)
+	assert.Empty(t, input.OrgID)
+	assert.Equal(t, "my-org", input.Slug)
+}
+
+func TestOrgInput_Update(t *testing.T) {
+	input := OrgInput{
+		Resource:  "org",
+		Action:    "update",
+		Name:      "My Company",
+		FromName:  "John from My Company",
+		FromEmail: "john@mycompany.com",
+		ReplyTo:   "support@mycompany.com",
+	}
+
+	assert.Equal(t, "org", input.Resource)
+	assert.Equal(t, "update", input.Action)
+	assert.Equal(t, "My Company", input.Name)
+	assert.Equal(t, "John from My Company", input.FromName)
+	assert.Equal(t, "john@mycompany.com", input.FromEmail)
+	assert.Equal(t, "support@mycompany.com", input.ReplyTo)
 }
 
 // ========== OrgListItem Tests ==========
@@ -309,26 +349,6 @@ func TestOrgListOutput_Structure(t *testing.T) {
 	assert.Equal(t, "api_key", output.AuthMode)
 }
 
-// ========== OrgSelectInput Tests ==========
-
-func TestOrgSelectInput_WithID(t *testing.T) {
-	input := OrgSelectInput{
-		OrgID: uuid.New().String(),
-	}
-
-	assert.NotEmpty(t, input.OrgID)
-	assert.Empty(t, input.Slug)
-}
-
-func TestOrgSelectInput_WithSlug(t *testing.T) {
-	input := OrgSelectInput{
-		Slug: "my-org",
-	}
-
-	assert.Empty(t, input.OrgID)
-	assert.Equal(t, "my-org", input.Slug)
-}
-
 // ========== OrgSelectOutput Tests ==========
 
 func TestOrgSelectOutput_Structure(t *testing.T) {
@@ -363,32 +383,6 @@ func TestOrgGetOutput_Structure(t *testing.T) {
 	assert.Equal(t, "My Company", output.Name)
 	assert.Equal(t, int64(10000), output.MaxContacts)
 	assert.Equal(t, "support@mycompany.com", output.FromEmail)
-}
-
-// ========== OrgUpdateInput Tests ==========
-
-func TestOrgUpdateInput_Structure(t *testing.T) {
-	input := OrgUpdateInput{
-		Name:      "My Company",
-		FromName:  "John from My Company",
-		FromEmail: "john@mycompany.com",
-		ReplyTo:   "support@mycompany.com",
-	}
-
-	assert.Equal(t, "My Company", input.Name)
-	assert.Equal(t, "John from My Company", input.FromName)
-	assert.Equal(t, "john@mycompany.com", input.FromEmail)
-	assert.Equal(t, "support@mycompany.com", input.ReplyTo)
-}
-
-func TestOrgUpdateInput_Partial(t *testing.T) {
-	input := OrgUpdateInput{
-		Name: "New Company Name",
-	}
-
-	assert.Equal(t, "New Company Name", input.Name)
-	assert.Empty(t, input.FromName)
-	assert.Empty(t, input.FromEmail)
 }
 
 // ========== OrgUpdateOutput Tests ==========
@@ -437,4 +431,40 @@ func TestGenerateSlug_Numbers(t *testing.T) {
 func TestGenerateSlug_AllCaps(t *testing.T) {
 	slug := generateSlug("HELLO WORLD")
 	assert.Equal(t, "hello-world", slug)
+}
+
+// ========== Action Validation Tests ==========
+
+func TestEmailActions_ValidActions(t *testing.T) {
+	// Test that list has all expected actions
+	listActions := emailActions["list"]
+	assert.Contains(t, listActions, "create")
+	assert.Contains(t, listActions, "list")
+	assert.Contains(t, listActions, "get")
+	assert.Contains(t, listActions, "update")
+	assert.Contains(t, listActions, "delete")
+
+	// Test that sequence has all expected actions
+	seqActions := emailActions["sequence"]
+	assert.Contains(t, seqActions, "create")
+	assert.Contains(t, seqActions, "list")
+	assert.Contains(t, seqActions, "get")
+	assert.Contains(t, seqActions, "update")
+	assert.Contains(t, seqActions, "delete")
+
+	// Test that template has all expected actions
+	templateActions := emailActions["template"]
+	assert.Contains(t, templateActions, "create")
+	assert.Contains(t, templateActions, "list")
+	assert.Contains(t, templateActions, "get")
+	assert.Contains(t, templateActions, "update")
+	assert.Contains(t, templateActions, "delete")
+}
+
+func TestOrgActions_ValidActions(t *testing.T) {
+	orgActions := orgActions["org"]
+	assert.Contains(t, orgActions, "list")
+	assert.Contains(t, orgActions, "select")
+	assert.Contains(t, orgActions, "get")
+	assert.Contains(t, orgActions, "update")
 }

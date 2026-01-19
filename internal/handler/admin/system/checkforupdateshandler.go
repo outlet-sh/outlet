@@ -3,9 +3,9 @@ package system
 import (
 	"net/http"
 
+	"github.com/outlet-sh/outlet/internal/logic/admin/system"
+	"github.com/outlet-sh/outlet/internal/svc"
 	"github.com/zeromicro/go-zero/rest/httpx"
-	"outlet/internal/logic/admin/system"
-	"outlet/internal/svc"
 )
 
 func CheckForUpdatesHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

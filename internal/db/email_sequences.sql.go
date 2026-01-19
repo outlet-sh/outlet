@@ -190,7 +190,7 @@ func (q *Queries) CreateEmailClick(ctx context.Context, arg CreateEmailClickPara
 const createSequence = `-- name: CreateSequence :one
 INSERT INTO email_sequences (id, org_id, list_id, slug, name, trigger_event, is_active, sequence_type, created_at)
 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, COALESCE(?8, 'lifecycle'), datetime('now'))
-RETURNING id, org_id, list_id, slug, name, trigger_event, is_active, send_hour, send_timezone, sequence_type, created_at
+RETURNING id, org_id, list_id, slug, name, trigger_event, is_active, send_hour, send_timezone, sequence_type, created_at, on_completion_sequence_id
 `
 
 type CreateSequenceParams struct {
@@ -228,6 +228,7 @@ func (q *Queries) CreateSequence(ctx context.Context, arg CreateSequenceParams) 
 		&i.SendTimezone,
 		&i.SequenceType,
 		&i.CreatedAt,
+		&i.OnCompletionSequenceID,
 	)
 	return i, err
 }
@@ -813,14 +814,29 @@ func (q *Queries) GetPendingEmails(ctx context.Context, arg GetPendingEmailsPara
 }
 
 const getSequenceByID = `-- name: GetSequenceByID :one
-SELECT id, org_id, list_id, slug, name, trigger_event, is_active, send_hour, send_timezone, sequence_type, created_at
+SELECT id, org_id, list_id, slug, name, trigger_event, is_active, send_hour, send_timezone, sequence_type, on_completion_sequence_id, created_at
 FROM email_sequences
 WHERE id = ?1
 `
 
-func (q *Queries) GetSequenceByID(ctx context.Context, id string) (EmailSequence, error) {
+type GetSequenceByIDRow struct {
+	ID                     string         `json:"id"`
+	OrgID                  sql.NullString `json:"org_id"`
+	ListID                 sql.NullInt64  `json:"list_id"`
+	Slug                   string         `json:"slug"`
+	Name                   string         `json:"name"`
+	TriggerEvent           string         `json:"trigger_event"`
+	IsActive               sql.NullInt64  `json:"is_active"`
+	SendHour               sql.NullInt64  `json:"send_hour"`
+	SendTimezone           sql.NullString `json:"send_timezone"`
+	SequenceType           sql.NullString `json:"sequence_type"`
+	OnCompletionSequenceID sql.NullString `json:"on_completion_sequence_id"`
+	CreatedAt              sql.NullString `json:"created_at"`
+}
+
+func (q *Queries) GetSequenceByID(ctx context.Context, id string) (GetSequenceByIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getSequenceByID, id)
-	var i EmailSequence
+	var i GetSequenceByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.OrgID,
@@ -832,13 +848,14 @@ func (q *Queries) GetSequenceByID(ctx context.Context, id string) (EmailSequence
 		&i.SendHour,
 		&i.SendTimezone,
 		&i.SequenceType,
+		&i.OnCompletionSequenceID,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getSequenceByListAndSlug = `-- name: GetSequenceByListAndSlug :one
-SELECT id, org_id, list_id, slug, name, trigger_event, is_active, send_hour, send_timezone, sequence_type, created_at
+SELECT id, org_id, list_id, slug, name, trigger_event, is_active, send_hour, send_timezone, sequence_type, on_completion_sequence_id, created_at
 FROM email_sequences
 WHERE list_id = ?1 AND slug = ?2
 `
@@ -848,9 +865,24 @@ type GetSequenceByListAndSlugParams struct {
 	Slug   string        `json:"slug"`
 }
 
-func (q *Queries) GetSequenceByListAndSlug(ctx context.Context, arg GetSequenceByListAndSlugParams) (EmailSequence, error) {
+type GetSequenceByListAndSlugRow struct {
+	ID                     string         `json:"id"`
+	OrgID                  sql.NullString `json:"org_id"`
+	ListID                 sql.NullInt64  `json:"list_id"`
+	Slug                   string         `json:"slug"`
+	Name                   string         `json:"name"`
+	TriggerEvent           string         `json:"trigger_event"`
+	IsActive               sql.NullInt64  `json:"is_active"`
+	SendHour               sql.NullInt64  `json:"send_hour"`
+	SendTimezone           sql.NullString `json:"send_timezone"`
+	SequenceType           sql.NullString `json:"sequence_type"`
+	OnCompletionSequenceID sql.NullString `json:"on_completion_sequence_id"`
+	CreatedAt              sql.NullString `json:"created_at"`
+}
+
+func (q *Queries) GetSequenceByListAndSlug(ctx context.Context, arg GetSequenceByListAndSlugParams) (GetSequenceByListAndSlugRow, error) {
 	row := q.db.QueryRowContext(ctx, getSequenceByListAndSlug, arg.ListID, arg.Slug)
-	var i EmailSequence
+	var i GetSequenceByListAndSlugRow
 	err := row.Scan(
 		&i.ID,
 		&i.OrgID,
@@ -862,13 +894,14 @@ func (q *Queries) GetSequenceByListAndSlug(ctx context.Context, arg GetSequenceB
 		&i.SendHour,
 		&i.SendTimezone,
 		&i.SequenceType,
+		&i.OnCompletionSequenceID,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getSequenceByListAndTrigger = `-- name: GetSequenceByListAndTrigger :one
-SELECT id, org_id, list_id, slug, name, trigger_event, is_active, send_hour, send_timezone, sequence_type, created_at
+SELECT id, org_id, list_id, slug, name, trigger_event, is_active, send_hour, send_timezone, sequence_type, on_completion_sequence_id, created_at
 FROM email_sequences
 WHERE list_id = ?1 AND trigger_event = ?2 AND is_active = 1
 `
@@ -878,9 +911,24 @@ type GetSequenceByListAndTriggerParams struct {
 	TriggerEvent string        `json:"trigger_event"`
 }
 
-func (q *Queries) GetSequenceByListAndTrigger(ctx context.Context, arg GetSequenceByListAndTriggerParams) (EmailSequence, error) {
+type GetSequenceByListAndTriggerRow struct {
+	ID                     string         `json:"id"`
+	OrgID                  sql.NullString `json:"org_id"`
+	ListID                 sql.NullInt64  `json:"list_id"`
+	Slug                   string         `json:"slug"`
+	Name                   string         `json:"name"`
+	TriggerEvent           string         `json:"trigger_event"`
+	IsActive               sql.NullInt64  `json:"is_active"`
+	SendHour               sql.NullInt64  `json:"send_hour"`
+	SendTimezone           sql.NullString `json:"send_timezone"`
+	SequenceType           sql.NullString `json:"sequence_type"`
+	OnCompletionSequenceID sql.NullString `json:"on_completion_sequence_id"`
+	CreatedAt              sql.NullString `json:"created_at"`
+}
+
+func (q *Queries) GetSequenceByListAndTrigger(ctx context.Context, arg GetSequenceByListAndTriggerParams) (GetSequenceByListAndTriggerRow, error) {
 	row := q.db.QueryRowContext(ctx, getSequenceByListAndTrigger, arg.ListID, arg.TriggerEvent)
-	var i EmailSequence
+	var i GetSequenceByListAndTriggerRow
 	err := row.Scan(
 		&i.ID,
 		&i.OrgID,
@@ -892,6 +940,7 @@ func (q *Queries) GetSequenceByListAndTrigger(ctx context.Context, arg GetSequen
 		&i.SendHour,
 		&i.SendTimezone,
 		&i.SequenceType,
+		&i.OnCompletionSequenceID,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -899,7 +948,7 @@ func (q *Queries) GetSequenceByListAndTrigger(ctx context.Context, arg GetSequen
 
 const getSequenceByOrgAndSlug = `-- name: GetSequenceByOrgAndSlug :one
 
-SELECT id, org_id, list_id, slug, name, trigger_event, is_active, send_hour, send_timezone, sequence_type, created_at
+SELECT id, org_id, list_id, slug, name, trigger_event, is_active, send_hour, send_timezone, sequence_type, on_completion_sequence_id, created_at
 FROM email_sequences
 WHERE org_id = ?1 AND slug = ?2
 `
@@ -909,10 +958,25 @@ type GetSequenceByOrgAndSlugParams struct {
 	Slug  string         `json:"slug"`
 }
 
+type GetSequenceByOrgAndSlugRow struct {
+	ID                     string         `json:"id"`
+	OrgID                  sql.NullString `json:"org_id"`
+	ListID                 sql.NullInt64  `json:"list_id"`
+	Slug                   string         `json:"slug"`
+	Name                   string         `json:"name"`
+	TriggerEvent           string         `json:"trigger_event"`
+	IsActive               sql.NullInt64  `json:"is_active"`
+	SendHour               sql.NullInt64  `json:"send_hour"`
+	SendTimezone           sql.NullString `json:"send_timezone"`
+	SequenceType           sql.NullString `json:"sequence_type"`
+	OnCompletionSequenceID sql.NullString `json:"on_completion_sequence_id"`
+	CreatedAt              sql.NullString `json:"created_at"`
+}
+
 // SDK Sequence queries
-func (q *Queries) GetSequenceByOrgAndSlug(ctx context.Context, arg GetSequenceByOrgAndSlugParams) (EmailSequence, error) {
+func (q *Queries) GetSequenceByOrgAndSlug(ctx context.Context, arg GetSequenceByOrgAndSlugParams) (GetSequenceByOrgAndSlugRow, error) {
 	row := q.db.QueryRowContext(ctx, getSequenceByOrgAndSlug, arg.OrgID, arg.Slug)
-	var i EmailSequence
+	var i GetSequenceByOrgAndSlugRow
 	err := row.Scan(
 		&i.ID,
 		&i.OrgID,
@@ -924,6 +988,7 @@ func (q *Queries) GetSequenceByOrgAndSlug(ctx context.Context, arg GetSequenceBy
 		&i.SendHour,
 		&i.SendTimezone,
 		&i.SequenceType,
+		&i.OnCompletionSequenceID,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -1006,27 +1071,31 @@ func (q *Queries) GetTemplateByID(ctx context.Context, id string) (GetTemplateBy
 
 const listAllSequences = `-- name: ListAllSequences :many
 SELECT es.id, es.org_id, es.list_id, es.slug, es.name, es.trigger_event, es.is_active,
-       es.send_hour, es.send_timezone, es.sequence_type, es.created_at,
-       el.name as list_name, el.slug as list_slug
+       es.send_hour, es.send_timezone, es.sequence_type, es.on_completion_sequence_id, es.created_at,
+       el.name as list_name, el.slug as list_slug,
+       ocs.name as on_completion_sequence_name
 FROM email_sequences es
 LEFT JOIN email_lists el ON el.id = es.list_id
+LEFT JOIN email_sequences ocs ON ocs.id = es.on_completion_sequence_id
 ORDER BY es.created_at
 `
 
 type ListAllSequencesRow struct {
-	ID           string         `json:"id"`
-	OrgID        sql.NullString `json:"org_id"`
-	ListID       sql.NullInt64  `json:"list_id"`
-	Slug         string         `json:"slug"`
-	Name         string         `json:"name"`
-	TriggerEvent string         `json:"trigger_event"`
-	IsActive     sql.NullInt64  `json:"is_active"`
-	SendHour     sql.NullInt64  `json:"send_hour"`
-	SendTimezone sql.NullString `json:"send_timezone"`
-	SequenceType sql.NullString `json:"sequence_type"`
-	CreatedAt    sql.NullString `json:"created_at"`
-	ListName     sql.NullString `json:"list_name"`
-	ListSlug     sql.NullString `json:"list_slug"`
+	ID                       string         `json:"id"`
+	OrgID                    sql.NullString `json:"org_id"`
+	ListID                   sql.NullInt64  `json:"list_id"`
+	Slug                     string         `json:"slug"`
+	Name                     string         `json:"name"`
+	TriggerEvent             string         `json:"trigger_event"`
+	IsActive                 sql.NullInt64  `json:"is_active"`
+	SendHour                 sql.NullInt64  `json:"send_hour"`
+	SendTimezone             sql.NullString `json:"send_timezone"`
+	SequenceType             sql.NullString `json:"sequence_type"`
+	OnCompletionSequenceID   sql.NullString `json:"on_completion_sequence_id"`
+	CreatedAt                sql.NullString `json:"created_at"`
+	ListName                 sql.NullString `json:"list_name"`
+	ListSlug                 sql.NullString `json:"list_slug"`
+	OnCompletionSequenceName sql.NullString `json:"on_completion_sequence_name"`
 }
 
 func (q *Queries) ListAllSequences(ctx context.Context) ([]ListAllSequencesRow, error) {
@@ -1049,9 +1118,11 @@ func (q *Queries) ListAllSequences(ctx context.Context) ([]ListAllSequencesRow, 
 			&i.SendHour,
 			&i.SendTimezone,
 			&i.SequenceType,
+			&i.OnCompletionSequenceID,
 			&i.CreatedAt,
 			&i.ListName,
 			&i.ListSlug,
+			&i.OnCompletionSequenceName,
 		); err != nil {
 			return nil, err
 		}
@@ -1221,21 +1292,36 @@ func (q *Queries) ListEmailQueueByOrg(ctx context.Context, arg ListEmailQueueByO
 }
 
 const listSequencesByList = `-- name: ListSequencesByList :many
-SELECT id, org_id, list_id, slug, name, trigger_event, is_active, send_hour, send_timezone, sequence_type, created_at
+SELECT id, org_id, list_id, slug, name, trigger_event, is_active, send_hour, send_timezone, sequence_type, on_completion_sequence_id, created_at
 FROM email_sequences
 WHERE list_id = ?1
 ORDER BY created_at
 `
 
-func (q *Queries) ListSequencesByList(ctx context.Context, listID sql.NullInt64) ([]EmailSequence, error) {
+type ListSequencesByListRow struct {
+	ID                     string         `json:"id"`
+	OrgID                  sql.NullString `json:"org_id"`
+	ListID                 sql.NullInt64  `json:"list_id"`
+	Slug                   string         `json:"slug"`
+	Name                   string         `json:"name"`
+	TriggerEvent           string         `json:"trigger_event"`
+	IsActive               sql.NullInt64  `json:"is_active"`
+	SendHour               sql.NullInt64  `json:"send_hour"`
+	SendTimezone           sql.NullString `json:"send_timezone"`
+	SequenceType           sql.NullString `json:"sequence_type"`
+	OnCompletionSequenceID sql.NullString `json:"on_completion_sequence_id"`
+	CreatedAt              sql.NullString `json:"created_at"`
+}
+
+func (q *Queries) ListSequencesByList(ctx context.Context, listID sql.NullInt64) ([]ListSequencesByListRow, error) {
 	rows, err := q.db.QueryContext(ctx, listSequencesByList, listID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []EmailSequence
+	var items []ListSequencesByListRow
 	for rows.Next() {
-		var i EmailSequence
+		var i ListSequencesByListRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.OrgID,
@@ -1247,6 +1333,7 @@ func (q *Queries) ListSequencesByList(ctx context.Context, listID sql.NullInt64)
 			&i.SendHour,
 			&i.SendTimezone,
 			&i.SequenceType,
+			&i.OnCompletionSequenceID,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -1264,28 +1351,32 @@ func (q *Queries) ListSequencesByList(ctx context.Context, listID sql.NullInt64)
 
 const listSequencesByOrg = `-- name: ListSequencesByOrg :many
 SELECT es.id, es.org_id, es.list_id, es.slug, es.name, es.trigger_event, es.is_active,
-       es.send_hour, es.send_timezone, es.sequence_type, es.created_at,
-       el.name as list_name, el.slug as list_slug
+       es.send_hour, es.send_timezone, es.sequence_type, es.on_completion_sequence_id, es.created_at,
+       el.name as list_name, el.slug as list_slug,
+       ocs.name as on_completion_sequence_name
 FROM email_sequences es
 LEFT JOIN email_lists el ON el.id = es.list_id
+LEFT JOIN email_sequences ocs ON ocs.id = es.on_completion_sequence_id
 WHERE es.org_id = ?1
 ORDER BY es.created_at
 `
 
 type ListSequencesByOrgRow struct {
-	ID           string         `json:"id"`
-	OrgID        sql.NullString `json:"org_id"`
-	ListID       sql.NullInt64  `json:"list_id"`
-	Slug         string         `json:"slug"`
-	Name         string         `json:"name"`
-	TriggerEvent string         `json:"trigger_event"`
-	IsActive     sql.NullInt64  `json:"is_active"`
-	SendHour     sql.NullInt64  `json:"send_hour"`
-	SendTimezone sql.NullString `json:"send_timezone"`
-	SequenceType sql.NullString `json:"sequence_type"`
-	CreatedAt    sql.NullString `json:"created_at"`
-	ListName     sql.NullString `json:"list_name"`
-	ListSlug     sql.NullString `json:"list_slug"`
+	ID                       string         `json:"id"`
+	OrgID                    sql.NullString `json:"org_id"`
+	ListID                   sql.NullInt64  `json:"list_id"`
+	Slug                     string         `json:"slug"`
+	Name                     string         `json:"name"`
+	TriggerEvent             string         `json:"trigger_event"`
+	IsActive                 sql.NullInt64  `json:"is_active"`
+	SendHour                 sql.NullInt64  `json:"send_hour"`
+	SendTimezone             sql.NullString `json:"send_timezone"`
+	SequenceType             sql.NullString `json:"sequence_type"`
+	OnCompletionSequenceID   sql.NullString `json:"on_completion_sequence_id"`
+	CreatedAt                sql.NullString `json:"created_at"`
+	ListName                 sql.NullString `json:"list_name"`
+	ListSlug                 sql.NullString `json:"list_slug"`
+	OnCompletionSequenceName sql.NullString `json:"on_completion_sequence_name"`
 }
 
 func (q *Queries) ListSequencesByOrg(ctx context.Context, orgID sql.NullString) ([]ListSequencesByOrgRow, error) {
@@ -1308,9 +1399,11 @@ func (q *Queries) ListSequencesByOrg(ctx context.Context, orgID sql.NullString) 
 			&i.SendHour,
 			&i.SendTimezone,
 			&i.SequenceType,
+			&i.OnCompletionSequenceID,
 			&i.CreatedAt,
 			&i.ListName,
 			&i.ListSlug,
+			&i.OnCompletionSequenceName,
 		); err != nil {
 			return nil, err
 		}
@@ -1587,18 +1680,20 @@ func (q *Queries) UpdateContactSequencePosition(ctx context.Context, arg UpdateC
 
 const updateSequence = `-- name: UpdateSequence :exec
 UPDATE email_sequences
-SET name = ?1, trigger_event = ?2, is_active = ?3, send_hour = ?4, send_timezone = ?5, sequence_type = COALESCE(?6, sequence_type)
-WHERE id = ?7
+SET name = ?1, trigger_event = ?2, is_active = ?3, send_hour = ?4, send_timezone = ?5, sequence_type = COALESCE(?6, sequence_type), on_completion_sequence_id = ?7, list_id = COALESCE(?8, list_id)
+WHERE id = ?9
 `
 
 type UpdateSequenceParams struct {
-	Name         string         `json:"name"`
-	TriggerEvent string         `json:"trigger_event"`
-	IsActive     sql.NullInt64  `json:"is_active"`
-	SendHour     sql.NullInt64  `json:"send_hour"`
-	SendTimezone sql.NullString `json:"send_timezone"`
-	SequenceType sql.NullString `json:"sequence_type"`
-	ID           string         `json:"id"`
+	Name                   string         `json:"name"`
+	TriggerEvent           string         `json:"trigger_event"`
+	IsActive               sql.NullInt64  `json:"is_active"`
+	SendHour               sql.NullInt64  `json:"send_hour"`
+	SendTimezone           sql.NullString `json:"send_timezone"`
+	SequenceType           sql.NullString `json:"sequence_type"`
+	OnCompletionSequenceID sql.NullString `json:"on_completion_sequence_id"`
+	ListID                 sql.NullInt64  `json:"list_id"`
+	ID                     string         `json:"id"`
 }
 
 func (q *Queries) UpdateSequence(ctx context.Context, arg UpdateSequenceParams) error {
@@ -1609,6 +1704,8 @@ func (q *Queries) UpdateSequence(ctx context.Context, arg UpdateSequenceParams) 
 		arg.SendHour,
 		arg.SendTimezone,
 		arg.SequenceType,
+		arg.OnCompletionSequenceID,
+		arg.ListID,
 		arg.ID,
 	)
 	return err

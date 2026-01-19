@@ -1,5 +1,5 @@
 -- Email Campaigns (One-time Broadcasts)
--- Sendy-style campaign management
+-- Campaign management
 
 -- name: CreateCampaign :one
 INSERT INTO email_campaigns (

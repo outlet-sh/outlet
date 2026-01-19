@@ -193,10 +193,3 @@
 	</div>
 </div>
 
-<style>
-@reference "$src/app.css";
-
-@layer components.model-selector {
-	/* No custom styles needed - using Tailwind utilities */
-}
-</style>

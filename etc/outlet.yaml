@@ -1,6 +1,6 @@
 Name: outlet
 Host: 0.0.0.0
-Port: 9888
+Port: 8888
 
 # Platform Branding
 Platform:
@@ -10,7 +10,7 @@ Platform:
 App:
   BaseURL: ${APP_BASE_URL}
   Domain: ${APP_DOMAIN}
-  ProductionMode: ${PRODUCTION_MODE}
+  ProductionMode: false
 
 # WebSocket Configuration
 WebSocket:
@@ -27,10 +27,7 @@ Auth:
   RefreshSecret: ${JWT_REFRESH_SECRET}
   RefreshExpire: 604800 # 7 days
 
-# Super Admin Seeding (creates admin user on first startup if not exists)
-Admin:
-  Email: "${ADMIN_EMAIL}"
-  Password: "${ADMIN_PASSWORD}"
+# Admin account is created through the web setup flow at /setup on first launch
 
 # Google OAuth & Calendar
 Google:
@@ -38,10 +35,6 @@ Google:
   ClientSecret: ${GOOGLE_CLIENT_SECRET}
   RefreshToken: ${GOOGLE_REFRESH_TOKEN}
   RedirectURL: ${GOOGLE_REDIRECT_URL}
-
-# Claude AI
-Claude:
-  APIKey: ${ANTHROPIC_API_KEY}
 
 # Email Dispatcher Settings (per-org SMTP config is in database)
 # Email:
@@ -85,7 +78,9 @@ GRPC:
 
 # SMTP Ingress Server (optional, disabled by default)
 # Allows sending emails via SMTP protocol with API key authentication
-SMTP:
-  Enabled: ${SMTP_ENABLED}
-  TLSCert: ${SMTP_TLS_CERT}
-  TLSKey: ${SMTP_TLS_KEY}
+# Uncomment and configure to enable SMTP submission on port 587
+# SMTP:
+#   Enabled: true
+#   Port: 587
+#   TLSCert: /path/to/cert.pem
+#   TLSKey: /path/to/key.pem

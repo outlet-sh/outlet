@@ -1,6 +1,6 @@
 <!--
   Skeleton Component
-  Loading placeholder with pulse animation
+  Uses DaisyUI skeleton class
 -->
 
 <script lang="ts">
@@ -13,12 +13,4 @@
 	}: Props = $props();
 </script>
 
-<div class="animate-pulse rounded-md bg-bg-secondary {className}"></div>
-
-<style>
-@reference "$src/app.css";
-
-@layer components.skeleton {
-	/* No custom styles needed - using Tailwind utilities */
-}
-</style>
+<div class="skeleton {className}"></div>

@@ -84,8 +84,9 @@ func (m *AuthMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 				// Read X-Org-Id header for org-scoped admin operations
 				orgIDStr := r.Header.Get("X-Org-Id")
 				if orgIDStr != "" {
-					if orgID, err := uuid.Parse(orgIDStr); err == nil {
-						ctx = context.WithValue(ctx, OrgIDKey, orgID)
+					// Validate it's a proper UUID, but store as string (logic files expect string)
+					if _, err := uuid.Parse(orgIDStr); err == nil {
+						ctx = context.WithValue(ctx, OrgIDKey, orgIDStr)
 					}
 				}
 

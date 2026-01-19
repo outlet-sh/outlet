@@ -3,10 +3,10 @@ package auth
 import (
 	"net/http"
 
+	"github.com/outlet-sh/outlet/internal/logic/auth"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
-	"outlet/internal/logic/auth"
-	"outlet/internal/svc"
-	"outlet/internal/types"
 )
 
 // Validate invitation token and get user details

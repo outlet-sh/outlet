@@ -3,10 +3,10 @@ package organizations
 import (
 	"net/http"
 
+	"github.com/outlet-sh/outlet/internal/logic/admin/organizations"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
-	"outlet/internal/logic/admin/organizations"
-	"outlet/internal/svc"
-	"outlet/internal/types"
 )
 
 func UpdateOrgEmailSettingsHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

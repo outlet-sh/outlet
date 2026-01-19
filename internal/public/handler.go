@@ -3,14 +3,15 @@ package public
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"html/template"
 	"log"
 	"net/http"
 	"strings"
 
-	"outlet/internal/db"
-	"outlet/internal/services/email"
-	"outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/services/email"
+	"github.com/outlet-sh/outlet/internal/svc"
 
 	"github.com/google/uuid"
 )
@@ -54,32 +55,69 @@ func (h *Handler) renderError(w http.ResponseWriter, title, message string, stat
 	})
 }
 
-// HandleSubscribe handles GET (show form) and POST (process subscription) for /s/{slug}
+// HandleSubscribe handles GET (show form) and POST (process subscription) for /s/{public_id}
 func (h *Handler) HandleSubscribe(w http.ResponseWriter, r *http.Request) {
-	// Extract slug from URL path: /s/{slug}
-	slug := strings.TrimPrefix(r.URL.Path, "/s/")
-	if slug == "" {
+	// Extract public_id from URL path: /s/{public_id}
+	publicID := strings.TrimPrefix(r.URL.Path, "/s/")
+	if publicID == "" {
 		h.renderError(w, "Not Found", "This subscription page doesn't exist.", http.StatusNotFound)
 		return
 	}
 
-	// Get list by slug
-	list, err := h.svcCtx.DB.GetListBySlugForPublicPage(r.Context(), slug)
+	// Get list by public_id
+	list, err := h.svcCtx.DB.GetListByPublicIDForPublicPage(r.Context(), publicID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			h.renderError(w, "Not Found", "This subscription page doesn't exist or is not available.", http.StatusNotFound)
 			return
 		}
-		log.Printf("Error getting list by slug %s: %v", slug, err)
+		log.Printf("Error getting list by public_id %s: %v", publicID, err)
 		h.renderError(w, "Error", "Something went wrong. Please try again later.", http.StatusInternalServerError)
 		return
 	}
 
+	// Fetch custom fields for this list
+	customFields, _ := h.svcCtx.DB.ListCustomFieldsByList(r.Context(), list.ID)
+
+	// Build custom fields data for template
+	type CustomFieldData struct {
+		FieldKey     string
+		Name         string
+		FieldType    string
+		Placeholder  string
+		Required     bool
+		DefaultValue string
+		Options      []string
+	}
+	var customFieldsData []CustomFieldData
+	for _, field := range customFields {
+		cf := CustomFieldData{
+			FieldKey:  field.FieldKey,
+			Name:      field.Name,
+			FieldType: field.FieldType,
+			Required:  field.Required == 1,
+		}
+		if field.Placeholder.Valid {
+			cf.Placeholder = field.Placeholder.String
+		} else {
+			cf.Placeholder = field.Name
+		}
+		if field.DefaultValue.Valid {
+			cf.DefaultValue = field.DefaultValue.String
+		}
+		if field.Options.Valid && field.Options.String != "" {
+			_ = json.Unmarshal([]byte(field.Options.String), &cf.Options)
+		}
+		customFieldsData = append(customFieldsData, cf)
+	}
+
 	data := map[string]interface{}{
-		"ListName":    list.Name,
-		"ListSlug":    list.Slug,
-		"Description": list.Description.String,
-		"OrgName":     list.OrgName,
+		"ListName":     list.Name,
+		"ListSlug":     list.Slug,
+		"ListPublicID": list.PublicID,
+		"Description":  list.Description.String,
+		"OrgName":      list.OrgName,
+		"CustomFields": customFieldsData,
 	}
 
 	if r.Method == http.MethodGet {
@@ -147,10 +185,22 @@ func (h *Handler) HandleSubscribe(w http.ResponseWriter, r *http.Request) {
 		"ThankYouRedirectURL":  list.ThankYouUrl.String,
 	}
 
+	// Collect custom field values from form
+	customFieldValues := make(map[string]string)
+	for key, values := range r.Form {
+		if strings.HasPrefix(key, "custom_fields[") && strings.HasSuffix(key, "]") {
+			fieldKey := key[14 : len(key)-1] // Extract field_key from custom_fields[field_key]
+			if len(values) > 0 && values[0] != "" {
+				customFieldValues[fieldKey] = values[0]
+			}
+		}
+	}
+
+	var subscriberID string
 	if requiresConfirmation {
 		// Create pending subscription with verification token
 		verificationToken := uuid.NewString()
-		_, err = h.svcCtx.DB.SubscribeToListPending(r.Context(), db.SubscribeToListPendingParams{
+		subscriber, err := h.svcCtx.DB.SubscribeToListPending(r.Context(), db.SubscribeToListPendingParams{
 			ID:                uuid.NewString(),
 			ListID:            list.ID,
 			ContactID:         contactID,
@@ -162,6 +212,7 @@ func (h *Handler) HandleSubscribe(w http.ResponseWriter, r *http.Request) {
 			h.renderTemplate(w, "subscribe.html", data)
 			return
 		}
+		subscriberID = subscriber.ID
 
 		// Send confirmation email
 		if err := h.sendConfirmationEmail(r.Context(), list, emailAddr, name, verificationToken); err != nil {
@@ -170,7 +221,7 @@ func (h *Handler) HandleSubscribe(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Direct subscription (no double opt-in)
-		_, err = h.svcCtx.DB.SubscribeToList(r.Context(), db.SubscribeToListParams{
+		subscriber, err := h.svcCtx.DB.SubscribeToList(r.Context(), db.SubscribeToListParams{
 			ID:        uuid.NewString(),
 			ListID:    list.ID,
 			ContactID: contactID,
@@ -180,6 +231,23 @@ func (h *Handler) HandleSubscribe(w http.ResponseWriter, r *http.Request) {
 			data["Error"] = "Something went wrong. Please try again."
 			h.renderTemplate(w, "subscribe.html", data)
 			return
+		}
+		subscriberID = subscriber.ID
+	}
+
+	// Save custom field values if any
+	if len(customFieldValues) > 0 && subscriberID != "" {
+		valuesJSON, err := json.Marshal(customFieldValues)
+		if err == nil {
+			err = h.svcCtx.DB.BulkCreateCustomFieldValues(r.Context(), db.BulkCreateCustomFieldValuesParams{
+				SubscriberID: subscriberID,
+				ValuesJson:   string(valuesJSON),
+				ListID:       list.ID,
+			})
+			if err != nil {
+				log.Printf("Error saving custom field values: %v", err)
+				// Non-fatal - subscription still succeeded
+			}
 		}
 	}
 
@@ -392,7 +460,7 @@ func (h *Handler) HandleWebView(w http.ResponseWriter, r *http.Request) {
 }
 
 // sendConfirmationEmail sends the double opt-in confirmation email
-func (h *Handler) sendConfirmationEmail(ctx context.Context, list db.GetListBySlugForPublicPageRow, toEmail, toName, token string) error {
+func (h *Handler) sendConfirmationEmail(ctx context.Context, list db.GetListByPublicIDForPublicPageRow, toEmail, toName, token string) error {
 	// Build confirmation URL
 	baseURL := h.svcCtx.Config.App.BaseURL
 	if baseURL == "" {

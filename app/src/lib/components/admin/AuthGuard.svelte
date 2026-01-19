@@ -1,12 +1,18 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { isAuthenticated, getCurrentUser, isAdmin } from '$lib/auth';
 
-	let { requireAdmin = false, redirectTo = '/auth/login' }: { requireAdmin?: boolean; redirectTo?: string } = $props();
+	interface Props {
+		requireAdmin?: boolean;
+		redirectTo?: string;
+		children: Snippet;
+	}
+
+	let { requireAdmin = false, redirectTo = '/auth/login', children }: Props = $props();
 
 	let isLoading = $state(true);
 	let isAuthorized = $state(false);
-	let user = $state<any>(null);
 
 	$effect(() => {
 		checkAuth();
@@ -19,12 +25,9 @@
 			return;
 		}
 
-		// Get current user
-		user = getCurrentUser();
-
 		// Check admin requirement
 		if (requireAdmin && !isAdmin()) {
-			goto('/'); // Redirect non-admins to admin
+			goto('/'); // Redirect non-admins to home
 			return;
 		}
 
@@ -34,12 +37,12 @@
 </script>
 
 {#if isLoading}
-	<div class="flex items-center justify-center min-h-screen bg-gray-50">
+	<div class="flex items-center justify-center min-h-screen bg-base-50">
 		<div class="text-center">
-			<div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-			<p class="mt-4 text-gray-600">Loading...</p>
+			<div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+			<p class="mt-4 text-text-muted">Loading...</p>
 		</div>
 	</div>
 {:else if isAuthorized}
-	<slot {user} />
+	{@render children()}
 {/if}

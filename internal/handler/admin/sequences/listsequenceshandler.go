@@ -3,9 +3,9 @@ package sequences
 import (
 	"net/http"
 
+	"github.com/outlet-sh/outlet/internal/logic/admin/sequences"
+	"github.com/outlet-sh/outlet/internal/svc"
 	"github.com/zeromicro/go-zero/rest/httpx"
-	"outlet/internal/logic/admin/sequences"
-	"outlet/internal/svc"
 )
 
 func ListSequencesHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

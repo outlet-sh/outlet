@@ -5,6 +5,8 @@ PLAN.md
 
 # Database data
 data/
+data copy/
+backups/
 
 # Environment files (keep .env.example)
 .env
@@ -25,4 +27,17 @@ tmp/
 
 # local non-passed on items
 keys.txt
+
+# Internal docs (competitor analysis, strategy)
+docs/
+prd.md
+bugs/
+features/
+
+# Output/build artifacts
+.out/
+
+# SDKs (separate repos)
+sdk/
+
 

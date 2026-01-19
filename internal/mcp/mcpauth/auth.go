@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"outlet/internal/db"
-	"outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/svc"
 
 	"github.com/modelcontextprotocol/go-sdk/auth"
 )

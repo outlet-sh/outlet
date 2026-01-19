@@ -3,10 +3,10 @@ package stats
 import (
 	"net/http"
 
+	"github.com/outlet-sh/outlet/internal/logic/sdk/stats"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
 	"github.com/zeromicro/go-zero/rest/httpx"
-	"outlet/internal/logic/sdk/stats"
-	"outlet/internal/svc"
-	"outlet/internal/types"
 )
 
 func GetContactStatsHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

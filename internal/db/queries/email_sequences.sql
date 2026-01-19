@@ -1,39 +1,43 @@
 -- name: GetSequenceByID :one
-SELECT id, org_id, list_id, slug, name, trigger_event, is_active, send_hour, send_timezone, sequence_type, created_at
+SELECT id, org_id, list_id, slug, name, trigger_event, is_active, send_hour, send_timezone, sequence_type, on_completion_sequence_id, created_at
 FROM email_sequences
 WHERE id = sqlc.arg(id);
 
 -- name: GetSequenceByListAndSlug :one
-SELECT id, org_id, list_id, slug, name, trigger_event, is_active, send_hour, send_timezone, sequence_type, created_at
+SELECT id, org_id, list_id, slug, name, trigger_event, is_active, send_hour, send_timezone, sequence_type, on_completion_sequence_id, created_at
 FROM email_sequences
 WHERE list_id = sqlc.arg(list_id) AND slug = sqlc.arg(slug);
 
 -- name: GetSequenceByListAndTrigger :one
-SELECT id, org_id, list_id, slug, name, trigger_event, is_active, send_hour, send_timezone, sequence_type, created_at
+SELECT id, org_id, list_id, slug, name, trigger_event, is_active, send_hour, send_timezone, sequence_type, on_completion_sequence_id, created_at
 FROM email_sequences
 WHERE list_id = sqlc.arg(list_id) AND trigger_event = sqlc.arg(trigger_event) AND is_active = 1;
 
 -- name: ListSequencesByList :many
-SELECT id, org_id, list_id, slug, name, trigger_event, is_active, send_hour, send_timezone, sequence_type, created_at
+SELECT id, org_id, list_id, slug, name, trigger_event, is_active, send_hour, send_timezone, sequence_type, on_completion_sequence_id, created_at
 FROM email_sequences
 WHERE list_id = sqlc.arg(list_id)
 ORDER BY created_at;
 
 -- name: ListSequencesByOrg :many
 SELECT es.id, es.org_id, es.list_id, es.slug, es.name, es.trigger_event, es.is_active,
-       es.send_hour, es.send_timezone, es.sequence_type, es.created_at,
-       el.name as list_name, el.slug as list_slug
+       es.send_hour, es.send_timezone, es.sequence_type, es.on_completion_sequence_id, es.created_at,
+       el.name as list_name, el.slug as list_slug,
+       ocs.name as on_completion_sequence_name
 FROM email_sequences es
 LEFT JOIN email_lists el ON el.id = es.list_id
+LEFT JOIN email_sequences ocs ON ocs.id = es.on_completion_sequence_id
 WHERE es.org_id = sqlc.arg(org_id)
 ORDER BY es.created_at;
 
 -- name: ListAllSequences :many
 SELECT es.id, es.org_id, es.list_id, es.slug, es.name, es.trigger_event, es.is_active,
-       es.send_hour, es.send_timezone, es.sequence_type, es.created_at,
-       el.name as list_name, el.slug as list_slug
+       es.send_hour, es.send_timezone, es.sequence_type, es.on_completion_sequence_id, es.created_at,
+       el.name as list_name, el.slug as list_slug,
+       ocs.name as on_completion_sequence_name
 FROM email_sequences es
 LEFT JOIN email_lists el ON el.id = es.list_id
+LEFT JOIN email_sequences ocs ON ocs.id = es.on_completion_sequence_id
 ORDER BY es.created_at;
 
 -- name: CreateSequence :one
@@ -43,7 +47,7 @@ RETURNING *;
 
 -- name: UpdateSequence :exec
 UPDATE email_sequences
-SET name = sqlc.arg(name), trigger_event = sqlc.arg(trigger_event), is_active = sqlc.arg(is_active), send_hour = sqlc.arg(send_hour), send_timezone = sqlc.arg(send_timezone), sequence_type = COALESCE(sqlc.arg(sequence_type), sequence_type)
+SET name = sqlc.arg(name), trigger_event = sqlc.arg(trigger_event), is_active = sqlc.arg(is_active), send_hour = sqlc.arg(send_hour), send_timezone = sqlc.arg(send_timezone), sequence_type = COALESCE(sqlc.arg(sequence_type), sequence_type), on_completion_sequence_id = sqlc.arg(on_completion_sequence_id), list_id = COALESCE(sqlc.arg(list_id), list_id)
 WHERE id = sqlc.arg(id);
 
 -- name: DeleteSequence :exec
@@ -249,7 +253,7 @@ ORDER BY eq.scheduled_for DESC;
 -- SDK Sequence queries
 
 -- name: GetSequenceByOrgAndSlug :one
-SELECT id, org_id, list_id, slug, name, trigger_event, is_active, send_hour, send_timezone, sequence_type, created_at
+SELECT id, org_id, list_id, slug, name, trigger_event, is_active, send_hour, send_timezone, sequence_type, on_completion_sequence_id, created_at
 FROM email_sequences
 WHERE org_id = sqlc.arg(org_id) AND slug = sqlc.arg(slug);
 

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"outlet/internal/config"
-	"outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/config"
+	"github.com/outlet-sh/outlet/internal/svc"
 
 	"github.com/emersion/go-smtp"
 	"github.com/zeromicro/go-zero/core/logx"

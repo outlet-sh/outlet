@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"strconv"
 
-	"outlet/internal/svc"
-	"outlet/internal/types"
-	"outlet/internal/utils"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
+	"github.com/outlet-sh/outlet/internal/utils"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -27,15 +27,9 @@ func NewGetSequenceLogic(ctx context.Context, svcCtx *svc.ServiceContext) *GetSe
 }
 
 func (l *GetSequenceLogic) GetSequence(req *types.GetSequenceRequest) (resp *types.SequenceDetailResponse, err error) {
-	id, err := strconv.ParseInt(req.Id, 10, 64)
-	if err != nil {
-		l.Errorf("Invalid sequence ID %s: %v", req.Id, err)
-		return nil, err
-	}
-
 	sequence, err := l.svcCtx.DB.GetSequenceByID(l.ctx, req.Id)
 	if err != nil {
-		l.Errorf("Failed to get sequence %d: %v", id, err)
+		l.Errorf("Failed to get sequence %s: %v", req.Id, err)
 		return nil, err
 	}
 
@@ -52,7 +46,7 @@ func (l *GetSequenceLogic) GetSequence(req *types.GetSequenceRequest) (resp *typ
 
 	templates, err := l.svcCtx.DB.ListTemplatesBySequence(l.ctx, sql.NullString{String: req.Id, Valid: true})
 	if err != nil {
-		l.Errorf("Failed to list templates for sequence %d: %v", id, err)
+		l.Errorf("Failed to list templates for sequence %s: %v", req.Id, err)
 		return nil, err
 	}
 
@@ -87,6 +81,16 @@ func (l *GetSequenceLogic) GetSequence(req *types.GetSequenceRequest) (resp *typ
 		sequenceType = sequence.SequenceType.String
 	}
 
+	var onCompletionSequenceId, onCompletionSequenceName string
+	if sequence.OnCompletionSequenceID.Valid {
+		onCompletionSequenceId = sequence.OnCompletionSequenceID.String
+		// Fetch the name of the completion sequence
+		completionSequence, err := l.svcCtx.DB.GetSequenceByID(l.ctx, onCompletionSequenceId)
+		if err == nil {
+			onCompletionSequenceName = completionSequence.Name
+		}
+	}
+
 	rules, _ := l.svcCtx.DB.ListEntryRulesBySequence(l.ctx, req.Id)
 	entryRules := make([]types.EntryRuleInfo, 0, len(rules))
 	for _, r := range rules {
@@ -110,19 +114,21 @@ func (l *GetSequenceLogic) GetSequence(req *types.GetSequenceRequest) (resp *typ
 
 	return &types.SequenceDetailResponse{
 		Sequence: types.SequenceInfo{
-			Id:           sequence.ID,
-			ListId:       listIDStr,
-			ListSlug:     listSlug,
-			ListName:     listName,
-			Slug:         sequence.Slug,
-			Name:         sequence.Name,
-			TriggerEvent: sequence.TriggerEvent,
-			SequenceType: sequenceType,
-			IsActive:     sequence.IsActive.Int64 == 1,
-			SendHour:     sendHour,
-			SendTimezone: sendTimezone,
-			EntryRules:   entryRules,
-			CreatedAt:    utils.FormatNullString(sequence.CreatedAt),
+			Id:                       sequence.ID,
+			ListId:                   listIDStr,
+			ListSlug:                 listSlug,
+			ListName:                 listName,
+			Slug:                     sequence.Slug,
+			Name:                     sequence.Name,
+			TriggerEvent:             sequence.TriggerEvent,
+			SequenceType:             sequenceType,
+			IsActive:                 sequence.IsActive.Int64 == 1,
+			SendHour:                 sendHour,
+			SendTimezone:             sendTimezone,
+			OnCompletionSequenceId:   onCompletionSequenceId,
+			OnCompletionSequenceName: onCompletionSequenceName,
+			EntryRules:               entryRules,
+			CreatedAt:                utils.FormatNullString(sequence.CreatedAt),
 		},
 		Templates: templateInfos,
 	}, nil

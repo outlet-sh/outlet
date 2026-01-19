@@ -3,12 +3,13 @@ package backup
 import (
 	"context"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"strconv"
 
-	"outlet/internal/db"
-	"outlet/internal/svc"
-	"outlet/internal/types"
+	"github.com/outlet-sh/outlet/internal/db"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -40,12 +41,19 @@ func (l *UpdateBackupSettingsLogic) UpdateBackupSettings(req *types.BackupSettin
 		return err
 	}
 
-	// Helper to upsert a sensitive setting
+	// Helper to upsert a sensitive setting (encrypted)
 	upsertSensitive := func(key, value, desc string) error {
-		// TODO: Encrypt the value using svcCtx.Encryption
+		encryptedValue := value
+		if l.svcCtx.CryptoService != nil {
+			encrypted, err := l.svcCtx.CryptoService.EncryptString(value)
+			if err != nil {
+				return fmt.Errorf("failed to encrypt %s: %w", key, err)
+			}
+			encryptedValue = hex.EncodeToString(encrypted)
+		}
 		_, err := l.svcCtx.DB.UpsertPlatformSetting(l.ctx, db.UpsertPlatformSettingParams{
 			Key:            key,
-			ValueEncrypted: sql.NullString{String: value, Valid: true}, // TODO: Encrypt this
+			ValueEncrypted: sql.NullString{String: encryptedValue, Valid: true},
 			Description:    sql.NullString{String: desc, Valid: true},
 			Category:       "backup",
 			IsSensitive:    sql.NullInt64{Int64: 1, Valid: true},

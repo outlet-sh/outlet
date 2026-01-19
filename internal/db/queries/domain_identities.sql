@@ -1,0 +1,58 @@
+-- name: CreateDomainIdentity :one
+INSERT INTO domain_identities (
+    id, org_id, domain, verification_status, dkim_status,
+    verification_token, dkim_tokens, dns_records
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING *;
+
+-- name: GetDomainIdentity :one
+SELECT * FROM domain_identities
+WHERE id = ?;
+
+-- name: GetDomainIdentityByDomain :one
+SELECT * FROM domain_identities
+WHERE org_id = ? AND domain = ?;
+
+-- name: ListDomainIdentitiesByOrg :many
+SELECT * FROM domain_identities
+WHERE org_id = ?
+ORDER BY created_at DESC;
+
+-- name: UpdateDomainIdentityStatus :one
+UPDATE domain_identities
+SET verification_status = ?,
+    dkim_status = ?,
+    last_checked_at = datetime('now'),
+    updated_at = datetime('now')
+WHERE id = ?
+RETURNING *;
+
+-- name: UpdateDomainIdentityMailFrom :one
+UPDATE domain_identities
+SET mail_from_domain = ?,
+    mail_from_status = ?,
+    dns_records = ?,
+    updated_at = datetime('now')
+WHERE id = ?
+RETURNING *;
+
+-- name: UpdateDomainIdentityDNSRecords :one
+UPDATE domain_identities
+SET dns_records = ?,
+    updated_at = datetime('now')
+WHERE id = ?
+RETURNING *;
+
+-- name: DeleteDomainIdentity :exec
+DELETE FROM domain_identities
+WHERE id = ?;
+
+-- name: DeleteDomainIdentityByOrg :exec
+DELETE FROM domain_identities
+WHERE org_id = ? AND domain = ?;
+
+-- name: ListPendingDomainIdentities :many
+SELECT * FROM domain_identities
+WHERE verification_status IN ('pending', 'Pending', 'not_started')
+   OR dkim_status IN ('pending', 'Pending', 'not_started')
+ORDER BY created_at ASC;

@@ -1,1 +1,0 @@
-import"../chunks/Bzak7iHL.js";import{i as t}from"../chunks/hUurZXsg.js";import{p,a as r}from"../chunks/Ip2DykXx.js";import{g as a}from"../chunks/CDoCV2GU.js";function f(s,o){p(o,!1),a("/settings/users",{replaceState:!0}),t(),r()}export{f as component};

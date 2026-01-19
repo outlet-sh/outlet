@@ -18,6 +18,8 @@ type Querier interface {
 	BlockContact(ctx context.Context, id string) error
 	// ========== BLOCK CONTACT BY EMAIL ==========
 	BlockContactByEmail(ctx context.Context, email string) error
+	// Used when subscribing with multiple field values at once
+	BulkCreateCustomFieldValues(ctx context.Context, arg BulkCreateCustomFieldValuesParams) error
 	BulkInsertBlockedDomains(ctx context.Context, arg BulkInsertBlockedDomainsParams) error
 	CancelAllContactSequences(ctx context.Context, arg CancelAllContactSequencesParams) error
 	CancelContactSequence(ctx context.Context, arg CancelContactSequenceParams) error
@@ -51,6 +53,7 @@ type Querier interface {
 	CountContactsByOrg(ctx context.Context, orgID sql.NullString) (int64, error)
 	CountContactsByStatus(ctx context.Context, status sql.NullString) (int64, error)
 	CountContactsByTag(ctx context.Context, tag string) (int64, error)
+	CountCustomFieldsByList(ctx context.Context, listID int64) (int64, error)
 	CountEmailDesigns(ctx context.Context, orgID string) (int64, error)
 	CountEmailDesignsByCategory(ctx context.Context, arg CountEmailDesignsByCategoryParams) (int64, error)
 	CountInactiveContacts90Days(ctx context.Context, orgID sql.NullString) (int64, error)
@@ -71,7 +74,7 @@ type Querier interface {
 	// ========== BLOCKED DOMAINS ==========
 	CreateBlockedDomain(ctx context.Context, arg CreateBlockedDomainParams) (BlockedDomain, error)
 	// Email Campaigns (One-time Broadcasts)
-	// Sendy-style campaign management
+	// Campaign management
 	CreateCampaign(ctx context.Context, arg CreateCampaignParams) (EmailCampaign, error)
 	// Campaign Clicks
 	CreateCampaignClick(ctx context.Context, arg CreateCampaignClickParams) (CampaignClick, error)
@@ -79,6 +82,10 @@ type Querier interface {
 	CreateCampaignSend(ctx context.Context, arg CreateCampaignSendParams) (CampaignSend, error)
 	CreateContact(ctx context.Context, arg CreateContactParams) (Contact, error)
 	CreateContactSequenceState(ctx context.Context, arg CreateContactSequenceStateParams) (ContactSequenceState, error)
+	CreateCustomField(ctx context.Context, arg CreateCustomFieldParams) (CustomField, error)
+	// Custom Field Values
+	CreateCustomFieldValue(ctx context.Context, arg CreateCustomFieldValueParams) (CustomFieldValue, error)
+	CreateDomainIdentity(ctx context.Context, arg CreateDomainIdentityParams) (DomainIdentity, error)
 	// Email blocklist queries for bounce and complaint management
 	// ========== BOUNCES ==========
 	CreateEmailBounce(ctx context.Context, arg CreateEmailBounceParams) (EmailBounce, error)
@@ -124,6 +131,12 @@ type Querier interface {
 	DeleteBlockedDomainByID(ctx context.Context, arg DeleteBlockedDomainByIDParams) error
 	DeleteCampaign(ctx context.Context, arg DeleteCampaignParams) error
 	DeleteContact(ctx context.Context, id string) error
+	DeleteCustomField(ctx context.Context, id string) error
+	DeleteCustomFieldValue(ctx context.Context, arg DeleteCustomFieldValueParams) error
+	DeleteCustomFieldValuesBySubscriber(ctx context.Context, subscriberID string) error
+	DeleteCustomFieldsByList(ctx context.Context, listID int64) error
+	DeleteDomainIdentity(ctx context.Context, id string) error
+	DeleteDomainIdentityByOrg(ctx context.Context, arg DeleteDomainIdentityByOrgParams) error
 	DeleteEmailBounce(ctx context.Context, email string) error
 	DeleteEmailComplaint(ctx context.Context, email string) error
 	DeleteEmailDesign(ctx context.Context, arg DeleteEmailDesignParams) error
@@ -184,10 +197,20 @@ type Querier interface {
 	GetContactByOrgID(ctx context.Context, arg GetContactByOrgIDParams) (Contact, error)
 	GetContactByTrackingToken(ctx context.Context, trackingToken sql.NullString) (Contact, error)
 	GetContactByVerificationToken(ctx context.Context, token sql.NullString) (Contact, error)
+	// ============================================
+	// GDPR EXPORT QUERIES
+	// ============================================
+	GetContactCampaignSends(ctx context.Context, contactID string) ([]GetContactCampaignSendsRow, error)
+	GetContactEmailClicks(ctx context.Context, contactID sql.NullString) ([]GetContactEmailClicksRow, error)
+	GetContactSequenceEmails(ctx context.Context, contactID sql.NullString) ([]GetContactSequenceEmailsRow, error)
 	GetContactSequenceState(ctx context.Context, arg GetContactSequenceStateParams) (GetContactSequenceStateRow, error)
 	GetContactSequenceStateWithDetails(ctx context.Context, arg GetContactSequenceStateWithDetailsParams) (GetContactSequenceStateWithDetailsRow, error)
 	GetContactTags(ctx context.Context, contactID sql.NullString) ([]ContactTag, error)
+	GetContactTransactionalSends(ctx context.Context, contactID sql.NullString) ([]GetContactTransactionalSendsRow, error)
 	GetContactsByTag(ctx context.Context, arg GetContactsByTagParams) ([]Contact, error)
+	GetCustomField(ctx context.Context, id string) (CustomField, error)
+	GetCustomFieldByKey(ctx context.Context, arg GetCustomFieldByKeyParams) (CustomField, error)
+	GetCustomFieldValue(ctx context.Context, arg GetCustomFieldValueParams) (CustomFieldValue, error)
 	// Dashboard Stats
 	GetDashboardEmailStats30Days(ctx context.Context, orgID string) (GetDashboardEmailStats30DaysRow, error)
 	GetDashboardSubscriberGrowth(ctx context.Context, orgID sql.NullString) (GetDashboardSubscriberGrowthRow, error)
@@ -197,6 +220,8 @@ type Querier interface {
 	GetDashboardSubscriberStats(ctx context.Context, orgID sql.NullString) (GetDashboardSubscriberStatsRow, error)
 	// Get all rule templates marked as defaults
 	GetDefaultRuleTemplates(ctx context.Context) ([]RuleTemplate, error)
+	GetDomainIdentity(ctx context.Context, id string) (DomainIdentity, error)
+	GetDomainIdentityByDomain(ctx context.Context, arg GetDomainIdentityByDomainParams) (DomainIdentity, error)
 	GetEmailBounce(ctx context.Context, email string) (EmailBounce, error)
 	GetEmailByTrackingToken(ctx context.Context, trackingToken sql.NullString) (GetEmailByTrackingTokenRow, error)
 	GetEmailComplaint(ctx context.Context, email string) (EmailComplaint, error)
@@ -204,6 +229,7 @@ type Querier interface {
 	GetEmailDesignBySlug(ctx context.Context, arg GetEmailDesignBySlugParams) (EmailDesign, error)
 	GetEmailList(ctx context.Context, id int64) (EmailList, error)
 	GetEmailListByOrgAndSlug(ctx context.Context, arg GetEmailListByOrgAndSlugParams) (EmailList, error)
+	GetEmailListByPublicID(ctx context.Context, publicID string) (EmailList, error)
 	GetEmailQueueByTrackingToken(ctx context.Context, token sql.NullString) (GetEmailQueueByTrackingTokenRow, error)
 	GetEmailQueueForContact(ctx context.Context, contactID sql.NullString) ([]GetEmailQueueForContactRow, error)
 	GetEmailStatsForSequence(ctx context.Context, sequenceID sql.NullString) (GetEmailStatsForSequenceRow, error)
@@ -217,12 +243,14 @@ type Querier interface {
 	GetImportJob(ctx context.Context, arg GetImportJobParams) (ImportJob, error)
 	GetLatestBackup(ctx context.Context) (BackupHistory, error)
 	GetListByIDForPublicPage(ctx context.Context, id int64) (GetListByIDForPublicPageRow, error)
+	GetListByPublicIDForPublicPage(ctx context.Context, publicID string) (GetListByPublicIDForPublicPageRow, error)
 	// Public Pages Queries
 	// These support the server-side rendered public subscribe/confirm/unsubscribe pages
 	GetListBySlugForPublicPage(ctx context.Context, slug string) (GetListBySlugForPublicPageRow, error)
 	GetListSubscriber(ctx context.Context, arg GetListSubscriberParams) (ListSubscriber, error)
 	GetListSubscriberByID(ctx context.Context, id string) (GetListSubscriberByIDRow, error)
 	GetListSubscriberByToken(ctx context.Context, token sql.NullString) (GetListSubscriberByTokenRow, error)
+	GetListSubscriberDetail(ctx context.Context, id string) (GetListSubscriberDetailRow, error)
 	GetMCPAPIKeyByHash(ctx context.Context, keyHash string) (GetMCPAPIKeyByHashRow, error)
 	GetMCPAPIKeyByPrefix(ctx context.Context, keyPrefix string) ([]McpApiKey, error)
 	GetMCPOAuthClientByClientID(ctx context.Context, clientID string) (McpOauthClient, error)
@@ -267,12 +295,16 @@ type Querier interface {
 	// Get rules that need revalidation (hash doesn't match content)
 	GetRulesWithStaleValidation(ctx context.Context, orgID string) ([]OrgRule, error)
 	GetScheduledCampaigns(ctx context.Context) ([]EmailCampaign, error)
-	GetSequenceByID(ctx context.Context, id string) (EmailSequence, error)
-	GetSequenceByListAndSlug(ctx context.Context, arg GetSequenceByListAndSlugParams) (EmailSequence, error)
-	GetSequenceByListAndTrigger(ctx context.Context, arg GetSequenceByListAndTriggerParams) (EmailSequence, error)
+	GetSequenceByID(ctx context.Context, id string) (GetSequenceByIDRow, error)
+	GetSequenceByListAndSlug(ctx context.Context, arg GetSequenceByListAndSlugParams) (GetSequenceByListAndSlugRow, error)
+	GetSequenceByListAndTrigger(ctx context.Context, arg GetSequenceByListAndTriggerParams) (GetSequenceByListAndTriggerRow, error)
 	// SDK Sequence queries
-	GetSequenceByOrgAndSlug(ctx context.Context, arg GetSequenceByOrgAndSlugParams) (EmailSequence, error)
+	GetSequenceByOrgAndSlug(ctx context.Context, arg GetSequenceByOrgAndSlugParams) (GetSequenceByOrgAndSlugRow, error)
 	GetSequenceStats(ctx context.Context, sequenceID sql.NullString) (GetSequenceStatsRow, error)
+	GetSubscriberCampaignActivity(ctx context.Context, contactID string) ([]GetSubscriberCampaignActivityRow, error)
+	// Returns field_key -> value pairs for use in email merge tags
+	GetSubscriberCustomFieldsForMerge(ctx context.Context, subscriberID string) ([]GetSubscriberCustomFieldsForMergeRow, error)
+	GetSubscriberSequenceEnrollments(ctx context.Context, contactID sql.NullString) ([]GetSubscriberSequenceEnrollmentsRow, error)
 	GetSuppressedEmail(ctx context.Context, arg GetSuppressedEmailParams) (SuppressionList, error)
 	GetTemplateByID(ctx context.Context, id string) (GetTemplateByIDRow, error)
 	GetTransactionalEmail(ctx context.Context, arg GetTransactionalEmailParams) (TransactionalEmail, error)
@@ -316,6 +348,9 @@ type Querier interface {
 	ListContactSequenceStatesWithDetails(ctx context.Context, arg ListContactSequenceStatesWithDetailsParams) ([]ListContactSequenceStatesWithDetailsRow, error)
 	ListContacts(ctx context.Context, arg ListContactsParams) ([]Contact, error)
 	ListContactsByOrg(ctx context.Context, arg ListContactsByOrgParams) ([]Contact, error)
+	ListCustomFieldValuesBySubscriber(ctx context.Context, subscriberID string) ([]ListCustomFieldValuesBySubscriberRow, error)
+	ListCustomFieldsByList(ctx context.Context, listID int64) ([]CustomField, error)
+	ListDomainIdentitiesByOrg(ctx context.Context, orgID string) ([]DomainIdentity, error)
 	ListEmailDesigns(ctx context.Context, orgID string) ([]EmailDesign, error)
 	ListEmailDesignsByCategory(ctx context.Context, arg ListEmailDesignsByCategoryParams) ([]EmailDesign, error)
 	ListEmailLists(ctx context.Context, orgID string) ([]EmailList, error)
@@ -327,11 +362,12 @@ type Querier interface {
 	ListMCPAPIKeysByUser(ctx context.Context, userID string) ([]McpApiKey, error)
 	ListMCPOAuthClients(ctx context.Context) ([]McpOauthClient, error)
 	ListOrganizations(ctx context.Context) ([]Organization, error)
+	ListPendingDomainIdentities(ctx context.Context) ([]DomainIdentity, error)
 	ListPendingImportJobs(ctx context.Context) ([]ImportJob, error)
 	ListPlatformSettings(ctx context.Context) ([]PlatformSetting, error)
 	ListRecentBounces(ctx context.Context, arg ListRecentBouncesParams) ([]EmailBounce, error)
 	ListRecentComplaints(ctx context.Context, arg ListRecentComplaintsParams) ([]EmailComplaint, error)
-	ListSequencesByList(ctx context.Context, listID sql.NullInt64) ([]EmailSequence, error)
+	ListSequencesByList(ctx context.Context, listID sql.NullInt64) ([]ListSequencesByListRow, error)
 	ListSequencesByOrg(ctx context.Context, orgID sql.NullString) ([]ListSequencesByOrgRow, error)
 	ListSuppressedEmails(ctx context.Context, arg ListSuppressedEmailsParams) ([]SuppressionList, error)
 	ListTemplatesBySequence(ctx context.Context, sequenceID sql.NullString) ([]ListTemplatesBySequenceRow, error)
@@ -400,6 +436,10 @@ type Querier interface {
 	UpdateContactName(ctx context.Context, arg UpdateContactNameParams) error
 	UpdateContactSequencePosition(ctx context.Context, arg UpdateContactSequencePositionParams) error
 	UpdateContactStatus(ctx context.Context, arg UpdateContactStatusParams) error
+	UpdateCustomField(ctx context.Context, arg UpdateCustomFieldParams) (CustomField, error)
+	UpdateDomainIdentityDNSRecords(ctx context.Context, arg UpdateDomainIdentityDNSRecordsParams) (DomainIdentity, error)
+	UpdateDomainIdentityMailFrom(ctx context.Context, arg UpdateDomainIdentityMailFromParams) (DomainIdentity, error)
+	UpdateDomainIdentityStatus(ctx context.Context, arg UpdateDomainIdentityStatusParams) (DomainIdentity, error)
 	UpdateEmailDesign(ctx context.Context, arg UpdateEmailDesignParams) (EmailDesign, error)
 	UpdateEmailList(ctx context.Context, arg UpdateEmailListParams) (EmailList, error)
 	UpdateEntryRule(ctx context.Context, arg UpdateEntryRuleParams) error
@@ -427,6 +467,7 @@ type Querier interface {
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
 	UpdateWebhook(ctx context.Context, arg UpdateWebhookParams) (Webhook, error)
 	UpdateWebhookDeliveryStats(ctx context.Context, arg UpdateWebhookDeliveryStatsParams) error
+	UpsertCustomFieldValue(ctx context.Context, arg UpsertCustomFieldValueParams) (CustomFieldValue, error)
 	// MCP Sessions (for persisting org selection across server restarts)
 	UpsertMCPSession(ctx context.Context, arg UpsertMCPSessionParams) error
 	UpsertPlatformSetting(ctx context.Context, arg UpsertPlatformSettingParams) (PlatformSetting, error)

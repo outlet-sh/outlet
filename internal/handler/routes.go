@@ -6,35 +6,35 @@ package handler
 import (
 	"net/http"
 
-	adminapikeys "outlet/internal/handler/admin/apikeys"
-	adminauth "outlet/internal/handler/admin/auth"
-	adminbackup "outlet/internal/handler/admin/backup"
-	adminblocklist "outlet/internal/handler/admin/blocklist"
-	admincampaigns "outlet/internal/handler/admin/campaigns"
-	admindesigns "outlet/internal/handler/admin/designs"
-	adminemailconfig "outlet/internal/handler/admin/emailconfig"
-	admingdpr "outlet/internal/handler/admin/gdpr"
-	adminhousekeeping "outlet/internal/handler/admin/housekeeping"
-	adminimports "outlet/internal/handler/admin/imports"
-	adminlists "outlet/internal/handler/admin/lists"
-	adminorganizations "outlet/internal/handler/admin/organizations"
-	adminsequences "outlet/internal/handler/admin/sequences"
-	adminsettings "outlet/internal/handler/admin/settings"
-	adminsubscribers "outlet/internal/handler/admin/subscribers"
-	adminsystem "outlet/internal/handler/admin/system"
-	admintransactional "outlet/internal/handler/admin/transactional"
-	adminusers "outlet/internal/handler/admin/users"
-	adminwebhooks "outlet/internal/handler/admin/webhooks"
-	auth "outlet/internal/handler/auth"
-	public "outlet/internal/handler/public"
-	sdk "outlet/internal/handler/sdk"
-	sdkcontacts "outlet/internal/handler/sdk/contacts"
-	sdkemails "outlet/internal/handler/sdk/emails"
-	sdksequences "outlet/internal/handler/sdk/sequences"
-	sdkstats "outlet/internal/handler/sdk/stats"
-	sdktracking "outlet/internal/handler/sdk/tracking"
-	sdkwebhooks "outlet/internal/handler/sdk/webhooks"
-	"outlet/internal/svc"
+	adminapikeys "github.com/outlet-sh/outlet/internal/handler/admin/apikeys"
+	adminauth "github.com/outlet-sh/outlet/internal/handler/admin/auth"
+	adminbackup "github.com/outlet-sh/outlet/internal/handler/admin/backup"
+	adminblocklist "github.com/outlet-sh/outlet/internal/handler/admin/blocklist"
+	admincampaigns "github.com/outlet-sh/outlet/internal/handler/admin/campaigns"
+	admindesigns "github.com/outlet-sh/outlet/internal/handler/admin/designs"
+	adminemailconfig "github.com/outlet-sh/outlet/internal/handler/admin/emailconfig"
+	admingdpr "github.com/outlet-sh/outlet/internal/handler/admin/gdpr"
+	adminhousekeeping "github.com/outlet-sh/outlet/internal/handler/admin/housekeeping"
+	adminimports "github.com/outlet-sh/outlet/internal/handler/admin/imports"
+	adminlists "github.com/outlet-sh/outlet/internal/handler/admin/lists"
+	adminorganizations "github.com/outlet-sh/outlet/internal/handler/admin/organizations"
+	adminsequences "github.com/outlet-sh/outlet/internal/handler/admin/sequences"
+	adminsettings "github.com/outlet-sh/outlet/internal/handler/admin/settings"
+	adminsubscribers "github.com/outlet-sh/outlet/internal/handler/admin/subscribers"
+	adminsystem "github.com/outlet-sh/outlet/internal/handler/admin/system"
+	admintransactional "github.com/outlet-sh/outlet/internal/handler/admin/transactional"
+	adminusers "github.com/outlet-sh/outlet/internal/handler/admin/users"
+	adminwebhooks "github.com/outlet-sh/outlet/internal/handler/admin/webhooks"
+	auth "github.com/outlet-sh/outlet/internal/handler/auth"
+	public "github.com/outlet-sh/outlet/internal/handler/public"
+	sdk "github.com/outlet-sh/outlet/internal/handler/sdk"
+	sdkcontacts "github.com/outlet-sh/outlet/internal/handler/sdk/contacts"
+	sdkemails "github.com/outlet-sh/outlet/internal/handler/sdk/emails"
+	sdksequences "github.com/outlet-sh/outlet/internal/handler/sdk/sequences"
+	sdkstats "github.com/outlet-sh/outlet/internal/handler/sdk/stats"
+	sdktracking "github.com/outlet-sh/outlet/internal/handler/sdk/tracking"
+	sdkwebhooks "github.com/outlet-sh/outlet/internal/handler/sdk/webhooks"
+	"github.com/outlet-sh/outlet/internal/svc"
 
 	"github.com/zeromicro/go-zero/rest"
 )
@@ -270,6 +270,31 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 			[]rest.Route{
 				{
 					Method:  http.MethodGet,
+					Path:    "/:org_id/domain-identities",
+					Handler: adminemailconfig.ListDomainIdentitiesHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/:org_id/domain-identities",
+					Handler: adminemailconfig.CreateDomainIdentityHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodGet,
+					Path:    "/:org_id/domain-identities/:id",
+					Handler: adminemailconfig.GetDomainIdentityHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodDelete,
+					Path:    "/:org_id/domain-identities/:id",
+					Handler: adminemailconfig.DeleteDomainIdentityHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/:org_id/domain-identities/:id/refresh",
+					Handler: adminemailconfig.RefreshDomainIdentityHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodGet,
 					Path:    "/:org_id/email-config",
 					Handler: adminemailconfig.GetOrgEmailConfigHandler(serverCtx),
 				},
@@ -418,6 +443,36 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 					Method:  http.MethodDelete,
 					Path:    "/lists/:id/subscribers/:subscriberId",
 					Handler: adminlists.RemoveListSubscriberHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodGet,
+					Path:    "/lists/:id/subscribers/:subscriberId",
+					Handler: adminlists.GetSubscriberDetailHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodGet,
+					Path:    "/lists/:listId/custom-fields",
+					Handler: adminlists.ListCustomFieldsHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/lists/:listId/custom-fields",
+					Handler: adminlists.CreateCustomFieldHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodGet,
+					Path:    "/lists/:listId/custom-fields/:fieldId",
+					Handler: adminlists.GetCustomFieldHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPut,
+					Path:    "/lists/:listId/custom-fields/:fieldId",
+					Handler: adminlists.UpdateCustomFieldHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodDelete,
+					Path:    "/lists/:listId/custom-fields/:fieldId",
+					Handler: adminlists.DeleteCustomFieldHandler(serverCtx),
 				},
 			}...,
 		),
@@ -575,6 +630,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 					Method:  http.MethodPut,
 					Path:    "/email",
 					Handler: adminsettings.UpdateEmailSettingsHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodGet,
+					Path:    "/ses-quota",
+					Handler: adminsettings.GetPlatformSESQuotaHandler(serverCtx),
 				},
 				{
 					Method:  http.MethodGet,
@@ -813,6 +873,18 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Method:  http.MethodGet,
 				Path:    "/health",
 				Handler: public.HealthHandler(serverCtx),
+			},
+			{
+				// Create initial admin account (only works when no admin exists)
+				Method:  http.MethodPost,
+				Path:    "/setup/admin",
+				Handler: public.CreateInitialAdminHandler(serverCtx),
+			},
+			{
+				// Check if initial setup is required
+				Method:  http.MethodGet,
+				Path:    "/setup/status",
+				Handler: public.GetPublicSetupStatusHandler(serverCtx),
 			},
 		},
 		rest.WithPrefix("/api/v1"),

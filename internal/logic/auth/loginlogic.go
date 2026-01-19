@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"outlet/internal/svc"
-	"outlet/internal/types"
-	"outlet/internal/utils"
+	"github.com/outlet-sh/outlet/internal/svc"
+	"github.com/outlet-sh/outlet/internal/types"
+	"github.com/outlet-sh/outlet/internal/utils"
 
 	"github.com/zeromicro/go-zero/core/logx"
 	"golang.org/x/crypto/bcrypt"
@@ -109,6 +109,7 @@ func (l *LoginLogic) Login(req *types.LoginRequest) (resp *types.LoginResponse, 
 			Email:     user.Email,
 			Name:      user.Name,
 			Role:      user.Role,
+			Active:    user.Status == "active",
 			CreatedAt: utils.FormatNullString(user.CreatedAt),
 		},
 	}, nil
