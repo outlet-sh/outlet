@@ -313,6 +313,12 @@ func runServe(cmd *cobra.Command, args []string) {
 			return
 		}
 
+		// Route health check to backend
+		if r.URL.Path == "/health" {
+			proxy.ServeHTTP(w, r)
+			return
+		}
+
 		// Route API requests to backend
 		if strings.HasPrefix(r.URL.Path, "/api/") {
 			proxy.ServeHTTP(w, r)
