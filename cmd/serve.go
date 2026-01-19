@@ -90,8 +90,13 @@ func runServe(cmd *cobra.Command, args []string) {
 	var serverPort = c.Port
 	var useHTTPS = false
 
-	// Check production mode from config
-	if c.App.ProductionMode {
+	// Check production mode from config or environment variable
+	productionMode := c.App.ProductionMode
+	if envProd := os.Getenv("PRODUCTION_MODE"); envProd == "true" || envProd == "1" {
+		productionMode = true
+	}
+
+	if productionMode {
 		if c.App.Domain == "" {
 			fmt.Println("ERROR: App.Domain is required in production mode")
 			os.Exit(1)
