@@ -1,1 +1,0 @@
-import"../chunks/DsnmJJEf.js";import{i as t}from"../chunks/BrWG_zvm.js";import{p,d as r}from"../chunks/DDjrJUyi.js";import{g as a}from"../chunks/C_3eB2yc.js";function c(e,o){p(o,!1),a("/settings/mcp",{replaceState:!0}),t(),r()}export{c as component};

@@ -9,7 +9,6 @@
 	} from '$lib/api';
 	import {
 		Button,
-		Card,
 		Input,
 		Alert,
 		LoadingSpinner,
@@ -17,14 +16,16 @@
 		Select,
 		Toggle,
 		AlertDialog,
-		HtmlEditor
+		EmailEditor,
+		PersonalizationTags,
+		Textarea
 	} from '$lib/components/ui';
 	import {
 		ArrowLeft,
-		FileText,
 		Save,
 		Trash2,
-		Eye
+		Eye,
+		X
 	} from 'lucide-svelte';
 
 	// Get template ID from URL
@@ -53,6 +54,19 @@
 	// Delete state
 	let showDeleteConfirm = $state(false);
 	let deleting = $state(false);
+
+	// Variable insertion
+	let insertVariable = $state<((variable: string) => void) | null>(null);
+
+	// Template variables
+	const templateVariables = [
+		{ name: 'content', label: 'Main content area' },
+		{ name: 'email', label: 'Subscriber email' },
+		{ name: 'name', label: 'Subscriber name' },
+		{ name: 'name,fallback=Friend', label: 'Name with fallback' },
+		{ name: 'unsubscribe_url', label: 'Unsubscribe link' },
+		{ name: 'web_version_url', label: 'Web version link' }
+	];
 
 	// Category options
 	const categories = [
@@ -124,6 +138,13 @@
 		}
 	}
 
+	async function saveAndClose() {
+		await saveTemplate();
+		if (!error) {
+			goto(`${basePath}/templates`);
+		}
+	}
+
 	async function executeDelete() {
 		if (!templateId) return;
 		deleting = true;
@@ -135,6 +156,16 @@
 		} finally {
 			deleting = false;
 		}
+	}
+
+	function handleCancel() {
+		goto(`${basePath}/templates`);
+	}
+
+	function regeneratePlainText() {
+		const div = document.createElement('div');
+		div.innerHTML = editHtmlBody;
+		editPlainText = div.textContent || div.innerText || '';
 	}
 
 	function getCategoryVariant(category: string): 'default' | 'info' | 'success' | 'warning' {
@@ -156,89 +187,111 @@
 	<title>{template?.name || 'Template'} | Outlet</title>
 </svelte:head>
 
-<div class="p-6 max-w-6xl mx-auto">
-	{#if loading}
-		<div class="flex justify-center py-12">
-			<LoadingSpinner size="large" />
-		</div>
-	{:else if !template}
+{#if loading}
+	<div class="flex justify-center py-12">
+		<LoadingSpinner size="lg" />
+	</div>
+{:else if !template}
+	<div class="p-6">
 		<Alert type="error" title="Template not found">
 			<p>The requested template could not be found.</p>
 			<Button type="primary" class="mt-3" onclick={() => goto(`${basePath}/templates`)}>
 				Back to Templates
 			</Button>
 		</Alert>
-	{:else}
-		<!-- Header -->
-		<div class="flex items-center gap-4 mb-6">
-			<a href="{basePath}/templates" class="p-2 rounded-lg hover:bg-bg-secondary transition-colors text-text-muted hover:text-text">
-				<ArrowLeft class="h-5 w-5" />
-			</a>
-			<div class="flex-1 flex items-center gap-3">
-				<div class="data-table-icon">
-					<FileText class="h-5 w-5" />
-				</div>
-				<div>
-					<h1 class="text-2xl font-semibold text-text">{template.name}</h1>
-					<div class="flex items-center gap-2 mt-1">
-						<Badge variant={getCategoryVariant(template.category)} size="sm">
-							{getCategoryLabel(template.category)}
-						</Badge>
-						{#if template.is_active}
-							<Badge variant="success" size="sm">Active</Badge>
-						{:else}
-							<Badge variant="default" size="sm">Inactive</Badge>
-						{/if}
+	</div>
+{:else}
+	<!-- Full Screen Layout -->
+	<div class="fixed inset-0 z-50 bg-base-200">
+		<div class="h-full flex flex-col">
+			<!-- Header -->
+			<div class="bg-base-100 border-b border-base-300 px-6 py-4 flex items-center justify-between flex-shrink-0">
+				<div class="flex items-center gap-4">
+					<button
+						type="button"
+						onclick={handleCancel}
+						class="p-2 rounded-lg hover:bg-base-200 transition-colors text-base-content/60 hover:text-base-content"
+					>
+						<ArrowLeft class="h-5 w-5" />
+					</button>
+					<div>
+						<div class="flex items-center gap-2">
+							<input
+								type="text"
+								bind:value={editName}
+								placeholder="Template Name"
+								class="text-lg font-semibold text-base-content bg-transparent border-none focus:outline-none focus:ring-0 placeholder:text-base-content/40 w-64"
+							/>
+							<Badge variant={getCategoryVariant(editCategory)} size="sm">
+								{getCategoryLabel(editCategory)}
+							</Badge>
+							{#if editIsActive}
+								<Badge variant="success" size="sm">Active</Badge>
+							{:else}
+								<Badge variant="default" size="sm">Inactive</Badge>
+							{/if}
+						</div>
+						<p class="text-xs text-base-content/50">Email Template</p>
 					</div>
 				</div>
+				<div class="flex items-center gap-3">
+					<Button type="secondary" onclick={handleCancel}>
+						<X class="mr-2 h-4 w-4" />
+						Cancel
+					</Button>
+					<Button type="secondary" onclick={() => showPreview = true}>
+						<Eye class="mr-2 h-4 w-4" />
+						Preview
+					</Button>
+					<Button
+						type="primary"
+						onclick={saveAndClose}
+						disabled={saving || !hasChanges}
+					>
+						<Save class="mr-2 h-4 w-4" />
+						{#if saving}
+							Saving...
+						{:else if saved}
+							Saved!
+						{:else}
+							Save & Close
+						{/if}
+					</Button>
+				</div>
 			</div>
-			<div class="flex items-center gap-2">
-				<Button type="secondary" onclick={() => showPreview = true}>
-					<Eye class="mr-2 h-4 w-4" />
-					Preview
-				</Button>
-				<Button
-					type="primary"
-					onclick={saveTemplate}
-					disabled={saving || !hasChanges}
-				>
-					<Save class="mr-2 h-4 w-4" />
-					{#if saving}
-						Saving...
-					{:else if saved}
-						Saved!
-					{:else}
-						Save
-					{/if}
-				</Button>
-			</div>
-		</div>
 
-		{#if error}
-			<Alert type="error" title="Error" class="mb-4">
-				<p>{error}</p>
-			</Alert>
-		{/if}
+			{#if error}
+				<div class="px-6 pt-4">
+					<Alert type="error" title="Error" onclose={() => (error = '')}>
+						<p>{error}</p>
+					</Alert>
+				</div>
+			{/if}
 
-		<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-			<!-- Left: Settings -->
-			<div class="lg:col-span-1 space-y-4">
-				<Card>
-					<h2 class="text-lg font-medium text-text mb-4">Settings</h2>
-					<div class="space-y-4">
-						<div>
-							<label for="template-name" class="form-label">Name</label>
-							<Input id="template-name" type="text" bind:value={editName} />
-						</div>
+			<!-- Content -->
+			<div class="flex-1 overflow-hidden flex">
+				<!-- Left Sidebar - Settings -->
+				<div class="w-80 bg-base-100 border-r border-base-300 p-6 overflow-y-auto flex-shrink-0">
+					<div class="space-y-6">
+						<!-- Slug (readonly) -->
 						<div>
 							<label class="form-label">Slug</label>
-							<p class="text-sm text-text-muted bg-bg-secondary px-3 py-2 rounded-md">{editSlug}</p>
-							<p class="mt-1 text-xs text-text-muted">Cannot be changed after creation</p>
+							<p class="text-sm text-base-content/70 bg-base-200 px-3 py-2 rounded-md font-mono">{editSlug}</p>
+							<p class="mt-1 text-xs text-base-content/50 italic">Cannot be changed after creation</p>
 						</div>
+
+						<!-- Description -->
 						<div>
 							<label for="template-description" class="form-label">Description</label>
-							<Input id="template-description" type="text" bind:value={editDescription} placeholder="Optional description" />
+							<Input
+								id="template-description"
+								type="text"
+								bind:value={editDescription}
+								placeholder="Optional description"
+							/>
 						</div>
+
+						<!-- Category -->
 						<div>
 							<label for="template-category" class="form-label">Category</label>
 							<Select
@@ -247,46 +300,77 @@
 								options={categories}
 							/>
 						</div>
-						<div class="flex items-center justify-between">
-							<span class="text-sm text-text">Active</span>
+
+						<!-- Active Toggle -->
+						<div class="flex items-center justify-between py-2">
+							<span class="text-sm font-medium text-base-content">Active</span>
 							<Toggle bind:checked={editIsActive} />
 						</div>
+
+						<!-- Personalization Tags -->
+						<PersonalizationTags
+							variables={templateVariables}
+							{insertVariable}
+						/>
+
+						<!-- Danger Zone -->
+						<div class="border-t border-base-300 pt-6">
+							<h4 class="text-sm font-medium text-error mb-3">Danger Zone</h4>
+							<p class="text-xs text-base-content/60 mb-3">
+								Permanently delete this template. This action cannot be undone.
+							</p>
+							<Button type="danger" size="sm" onclick={() => showDeleteConfirm = true}>
+								<Trash2 class="mr-2 h-4 w-4" />
+								Delete Template
+							</Button>
+						</div>
 					</div>
-				</Card>
+				</div>
 
-				<Card>
-					<h2 class="text-lg font-medium text-red-600 mb-4">Danger Zone</h2>
-					<p class="text-sm text-text-muted mb-4">
-						Permanently delete this template. This action cannot be undone.
-					</p>
-					<Button type="danger" onclick={() => showDeleteConfirm = true}>
-						<Trash2 class="mr-2 h-4 w-4" />
-						Delete Template
-					</Button>
-				</Card>
-			</div>
-
-			<!-- Right: Editor -->
-			<div class="lg:col-span-2">
-				<Card class="h-full">
-					<h2 class="text-lg font-medium text-text mb-4">Email Content</h2>
-					<HtmlEditor
-						bind:value={editHtmlBody}
-						placeholder="Start designing your email..."
-						minHeight="400px"
-					/>
-				</Card>
+				<!-- Main Editor Area -->
+				<div class="flex-1 flex flex-col overflow-hidden p-6 gap-4">
+					<div class="flex-1 min-h-0">
+						<EmailEditor
+							bind:value={editHtmlBody}
+							placeholder="Start designing your email template..."
+							showVariableInserts={false}
+							onInsertVariable={(fn) => insertVariable = fn}
+							class="h-full"
+						/>
+					</div>
+					<div class="flex-shrink-0">
+						<div class="flex items-center justify-between mb-1">
+							<label for="plain-text" class="form-label mb-0">Plain Text Version</label>
+							<button
+								type="button"
+								class="text-xs text-primary hover:text-primary/80"
+								onclick={regeneratePlainText}
+							>
+								Regenerate from HTML
+							</button>
+						</div>
+						<Textarea
+							id="plain-text"
+							bind:value={editPlainText}
+							placeholder="Auto-generated from HTML if left empty..."
+							rows={4}
+						/>
+						<p class="mt-1 text-xs text-base-content/50 italic">
+							Plain text version for email clients that don't support HTML.
+						</p>
+					</div>
+				</div>
 			</div>
 		</div>
-	{/if}
-</div>
+	</div>
+{/if}
 
 <!-- Preview Modal -->
 {#if showPreview && template}
-	<div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-		<div class="bg-bg-primary rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col">
-			<div class="flex items-center justify-between p-4 border-b border-border">
-				<h3 class="text-lg font-medium text-text">Preview: {editName}</h3>
+	<div class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+		<div class="bg-base-100 rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col">
+			<div class="flex items-center justify-between p-4 border-b border-base-300">
+				<h3 class="text-lg font-medium text-base-content">Preview: {editName}</h3>
 				<Button type="secondary" onclick={() => showPreview = false}>Close</Button>
 			</div>
 			<div class="flex-1 overflow-auto p-4 bg-white">

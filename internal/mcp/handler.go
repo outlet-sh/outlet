@@ -75,12 +75,21 @@ func NewHandler(svc *svc.ServiceContext, baseURL string) *Handler {
 // authMiddleware validates Bearer tokens and returns proper OAuth challenge on 401.
 // This custom implementation ensures WWW-Authenticate header is RFC 9728 compliant
 // with quoted resource_metadata value.
+// It also ensures session IDs are generated and communicated back to the client.
 func (h *Handler) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Log session info for debugging
+		// Check for session ID - generate one if not provided
 		sessionID := r.Header.Get("Mcp-Session-Id")
-		fmt.Printf("[MCP DEBUG] %s %s | Session: %q | Accept: %s\n",
-			r.Method, r.URL.Path, sessionID, r.Header.Get("Accept"))
+		newSession := false
+		if sessionID == "" {
+			sessionID = uuid.New().String()
+			newSession = true
+			// Add session ID to request so getServerForRequest can use it
+			r.Header.Set("Mcp-Session-Id", sessionID)
+		}
+
+		fmt.Printf("[MCP DEBUG] %s %s | Session: %q (new: %v) | Accept: %s\n",
+			r.Method, r.URL.Path, sessionID, newSession, r.Header.Get("Accept"))
 
 		// Extract Bearer token
 		authHeader := r.Header.Get("Authorization")
@@ -102,6 +111,10 @@ func (h *Handler) authMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
+		// Always set session ID in response header so client can use it for subsequent requests
+		// This is critical for MCP session continuity - the client needs to know the session ID
+		w.Header().Set("Mcp-Session-Id", sessionID)
+
 		// Add token info to request context and continue
 		ctx := mcpauth.ContextWithTokenInfo(r.Context(), tokenInfo)
 		next.ServeHTTP(w, r.WithContext(ctx))
@@ -120,8 +133,10 @@ func (h *Handler) writeUnauthorized(w http.ResponseWriter, msg string) {
 // getServerForRequest returns a cached server for the session, or creates a new one.
 // We cache by SESSION ID to support multiple clients per user with different orgs.
 // In stateless mode, the SDK doesn't track sessions - we do it ourselves.
+// The authMiddleware ensures a session ID is always present in the request header.
 // This allows org selection to survive server restarts.
 func (h *Handler) getServerForRequest(r *http.Request) *mcp.Server {
+	// Session ID is always set by authMiddleware (generated if not provided by client)
 	sessionID := r.Header.Get("Mcp-Session-Id")
 
 	// Get token info from context (set by authMiddleware)
@@ -131,29 +146,14 @@ func (h *Handler) getServerForRequest(r *http.Request) *mcp.Server {
 		return NewServer(h.svc, r)
 	}
 
-	// If no session ID, create a new session
-	if sessionID == "" {
-		fmt.Println("[MCP] No session ID - creating new session")
-		newSessionID := uuid.New().String()
-		// Create callback that persists org selection for this session
-		onOrgSelect := func(userID, orgID string) {
-			h.StoreOrgSelection(newSessionID, userID, orgID)
-		}
-		server, toolCtx := NewServerWithContext(h.svc, r, onOrgSelect)
-		h.sessionCache.Store(newSessionID, &sessionData{server: server, toolCtx: toolCtx})
-		fmt.Printf("[MCP] Created new session: %s\n", newSessionID)
-		return server
-	}
-
-	// Check cache first
+	// Check cache first - if we have this session, reuse it
 	if cached, ok := h.sessionCache.Load(sessionID); ok {
 		data := cached.(*sessionData)
 		fmt.Printf("[MCP] Using cached session: %s (hasOrg: %v)\n", sessionID, data.toolCtx != nil && data.toolCtx.HasOrg())
 		return data.server
 	}
 
-	// Session not in cache - this could be after a server restart
-	// Create new server and restore org selection if we have it stored
+	// Session not in cache - this is either a new session or after server restart
 	fmt.Printf("[MCP] Session %s not in cache - creating new server\n", sessionID)
 
 	// Create callback that persists org selection for this session

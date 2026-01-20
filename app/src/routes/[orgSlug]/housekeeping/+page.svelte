@@ -107,7 +107,7 @@
 	<title>Housekeeping | Outlet</title>
 </svelte:head>
 
-<div class="p-6 max-w-3xl mx-auto">
+<div class="p-6 max-w-5xl mx-auto">
 	<!-- Header -->
 	<div class="mb-6">
 		<h1 class="text-2xl font-semibold text-text">Housekeeping</h1>

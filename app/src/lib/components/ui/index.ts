@@ -82,3 +82,4 @@ export { default as ContentChatPanel } from './ContentChatPanel.svelte';
 export { default as ContentEditor } from './ContentEditor.svelte';
 export { default as Markdown } from './Markdown.svelte';
 export { default as HtmlEditor } from './HtmlEditor.svelte';
+export { default as PersonalizationTags } from './PersonalizationTags.svelte';

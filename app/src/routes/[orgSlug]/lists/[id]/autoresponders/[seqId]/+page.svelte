@@ -23,11 +23,11 @@
 		LoadingSpinner,
 		Badge,
 		EmptyState,
-		SlideForm,
 		Select,
-		Toggle,
 		AlertDialog,
-		Textarea
+		Textarea,
+		EmailEditor,
+		PersonalizationTags
 	} from '$lib/components/ui';
 	import {
 		ArrowLeft,
@@ -39,7 +39,9 @@
 		Pause,
 		GripVertical,
 		Clock,
-		ArrowRight
+		ArrowRight,
+		X,
+		Save
 	} from 'lucide-svelte';
 
 	// Route params
@@ -65,24 +67,28 @@
 	let saving = $state(false);
 	let saved = $state(false);
 
-	// Create email state
-	let showCreateEmail = $state(false);
-	let creatingEmail = $state(false);
-	let newSubject = $state('');
-	let newDelay = $state(0);
-	let newHtmlBody = $state('');
-
-	// Edit email state
+	// Full-screen email editor state
+	let showEmailEditor = $state(false);
 	let editingEmail = $state<TemplateInfo | null>(null);
-	let editSubject = $state('');
-	let editDelay = $state(0);
-	let editHtmlBody = $state('');
-	let savingEmail = $state(false);
+	let editorSubject = $state('');
+	let editorDelay = $state(0);
+	let editorHtmlBody = $state('');
+	let editorPlainText = $state('');
+	let editorSaving = $state(false);
+	let editorSaved = $state(false);
+	let insertVariable = $state<((variable: string) => void) | null>(null);
 
 	// Delete states
 	let showDeleteSequence = $state(false);
 	let deletingSequence = $state(false);
 	let deletingEmailId = $state<string | null>(null);
+
+	// Personalization variables for EmailEditor
+	const sequenceVariables = [
+		{ name: 'name', label: 'Subscriber name' },
+		{ name: 'email', label: 'Subscriber email' },
+		{ name: 'name,fallback=Friend', label: 'Name with fallback' }
+	];
 
 	$effect(() => {
 		loadData();
@@ -166,57 +172,62 @@
 	}
 
 	function openCreateEmail() {
-		newSubject = '';
-		newDelay = templates.length === 0 ? 0 : 24; // First email immediately, others 24h
-		newHtmlBody = '';
-		showCreateEmail = true;
+		editingEmail = null;
+		editorSubject = '';
+		editorDelay = templates.length === 0 ? 0 : 24; // First email immediately, others 24h
+		editorHtmlBody = '';
+		editorPlainText = '';
+		showEmailEditor = true;
 	}
 
-	async function submitCreateEmail() {
-		if (!newSubject.trim()) return;
-		creatingEmail = true;
-		error = '';
-		try {
-			await createTemplate({
-				sequence_id: seqId,
-				subject: newSubject.trim(),
-				delay_hours: newDelay,
-				html_body: newHtmlBody || '<p>Email content here</p>',
-				is_active: true,
-				position: templates.length + 1
-			});
-			showCreateEmail = false;
-			await loadData();
-		} catch (err: any) {
-			error = err.message || 'Failed to create email';
-		} finally {
-			creatingEmail = false;
-		}
-	}
-
-	function startEditEmail(template: TemplateInfo) {
+	function openEditEmail(template: TemplateInfo) {
 		editingEmail = template;
-		editSubject = template.subject;
-		editDelay = template.delay_hours;
-		editHtmlBody = template.html_body;
+		editorSubject = template.subject;
+		editorDelay = template.delay_hours;
+		editorHtmlBody = template.html_body;
+		editorPlainText = template.plain_text || '';
+		showEmailEditor = true;
 	}
 
-	async function saveEmail() {
-		if (!editingEmail || !editSubject.trim()) return;
-		savingEmail = true;
+	async function saveEmailAndClose() {
+		if (!editorSubject.trim()) {
+			error = 'Subject is required';
+			return;
+		}
+
+		editorSaving = true;
+		editorSaved = false;
 		error = '';
+
 		try {
-			await updateTemplate({}, {
-				subject: editSubject.trim(),
-				delay_hours: editDelay,
-				html_body: editHtmlBody
-			}, editingEmail.id);
-			editingEmail = null;
+			if (editingEmail) {
+				// Update existing email
+				await updateTemplate({}, {
+					subject: editorSubject.trim(),
+					delay_hours: editorDelay,
+					html_body: editorHtmlBody || '<p>Email content here</p>',
+					plain_text: editorPlainText.trim() || undefined
+				}, editingEmail.id);
+			} else {
+				// Create new email
+				await createTemplate({
+					sequence_id: seqId,
+					subject: editorSubject.trim(),
+					delay_hours: editorDelay,
+					html_body: editorHtmlBody || '<p>Email content here</p>',
+					plain_text: editorPlainText.trim() || undefined,
+					is_active: true,
+					position: templates.length + 1
+				});
+			}
+
+			editorSaved = true;
+			showEmailEditor = false;
 			await loadData();
 		} catch (err: any) {
 			error = err.message || 'Failed to save email';
 		} finally {
-			savingEmail = false;
+			editorSaving = false;
 		}
 	}
 
@@ -236,12 +247,18 @@
 		deletingSequence = true;
 		try {
 			await deleteSequence({}, seqId);
-			goto(`${basePath}/lists/${listId}?tab=autoresponders`);
+			goto(`${basePath}/lists/${listId}/autoresponders`);
 		} catch (err: any) {
 			error = err.message || 'Failed to delete autoresponder';
 		} finally {
 			deletingSequence = false;
 		}
+	}
+
+	function regeneratePlainText() {
+		const div = document.createElement('div');
+		div.innerHTML = editorHtmlBody;
+		editorPlainText = div.textContent || div.innerText || '';
 	}
 
 	function formatDelay(hours: number): string {
@@ -266,7 +283,7 @@
 	<title>{sequence?.name || 'Autoresponder'} | Outlet</title>
 </svelte:head>
 
-<div class="p-6 max-w-4xl mx-auto">
+<div class="p-6 max-w-5xl mx-auto">
 	{#if loading}
 		<div class="flex justify-center py-12">
 			<LoadingSpinner size="large" />
@@ -281,7 +298,7 @@
 	{:else}
 		<!-- Header -->
 		<div class="flex items-center gap-4 mb-6">
-			<a href="{basePath}/lists/{listId}" class="p-2 rounded-lg hover:bg-bg-secondary transition-colors text-text-muted hover:text-text">
+			<a href="{basePath}/lists/{listId}/autoresponders" class="p-2 rounded-lg hover:bg-bg-secondary transition-colors text-text-muted hover:text-text">
 				<ArrowLeft class="h-5 w-5" />
 			</a>
 			<div class="flex-1">
@@ -391,70 +408,11 @@
 		<!-- Emails Section -->
 		<div class="flex items-center justify-between mb-4">
 			<h2 class="text-lg font-medium text-text">Emails</h2>
-			<Button type="primary" onclick={openCreateEmail} disabled={showCreateEmail}>
+			<Button type="primary" onclick={openCreateEmail}>
 				<Plus class="mr-2 h-4 w-4" />
 				Add Email
 			</Button>
 		</div>
-
-		<!-- Create Email Form -->
-		<SlideForm bind:show={showCreateEmail} title="Add Email to Sequence">
-			<div class="space-y-4">
-				<div>
-					<label for="email-subject" class="form-label">Subject</label>
-					<Input id="email-subject" type="text" bind:value={newSubject} placeholder="Welcome to our newsletter!" />
-				</div>
-				<div>
-					<label for="email-delay" class="form-label">Send</label>
-					<div class="flex items-center gap-2">
-						<Input id="email-delay" type="number" bind:value={newDelay} min={0} class="w-24" />
-						<span class="text-text-muted">hours after {templates.length === 0 ? 'signup' : 'previous email'}</span>
-					</div>
-				</div>
-				<div>
-					<label for="email-body" class="form-label">Content (HTML)</label>
-					<Textarea id="email-body" bind:value={newHtmlBody} rows={6} placeholder="<p>Your email content...</p>" />
-				</div>
-			</div>
-
-			{#snippet footer()}
-				<Button type="secondary" onclick={() => showCreateEmail = false} disabled={creatingEmail}>
-					Cancel
-				</Button>
-				<Button type="primary" onclick={submitCreateEmail} disabled={!newSubject.trim() || creatingEmail}>
-					{creatingEmail ? 'Adding...' : 'Add Email'}
-				</Button>
-			{/snippet}
-		</SlideForm>
-
-		<!-- Edit Email Form -->
-		{#if editingEmail}
-			<Card class="mb-4 border-primary">
-				<h3 class="font-medium text-text mb-4">Edit Email</h3>
-				<div class="space-y-4">
-					<div>
-						<label for="edit-subject" class="form-label">Subject</label>
-						<Input id="edit-subject" type="text" bind:value={editSubject} />
-					</div>
-					<div>
-						<label for="edit-delay" class="form-label">Delay (hours)</label>
-						<Input id="edit-delay" type="number" bind:value={editDelay} min={0} class="w-32" />
-					</div>
-					<div>
-						<label for="edit-body" class="form-label">Content (HTML)</label>
-						<Textarea id="edit-body" bind:value={editHtmlBody} rows={8} />
-					</div>
-					<div class="flex gap-2">
-						<Button type="primary" onclick={saveEmail} disabled={savingEmail}>
-							{savingEmail ? 'Saving...' : 'Save'}
-						</Button>
-						<Button type="secondary" onclick={() => editingEmail = null}>
-							Cancel
-						</Button>
-					</div>
-				</div>
-			</Card>
-		{/if}
 
 		<!-- Email List -->
 		{#if templates.length === 0}
@@ -486,7 +444,7 @@
 							</div>
 						</div>
 						<div class="flex items-center gap-2">
-							<Button type="ghost" size="sm" onclick={() => startEditEmail(template)}>
+							<Button type="ghost" size="sm" onclick={() => openEditEmail(template)}>
 								<Edit class="h-4 w-4" />
 							</Button>
 							<Button
@@ -505,6 +463,115 @@
 		{/if}
 	{/if}
 </div>
+
+<!-- Full Screen Email Editor Overlay -->
+{#if showEmailEditor}
+	<div class="fixed inset-0 z-50 bg-base-200">
+		<div class="h-full flex flex-col">
+			<!-- Header -->
+			<div class="bg-base-100 border-b border-base-300 px-6 py-4 flex items-center justify-between flex-shrink-0">
+				<h3 class="text-lg font-semibold text-base-content">
+					{editingEmail ? 'Edit Sequence Email' : 'Add Sequence Email'}
+				</h3>
+				<div class="flex items-center gap-3">
+					<Button type="secondary" onclick={() => showEmailEditor = false}>
+						<X class="mr-2 h-4 w-4" />
+						Cancel
+					</Button>
+					<Button
+						type="primary"
+						onclick={saveEmailAndClose}
+						disabled={editorSaving || !editorSubject.trim()}
+					>
+						<Save class="mr-2 h-4 w-4" />
+						{editorSaving ? 'Saving...' : editorSaved ? 'Saved!' : 'Save & Close'}
+					</Button>
+				</div>
+			</div>
+
+			<!-- Content -->
+			<div class="flex-1 overflow-hidden flex">
+				<!-- Left Sidebar - Settings -->
+				<div class="w-80 bg-base-100 border-r border-base-300 p-6 overflow-y-auto flex-shrink-0">
+					<div class="space-y-6">
+						<div>
+							<label for="email-subject" class="form-label">Subject Line</label>
+							<Input
+								id="email-subject"
+								type="text"
+								bind:value={editorSubject}
+								placeholder="Welcome to our newsletter!"
+							/>
+						</div>
+
+						<div>
+							<label for="email-delay" class="form-label">Send Timing</label>
+							<div class="flex items-center gap-2">
+								<Input
+									id="email-delay"
+									type="number"
+									bind:value={editorDelay}
+									min={0}
+									class="w-24"
+								/>
+								<span class="text-sm text-base-content/70">hours after {templates.length === 0 && !editingEmail ? 'signup' : 'previous email'}</span>
+							</div>
+							<p class="mt-1 text-xs text-base-content/50 italic">
+								{editorDelay === 0 ? 'Sends immediately' : `Waits ${editorDelay} hours`}
+							</p>
+						</div>
+
+						<div class="bg-base-200 rounded-lg p-4">
+							<h4 class="text-sm font-medium text-base-content mb-2">About This Email</h4>
+							<p class="text-xs text-base-content/70">
+								This email is part of your autoresponder sequence. It will be sent automatically based on the timing you set above.
+							</p>
+						</div>
+
+						<PersonalizationTags
+							variables={sequenceVariables}
+							{insertVariable}
+						/>
+					</div>
+				</div>
+
+				<!-- Main Editor Area -->
+				<div class="flex-1 flex flex-col overflow-hidden p-6 gap-4">
+					<div class="flex-1 min-h-0">
+						<EmailEditor
+							bind:value={editorHtmlBody}
+							placeholder="Write your sequence email content..."
+							showVariableInserts={false}
+							onInsertVariable={(fn) => insertVariable = fn}
+							class="h-full"
+						/>
+					</div>
+					<div class="flex-shrink-0">
+						<div class="flex items-center justify-between mb-1">
+							<label for="email-plaintext" class="form-label mb-0">Plain Text Version</label>
+							<button
+								type="button"
+								class="text-xs text-primary hover:text-primary/80"
+								onclick={regeneratePlainText}
+							>
+								Regenerate from HTML
+							</button>
+						</div>
+						<Textarea
+							id="email-plaintext"
+							bind:value={editorPlainText}
+							placeholder="Plain text version of this email"
+							rows={4}
+						/>
+						<p class="mt-1 text-xs text-base-content/50 italic">
+							Auto-generated from HTML if left empty. Edit to customize.
+						</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+{/if}
 
 <AlertDialog
 	bind:open={showDeleteSequence}

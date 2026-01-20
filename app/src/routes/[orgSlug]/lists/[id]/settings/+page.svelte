@@ -12,7 +12,8 @@
 		Toggle,
 		AlertDialog,
 		EmailEditor,
-		Textarea
+		Textarea,
+		PersonalizationTags
 	} from '$lib/components/ui';
 	import { Trash2, Pencil, X, Save } from 'lucide-svelte';
 	import { getListContext } from '../listContext';
@@ -70,6 +71,37 @@
 	let showGoodbyeEditor = $state(false);
 	let editorSaving = $state(false);
 	let editorSaved = $state(false);
+
+	// Variable insertion for each editor
+	let insertConfirmationVar = $state<((variable: string) => void) | null>(null);
+	let insertThankYouVar = $state<((variable: string) => void) | null>(null);
+	let insertGoodbyeVar = $state<((variable: string) => void) | null>(null);
+
+	// Variables for each email type
+	const confirmationVariables = [
+		{ name: 'confirm_url', label: 'Confirmation link', required: true },
+		{ name: 'name', label: 'Subscriber name' },
+		{ name: 'email', label: 'Subscriber email' },
+		{ name: 'name,fallback=Friend', label: 'Name with fallback' }
+	];
+
+	const thankYouVariables = [
+		{ name: 'name', label: 'Subscriber name' },
+		{ name: 'email', label: 'Subscriber email' },
+		{ name: 'name,fallback=Friend', label: 'Name with fallback' },
+		{ name: 'currentday', label: 'Day name' },
+		{ name: 'currentmonth', label: 'Month name' },
+		{ name: 'currentyear', label: 'Year' },
+		{ name: 'unsubscribe_url', label: 'Unsubscribe link' },
+		{ name: 'webversion_url', label: 'Web version link' }
+	];
+
+	const goodbyeVariables = [
+		{ name: 'name', label: 'Subscriber name' },
+		{ name: 'email', label: 'Subscriber email' },
+		{ name: 'name,fallback=Friend', label: 'Name with fallback' },
+		{ name: 'resubscribe_url', label: 'Resubscribe link' }
+	];
 
 	// Strip HTML tags and convert to plain text
 	function htmlToPlainText(html: string): string {
@@ -630,24 +662,10 @@
 							</p>
 						</div>
 
-						<div class="bg-warning/10 border border-warning/30 rounded-lg p-4">
-							<h4 class="text-sm font-medium text-warning mb-2">Required Variable</h4>
-							<p class="text-xs text-base-content/70">
-								Don't forget to include the confirmation link tag <code class="bg-base-300 px-1 rounded">{'{{confirm_url}}'}</code> somewhere in your message.
-							</p>
-						</div>
-
-						<div class="bg-base-200 rounded-lg p-4">
-							<h4 class="text-sm font-medium text-base-content mb-2">Personalization Tags</h4>
-							<p class="text-xs text-base-content/70 mb-2">
-								Use these tags to personalize your email:
-							</p>
-							<div class="space-y-1 text-xs font-mono">
-								<div><code class="bg-base-300 px-1 rounded">{'{{name}}'}</code> - Subscriber name</div>
-								<div><code class="bg-base-300 px-1 rounded">{'{{email}}'}</code> - Subscriber email</div>
-								<div><code class="bg-base-300 px-1 rounded">{'{{name,fallback=Friend}}'}</code> - Name with fallback</div>
-							</div>
-						</div>
+						<PersonalizationTags
+							variables={confirmationVariables}
+							insertVariable={insertConfirmationVar}
+						/>
 					</div>
 				</div>
 
@@ -657,6 +675,8 @@
 						<EmailEditor
 							bind:value={editConfirmationBody}
 							placeholder="Click the link below to confirm your subscription..."
+							showVariableInserts={false}
+							onInsertVariable={(fn) => insertConfirmationVar = fn}
 							class="h-full"
 						/>
 					</div>
@@ -739,34 +759,10 @@
 							</p>
 						</div>
 
-						<div class="bg-base-200 rounded-lg p-4">
-							<h4 class="text-sm font-medium text-base-content mb-2">Personalization Tags</h4>
-							<p class="text-xs text-base-content/70 mb-2">
-								Use these tags to personalize your email:
-							</p>
-							<div class="space-y-1 text-xs font-mono">
-								<div><code class="bg-base-300 px-1 rounded">{'{{name}}'}</code> - Subscriber name</div>
-								<div><code class="bg-base-300 px-1 rounded">{'{{email}}'}</code> - Subscriber email</div>
-								<div><code class="bg-base-300 px-1 rounded">{'{{name,fallback=Friend}}'}</code> - With fallback</div>
-							</div>
-						</div>
-
-						<div class="bg-base-200 rounded-lg p-4">
-							<h4 class="text-sm font-medium text-base-content mb-2">Date Tags</h4>
-							<div class="space-y-1 text-xs font-mono">
-								<div><code class="bg-base-300 px-1 rounded">{'{{currentday}}'}</code> - Day name</div>
-								<div><code class="bg-base-300 px-1 rounded">{'{{currentmonth}}'}</code> - Month name</div>
-								<div><code class="bg-base-300 px-1 rounded">{'{{currentyear}}'}</code> - Year</div>
-							</div>
-						</div>
-
-						<div class="bg-base-200 rounded-lg p-4">
-							<h4 class="text-sm font-medium text-base-content mb-2">Link Tags</h4>
-							<div class="space-y-1 text-xs font-mono">
-								<div><code class="bg-base-300 px-1 rounded">{'{{unsubscribe_url}}'}</code> - Unsubscribe</div>
-								<div><code class="bg-base-300 px-1 rounded">{'{{webversion_url}}'}</code> - Web version</div>
-							</div>
-						</div>
+						<PersonalizationTags
+							variables={thankYouVariables}
+							insertVariable={insertThankYouVar}
+						/>
 					</div>
 				</div>
 
@@ -776,6 +772,8 @@
 						<EmailEditor
 							bind:value={editThankYouEmailBody}
 							placeholder="Thank you for subscribing!"
+							showVariableInserts={false}
+							onInsertVariable={(fn) => insertThankYouVar = fn}
 							class="h-full"
 						/>
 					</div>
@@ -858,24 +856,10 @@
 							</p>
 						</div>
 
-						<div class="bg-base-200 rounded-lg p-4">
-							<h4 class="text-sm font-medium text-base-content mb-2">Personalization Tags</h4>
-							<p class="text-xs text-base-content/70 mb-2">
-								Use these tags to personalize your email:
-							</p>
-							<div class="space-y-1 text-xs font-mono">
-								<div><code class="bg-base-300 px-1 rounded">{'{{name}}'}</code> - Subscriber name</div>
-								<div><code class="bg-base-300 px-1 rounded">{'{{email}}'}</code> - Subscriber email</div>
-								<div><code class="bg-base-300 px-1 rounded">{'{{name,fallback=Friend}}'}</code> - With fallback</div>
-							</div>
-						</div>
-
-						<div class="bg-info/10 border border-info/30 rounded-lg p-4">
-							<h4 class="text-sm font-medium text-info mb-2">Resubscribe Link</h4>
-							<p class="text-xs text-base-content/70">
-								Include <code class="bg-base-300 px-1 rounded">{'{{resubscribe_url}}'}</code> to let unsubscribed users easily rejoin your list.
-							</p>
-						</div>
+						<PersonalizationTags
+							variables={goodbyeVariables}
+							insertVariable={insertGoodbyeVar}
+						/>
 					</div>
 				</div>
 
@@ -885,6 +869,8 @@
 						<EmailEditor
 							bind:value={editGoodbyeEmailBody}
 							placeholder="You have been unsubscribed."
+							showVariableInserts={false}
+							onInsertVariable={(fn) => insertGoodbyeVar = fn}
 							class="h-full"
 						/>
 					</div>

@@ -85,7 +85,7 @@
 	<ul tabindex="0" class="dropdown-content menu bg-base-200 rounded-box z-50 min-w-48 p-2 shadow-lg">
 		{#each items as item}
 			{#if item.separator || item.divider}
-				<li class="divider my-1"></li>
+				<li class="my-1"><hr class="border-base-300" /></li>
 			{:else}
 				<li class={item.disabled ? 'disabled' : ''}>
 					<button
