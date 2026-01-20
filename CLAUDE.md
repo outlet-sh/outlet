@@ -158,6 +158,8 @@ go-zero config uses struct tags:
 
 ## First Run Setup
 
-On first launch, navigate to `/setup` to:
-1. Create the admin account (email/password)
+On first launch, the app automatically redirects to `/setup` where you:
+1. Create the admin account (email/password) via the onboarding wizard
 2. Configure SMTP settings for email sending
+
+No admin credentials need to be set in config files - the setup wizard handles everything.
