@@ -157,9 +157,13 @@ Examples:
 
 func orgHandler(toolCtx *mcpctx.ToolContext) func(ctx context.Context, req *mcp.CallToolRequest, input OrgInput) (*mcp.CallToolResult, any, error) {
 	return func(ctx context.Context, req *mcp.CallToolRequest, input OrgInput) (*mcp.CallToolResult, any, error) {
+		fmt.Printf("[MCP org] Handler called - Resource: %q, Action: %q, ID: %q, OrgID: %q, Slug: %q, Name: %q\n",
+			input.Resource, input.Action, input.ID, input.OrgID, input.Slug, input.Name)
+
 		// Validate resource
 		validActions, ok := orgActions[input.Resource]
 		if !ok {
+			fmt.Printf("[MCP org] ERROR: invalid resource %q\n", input.Resource)
 			return nil, nil, mcpctx.NewValidationError(
 				fmt.Sprintf("invalid resource '%s', must be: org or domain", input.Resource),
 				"resource")
@@ -167,6 +171,7 @@ func orgHandler(toolCtx *mcpctx.ToolContext) func(ctx context.Context, req *mcp.
 
 		// Validate action
 		if !slices.Contains(validActions, input.Action) {
+			fmt.Printf("[MCP org] ERROR: invalid action %q for resource %q\n", input.Action, input.Resource)
 			return nil, nil, mcpctx.NewValidationError(
 				fmt.Sprintf("invalid action '%s' for resource '%s', must be: %s",
 					input.Action, input.Resource, strings.Join(validActions, ", ")),
@@ -295,8 +300,18 @@ func handleOrgList(ctx context.Context, toolCtx *mcpctx.ToolContext, input OrgIn
 }
 
 func handleOrgSelect(ctx context.Context, toolCtx *mcpctx.ToolContext, input OrgInput) (*mcp.CallToolResult, any, error) {
+	// Accept either org_id or id for the org ID (users might use either)
+	orgID := input.OrgID
+	if orgID == "" && input.ID != "" {
+		orgID = input.ID
+	}
+
+	fmt.Printf("[MCP org.select] Starting - AuthMode: %v, SessionID: %s, OrgID: %q, ID: %q, Slug: %q\n",
+		toolCtx.AuthMode(), toolCtx.SessionID(), input.OrgID, input.ID, input.Slug)
+
 	if toolCtx.AuthMode() == mcpctx.AuthModeAPIKey {
 		org := toolCtx.Org()
+		fmt.Printf("[MCP org.select] API key mode - returning org: %s\n", org.Name)
 		return nil, OrgSelectOutput{
 			ID:       org.ID,
 			Name:     org.Name,
@@ -306,26 +321,32 @@ func handleOrgSelect(ctx context.Context, toolCtx *mcpctx.ToolContext, input Org
 		}, nil
 	}
 
-	if input.OrgID == "" && input.Slug == "" {
-		return nil, nil, mcpctx.NewValidationError("either org_id or slug is required for org.select", "org_id")
+	if orgID == "" && input.Slug == "" {
+		fmt.Println("[MCP org.select] ERROR: neither org_id/id nor slug provided")
+		return nil, nil, mcpctx.NewValidationError("either id, org_id, or slug is required for org.select", "id")
 	}
 
 	var fullOrg db.Organization
 	var err error
 
-	if input.OrgID != "" {
-		fullOrg, err = toolCtx.DB().GetOrganizationByID(ctx, input.OrgID)
+	if orgID != "" {
+		fmt.Printf("[MCP org.select] Looking up by ID: %s\n", orgID)
+		fullOrg, err = toolCtx.DB().GetOrganizationByID(ctx, orgID)
 	} else {
+		fmt.Printf("[MCP org.select] Looking up by slug: %s\n", input.Slug)
 		fullOrg, err = toolCtx.DB().GetOrganizationBySlug(ctx, input.Slug)
 	}
 	if err != nil {
-		if input.OrgID != "" {
-			return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("organization with ID '%s' not found", input.OrgID))
+		fmt.Printf("[MCP org.select] ERROR: org lookup failed: %v\n", err)
+		if orgID != "" {
+			return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("organization with ID '%s' not found", orgID))
 		}
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("organization with slug '%s' not found", input.Slug))
 	}
 
+	fmt.Printf("[MCP org.select] Found org: %s (%s), calling SelectOrg\n", fullOrg.Name, fullOrg.ID)
 	toolCtx.SelectOrg(fullOrg)
+	fmt.Printf("[MCP org.select] SelectOrg completed, HasOrg: %v\n", toolCtx.HasOrg())
 
 	return nil, OrgSelectOutput{
 		ID:       fullOrg.ID,
@@ -468,6 +489,9 @@ func handleOrgCreate(ctx context.Context, toolCtx *mcpctx.ToolContext, input Org
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create organization: %w", err)
 	}
+
+	// Auto-select the newly created organization so subsequent operations work immediately
+	toolCtx.SelectOrg(org)
 
 	return nil, OrgCreateOutput{
 		ID:      org.ID,
