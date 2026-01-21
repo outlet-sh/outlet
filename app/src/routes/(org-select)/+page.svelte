@@ -223,10 +223,7 @@
 											<span class="text-primary font-semibold">{org.name[0].toUpperCase()}</span>
 										</div>
 										<div>
-											<div class="flex items-center gap-2">
-												<span class="font-medium text-text group-hover:text-primary transition-colors">{org.name}</span>
-												<Badge variant="default" size="sm">{org.slug}</Badge>
-											</div>
+											<span class="font-medium text-text group-hover:text-primary transition-colors">{org.name}</span>
 											{#if org.from_email}
 												<p class="text-xs text-text-muted mt-0.5">{org.from_email}</p>
 											{:else}

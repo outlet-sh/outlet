@@ -110,9 +110,8 @@
 					<div class="workspace-switcher relative">
 						<button
 							onclick={(e) => { e.stopPropagation(); showUserMenu = false; showWorkspaceSwitcher = !showWorkspaceSwitcher; }}
-							class="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors hover:bg-base-100 group"
+							class="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors hover:bg-base-100 group"
 						>
-							<span class="flex items-center justify-center h-7 w-7 rounded-md text-xs font-semibold text-white bg-primary">W</span>
 							<span class="font-medium text-sm">Workspaces</span>
 							<ChevronDown class="h-4 w-4 text-text-muted group-hover:text-text transition-colors" />
 						</button>
