@@ -15,7 +15,7 @@ import (
 )
 
 // NewServer creates a new user-scoped MCP server with all tools registered.
-// The user must use org_select to choose which org to work with.
+// The user must use brand.select to choose which brand to work with.
 // This is a convenience wrapper around NewServerWithContext that discards the toolCtx.
 func NewServer(svc *svc.ServiceContext, r *http.Request) *mcp.Server {
 	server, _ := NewServerWithContext(svc, r, nil)
@@ -60,7 +60,7 @@ func NewServerWithContext(svc *svc.ServiceContext, r *http.Request, onOrgSelect 
 	userAgent := r.Header.Get("User-Agent")
 
 	// Create user-scoped tool context
-	// User must call org_select to choose an org - state persists in the session
+	// User must call brand.select to choose a brand - state persists in the session
 	toolCtx := mcpctx.NewUserToolContext(svc, *user, requestID, userAgent, sessionID)
 
 	// Set callback for persisting org selection
@@ -73,7 +73,7 @@ func NewServerWithContext(svc *svc.ServiceContext, r *http.Request, onOrgSelect 
 
 	// Register all tools (unified resource/action pattern)
 	tools.RegisterEmailTool(server, toolCtx)
-	tools.RegisterOrgTool(server, toolCtx)
+	tools.RegisterBrandTool(server, toolCtx)
 	tools.RegisterCampaignTool(server, toolCtx)
 	tools.RegisterContactTool(server, toolCtx)
 	tools.RegisterWebhookTool(server, toolCtx)

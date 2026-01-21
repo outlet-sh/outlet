@@ -258,47 +258,47 @@ func TestToolContext_RequireOrg_WithoutOrg(t *testing.T) {
 	assert.Equal(t, mcpctx.ErrNoOrgSelected, err)
 }
 
-// ========== OrgInput Tests (Unified Pattern) ==========
+// ========== BrandInput Tests (Unified Pattern) ==========
 
-func TestOrgInput_List(t *testing.T) {
-	input := OrgInput{
-		Resource: "org",
+func TestBrandInput_List(t *testing.T) {
+	input := BrandInput{
+		Resource: "brand",
 		Action:   "list",
 	}
 
-	assert.Equal(t, "org", input.Resource)
+	assert.Equal(t, "brand", input.Resource)
 	assert.Equal(t, "list", input.Action)
 }
 
-func TestOrgInput_Select_WithID(t *testing.T) {
-	input := OrgInput{
-		Resource: "org",
+func TestBrandInput_Select_WithID(t *testing.T) {
+	input := BrandInput{
+		Resource: "brand",
 		Action:   "select",
-		OrgID:    uuid.New().String(),
+		BrandID:  uuid.New().String(),
 	}
 
-	assert.Equal(t, "org", input.Resource)
+	assert.Equal(t, "brand", input.Resource)
 	assert.Equal(t, "select", input.Action)
-	assert.NotEmpty(t, input.OrgID)
+	assert.NotEmpty(t, input.BrandID)
 	assert.Empty(t, input.Slug)
 }
 
-func TestOrgInput_Select_WithSlug(t *testing.T) {
-	input := OrgInput{
-		Resource: "org",
+func TestBrandInput_Select_WithSlug(t *testing.T) {
+	input := BrandInput{
+		Resource: "brand",
 		Action:   "select",
 		Slug:     "my-org",
 	}
 
-	assert.Equal(t, "org", input.Resource)
+	assert.Equal(t, "brand", input.Resource)
 	assert.Equal(t, "select", input.Action)
-	assert.Empty(t, input.OrgID)
+	assert.Empty(t, input.BrandID)
 	assert.Equal(t, "my-org", input.Slug)
 }
 
-func TestOrgInput_Update(t *testing.T) {
-	input := OrgInput{
-		Resource:  "org",
+func TestBrandInput_Update(t *testing.T) {
+	input := BrandInput{
+		Resource:  "brand",
 		Action:    "update",
 		Name:      "My Company",
 		FromName:  "John from My Company",
@@ -306,7 +306,7 @@ func TestOrgInput_Update(t *testing.T) {
 		ReplyTo:   "support@mycompany.com",
 	}
 
-	assert.Equal(t, "org", input.Resource)
+	assert.Equal(t, "brand", input.Resource)
 	assert.Equal(t, "update", input.Action)
 	assert.Equal(t, "My Company", input.Name)
 	assert.Equal(t, "John from My Company", input.FromName)
@@ -314,10 +314,10 @@ func TestOrgInput_Update(t *testing.T) {
 	assert.Equal(t, "support@mycompany.com", input.ReplyTo)
 }
 
-// ========== OrgListItem Tests ==========
+// ========== BrandListItem Tests ==========
 
-func TestOrgListItem_Structure(t *testing.T) {
-	item := OrgListItem{
+func TestBrandListItem_Structure(t *testing.T) {
+	item := BrandListItem{
 		ID:       uuid.New().String(),
 		Name:     "My Company",
 		Slug:     "my-company",
@@ -332,11 +332,11 @@ func TestOrgListItem_Structure(t *testing.T) {
 	assert.True(t, item.Selected)
 }
 
-// ========== OrgListOutput Tests ==========
+// ========== BrandListOutput Tests ==========
 
-func TestOrgListOutput_Structure(t *testing.T) {
-	output := OrgListOutput{
-		Organizations: []OrgListItem{
+func TestBrandListOutput_Structure(t *testing.T) {
+	output := BrandListOutput{
+		Brands: []BrandListItem{
 			{ID: uuid.New().String(), Name: "Org 1", Slug: "org-1", Selected: true},
 			{ID: uuid.New().String(), Name: "Org 2", Slug: "org-2", Selected: false},
 		},
@@ -344,15 +344,15 @@ func TestOrgListOutput_Structure(t *testing.T) {
 		AuthMode: "api_key",
 	}
 
-	assert.Len(t, output.Organizations, 2)
+	assert.Len(t, output.Brands, 2)
 	assert.Equal(t, 2, output.Total)
 	assert.Equal(t, "api_key", output.AuthMode)
 }
 
-// ========== OrgSelectOutput Tests ==========
+// ========== BrandSelectOutput Tests ==========
 
-func TestOrgSelectOutput_Structure(t *testing.T) {
-	output := OrgSelectOutput{
+func TestBrandSelectOutput_Structure(t *testing.T) {
+	output := BrandSelectOutput{
 		ID:       uuid.New().String(),
 		Name:     "My Company",
 		Slug:     "my-company",
@@ -366,10 +366,10 @@ func TestOrgSelectOutput_Structure(t *testing.T) {
 	assert.Contains(t, output.Message, "selected")
 }
 
-// ========== OrgGetOutput Tests ==========
+// ========== BrandGetOutput Tests ==========
 
-func TestOrgGetOutput_Structure(t *testing.T) {
-	output := OrgGetOutput{
+func TestBrandGetOutput_Structure(t *testing.T) {
+	output := BrandGetOutput{
 		ID:          uuid.New().String(),
 		Name:        "My Company",
 		Slug:        "my-company",
@@ -385,10 +385,10 @@ func TestOrgGetOutput_Structure(t *testing.T) {
 	assert.Equal(t, "support@mycompany.com", output.FromEmail)
 }
 
-// ========== OrgUpdateOutput Tests ==========
+// ========== BrandUpdateOutput Tests ==========
 
-func TestOrgUpdateOutput_Structure(t *testing.T) {
-	output := OrgUpdateOutput{
+func TestBrandUpdateOutput_Structure(t *testing.T) {
+	output := BrandUpdateOutput{
 		ID:        uuid.New().String(),
 		Name:      "My Company",
 		FromName:  "Support",
@@ -461,10 +461,10 @@ func TestEmailActions_ValidActions(t *testing.T) {
 	assert.Contains(t, templateActions, "delete")
 }
 
-func TestOrgActions_ValidActions(t *testing.T) {
-	orgActions := orgActions["org"]
-	assert.Contains(t, orgActions, "list")
-	assert.Contains(t, orgActions, "select")
-	assert.Contains(t, orgActions, "get")
-	assert.Contains(t, orgActions, "update")
+func TestBrandActions_ValidActions(t *testing.T) {
+	actions := brandActions["brand"]
+	assert.Contains(t, actions, "list")
+	assert.Contains(t, actions, "select")
+	assert.Contains(t, actions, "get")
+	assert.Contains(t, actions, "update")
 }

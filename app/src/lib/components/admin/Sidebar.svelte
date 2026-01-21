@@ -15,11 +15,11 @@
 	} from 'lucide-svelte';
 
 	interface Props {
-		orgSlug: string;
+		brandSlug: string;
 		orgName?: string;
 	}
 
-	const { orgSlug, orgName = 'Outlet' }: Props = $props();
+	const { brandSlug, orgName = 'Outlet' }: Props = $props();
 
 	const STORAGE_KEY = 'sidebar-collapsed';
 
@@ -40,7 +40,7 @@
 		}
 	}
 
-	let basePath = $derived(`/${orgSlug}`);
+	let basePath = $derived(`/${brandSlug}`);
 
 	// Navigation items - flat, email-focused
 	// Sequences/Autoresponders live inside Lists now

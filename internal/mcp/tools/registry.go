@@ -78,7 +78,7 @@ func NewRegistryWithTools(toolCtx *mcpctx.ToolContext) *ToolRegistry {
 
 	// Register all tool handlers (unified resource/action pattern)
 	registerEmailToolToRegistry(registry, toolCtx)
-	registerOrgToolToRegistry(registry, toolCtx)
+	registerBrandToolToRegistry(registry, toolCtx)
 	registerCampaignToolToRegistry(registry, toolCtx)
 	registerContactToolToRegistry(registry, toolCtx)
 	registerWebhookToolToRegistry(registry, toolCtx)
