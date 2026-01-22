@@ -267,7 +267,7 @@ func handleBrandList(ctx context.Context, toolCtx *mcpctx.ToolContext, input Bra
 	items := make([]BrandListItem, 0)
 
 	if toolCtx.AuthMode() == mcpctx.AuthModeAPIKey {
-		org := toolCtx.Org()
+		org := toolCtx.Brand()
 		items = append(items, BrandListItem{
 			ID:       org.ID,
 			Name:     org.Name,
@@ -280,7 +280,7 @@ func handleBrandList(ctx context.Context, toolCtx *mcpctx.ToolContext, input Bra
 			return nil, nil, fmt.Errorf("failed to list organizations: %w", err)
 		}
 
-		currentOrgID := toolCtx.OrgID()
+		currentOrgID := toolCtx.BrandID()
 		for _, org := range allOrgs {
 			items = append(items, BrandListItem{
 				ID:       org.ID,
@@ -310,7 +310,7 @@ func handleBrandSelect(ctx context.Context, toolCtx *mcpctx.ToolContext, input B
 		toolCtx.AuthMode(), toolCtx.SessionID(), input.BrandID, input.ID, input.Slug)
 
 	if toolCtx.AuthMode() == mcpctx.AuthModeAPIKey {
-		org := toolCtx.Org()
+		org := toolCtx.Brand()
 		fmt.Printf("[MCP brand.select] API key mode - returning brand: %s\n", org.Name)
 		return nil, BrandSelectOutput{
 			ID:       org.ID,
@@ -344,9 +344,9 @@ func handleBrandSelect(ctx context.Context, toolCtx *mcpctx.ToolContext, input B
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("brand with slug '%s' not found", input.Slug))
 	}
 
-	fmt.Printf("[MCP brand.select] Found brand: %s (%s), calling SelectOrg\n", fullOrg.Name, fullOrg.ID)
-	toolCtx.SelectOrg(fullOrg)
-	fmt.Printf("[MCP brand.select] SelectOrg completed, HasOrg: %v\n", toolCtx.HasOrg())
+	fmt.Printf("[MCP brand.select] Found brand: %s (%s), calling SelectBrand\n", fullOrg.Name, fullOrg.ID)
+	toolCtx.SelectBrand(fullOrg)
+	fmt.Printf("[MCP brand.select] SelectBrand completed, HasBrand: %v\n", toolCtx.HasBrand())
 
 	return nil, BrandSelectOutput{
 		ID:       fullOrg.ID,
@@ -358,10 +358,10 @@ func handleBrandSelect(ctx context.Context, toolCtx *mcpctx.ToolContext, input B
 }
 
 func handleBrandGet(ctx context.Context, toolCtx *mcpctx.ToolContext, input BrandInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
-	org := toolCtx.Org()
+	org := toolCtx.Brand()
 
 	return nil, BrandGetOutput{
 		ID:          org.ID,
@@ -375,14 +375,14 @@ func handleBrandGet(ctx context.Context, toolCtx *mcpctx.ToolContext, input Bran
 }
 
 func handleBrandUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, input BrandInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
-	org := toolCtx.Org()
+	org := toolCtx.Brand()
 
 	if input.FromName != "" || input.FromEmail != "" || input.ReplyTo != "" {
 		_, err := toolCtx.DB().UpdateOrgEmailSettings(ctx, db.UpdateOrgEmailSettingsParams{
-			ID:        toolCtx.OrgID(),
+			ID:        toolCtx.BrandID(),
 			FromName:  input.FromName,
 			FromEmail: input.FromEmail,
 			ReplyTo:   input.ReplyTo,
@@ -394,7 +394,7 @@ func handleBrandUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, input B
 
 	if input.Name != "" {
 		_, err := toolCtx.DB().UpdateOrganization(ctx, db.UpdateOrganizationParams{
-			ID:   toolCtx.OrgID(),
+			ID:   toolCtx.BrandID(),
 			Name: input.Name,
 		})
 		if err != nil {
@@ -402,7 +402,7 @@ func handleBrandUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, input B
 		}
 	}
 
-	updatedOrg, err := toolCtx.DB().GetOrganizationByID(ctx, toolCtx.OrgID())
+	updatedOrg, err := toolCtx.DB().GetOrganizationByID(ctx, toolCtx.BrandID())
 	if err != nil {
 		return nil, BrandUpdateOutput{
 			ID:        org.ID,
@@ -491,7 +491,7 @@ func handleBrandCreate(ctx context.Context, toolCtx *mcpctx.ToolContext, input B
 	}
 
 	// Auto-select the newly created organization so subsequent operations work immediately
-	toolCtx.SelectOrg(org)
+	toolCtx.SelectBrand(org)
 
 	return nil, BrandCreateOutput{
 		ID:      org.ID,
@@ -503,7 +503,7 @@ func handleBrandCreate(ctx context.Context, toolCtx *mcpctx.ToolContext, input B
 }
 
 func handleBrandDelete(ctx context.Context, toolCtx *mcpctx.ToolContext, input BrandInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -511,7 +511,7 @@ func handleBrandDelete(ctx context.Context, toolCtx *mcpctx.ToolContext, input B
 		return nil, nil, mcpctx.NewValidationError("confirm=true is required to delete an organization", "confirm")
 	}
 
-	org := toolCtx.Org()
+	org := toolCtx.Brand()
 
 	err := toolCtx.DB().DeleteOrganization(ctx, org.ID)
 	if err != nil {
@@ -527,11 +527,11 @@ func handleBrandDelete(ctx context.Context, toolCtx *mcpctx.ToolContext, input B
 }
 
 func handleBrandDashboardStats(ctx context.Context, toolCtx *mcpctx.ToolContext, input BrandInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
-	orgID := toolCtx.OrgID()
+	orgID := toolCtx.BrandID()
 
 	// Get subscriber stats
 	var totalContacts, new30d, new7d int64
@@ -646,11 +646,11 @@ func handleDomain(ctx context.Context, toolCtx *mcpctx.ToolContext, input BrandI
 }
 
 func handleDomainIdentityList(ctx context.Context, toolCtx *mcpctx.ToolContext, input BrandInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
-	domains, err := toolCtx.DB().ListDomainIdentitiesByOrg(ctx, toolCtx.OrgID())
+	domains, err := toolCtx.DB().ListDomainIdentitiesByOrg(ctx, toolCtx.BrandID())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to list domains: %w", err)
 	}
@@ -674,7 +674,7 @@ func handleDomainIdentityList(ctx context.Context, toolCtx *mcpctx.ToolContext, 
 }
 
 func handleDomainIdentityCreate(ctx context.Context, toolCtx *mcpctx.ToolContext, input BrandInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -687,7 +687,7 @@ func handleDomainIdentityCreate(ctx context.Context, toolCtx *mcpctx.ToolContext
 
 	domain, err := toolCtx.DB().CreateDomainIdentity(ctx, db.CreateDomainIdentityParams{
 		ID:                 domainID,
-		OrgID:              toolCtx.OrgID(),
+		OrgID:              toolCtx.BrandID(),
 		Domain:             input.Domain,
 		VerificationStatus: sql.NullString{String: "pending", Valid: true},
 		DkimStatus:         sql.NullString{String: "pending", Valid: true},
@@ -708,7 +708,7 @@ func handleDomainIdentityCreate(ctx context.Context, toolCtx *mcpctx.ToolContext
 }
 
 func handleDomainIdentityGet(ctx context.Context, toolCtx *mcpctx.ToolContext, input BrandInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -721,7 +721,7 @@ func handleDomainIdentityGet(ctx context.Context, toolCtx *mcpctx.ToolContext, i
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("domain %s not found", input.ID))
 	}
 
-	if domain.OrgID != toolCtx.OrgID() {
+	if domain.OrgID != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("domain %s not found", input.ID))
 	}
 
@@ -741,7 +741,7 @@ func handleDomainIdentityGet(ctx context.Context, toolCtx *mcpctx.ToolContext, i
 }
 
 func handleDomainIdentityRefresh(ctx context.Context, toolCtx *mcpctx.ToolContext, input BrandInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -754,7 +754,7 @@ func handleDomainIdentityRefresh(ctx context.Context, toolCtx *mcpctx.ToolContex
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("domain %s not found", input.ID))
 	}
 
-	if domain.OrgID != toolCtx.OrgID() {
+	if domain.OrgID != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("domain %s not found", input.ID))
 	}
 
@@ -771,7 +771,7 @@ func handleDomainIdentityRefresh(ctx context.Context, toolCtx *mcpctx.ToolContex
 }
 
 func handleDomainIdentityDelete(ctx context.Context, toolCtx *mcpctx.ToolContext, input BrandInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -784,7 +784,7 @@ func handleDomainIdentityDelete(ctx context.Context, toolCtx *mcpctx.ToolContext
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("domain %s not found", input.ID))
 	}
 
-	if domain.OrgID != toolCtx.OrgID() {
+	if domain.OrgID != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("domain %s not found", input.ID))
 	}
 

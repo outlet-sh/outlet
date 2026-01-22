@@ -18,12 +18,13 @@ make test         # Run Go tests
 make gen          # Regenerate API code from outlet.api (NEVER run goctl directly)
 make sqlc-gen     # Generate type-safe Go code from SQL queries
 make gen-sdk      # Generate SDK clients (TypeScript, Python, Go, PHP)
+make gen-all      # All code generation (API + sqlc + proto)
 ```
 
 ### Frontend (SvelteKit)
 ```bash
 cd app
-pnpm dev          # Start dev server (proxies to Go backend on :8888)
+pnpm dev          # Start dev server (port 5173, proxies API to backend)
 pnpm build        # Build static site to build/
 pnpm check        # Type check
 pnpm test         # Run tests with Vitest
@@ -98,6 +99,7 @@ See `app/CLAUDE.md` for detailed frontend guidance.
 **Development Mode**: When `ProductionMode: false`:
 - Go backend on port 8888 (air hot reloads automatically)
 - Frontend dev server on port 5173 (run separately with `cd app && pnpm dev`)
+- With Docker: backend mapped to port 20202 externally (Vite proxies to this)
 
 ## Critical Rules
 

@@ -12,19 +12,19 @@ import (
 type AuthMode int
 
 const (
-	// AuthModeAPIKey means authenticated via X-API-Key header (org-scoped).
+	// AuthModeAPIKey means authenticated via X-API-Key header (brand-scoped).
 	AuthModeAPIKey AuthMode = iota
-	// AuthModeOAuth means authenticated via Bearer token (user-scoped, needs org selection).
+	// AuthModeOAuth means authenticated via Bearer token (user-scoped, needs brand selection).
 	AuthModeOAuth
 )
 
-// OrgSelectionCallback is called when org selection changes.
-// The handler uses this to persist org selection for session recovery.
+// BrandSelectionCallback is called when brand selection changes.
+// The handler uses this to persist brand selection for session recovery.
 // userID is included for DB persistence.
-type OrgSelectionCallback func(userID, orgID string)
+type BrandSelectionCallback func(userID, brandID string)
 
 // ToolContext carries context for all MCP tools.
-// It supports both API key auth (org-scoped) and OAuth auth (user-scoped with org selection).
+// It supports both API key auth (brand-scoped) and OAuth auth (user-scoped with brand selection).
 type ToolContext struct {
 	svc       *svc.ServiceContext
 	requestID string
@@ -34,23 +34,23 @@ type ToolContext struct {
 	// Auth mode
 	authMode AuthMode
 
-	// API key auth: org is set directly
-	org *db.Organization
+	// API key auth: brand is set directly
+	brand *db.Organization
 
-	// OAuth auth: user is set, org must be selected
+	// OAuth auth: user is set, brand must be selected
 	user        *db.User
-	selectedOrg *db.Organization
-	mu          sync.RWMutex // protects selectedOrg
+	selectedBrand *db.Organization
+	mu          sync.RWMutex // protects selectedBrand
 
-	// Callback for persisting org selection (set by Handler)
-	onOrgSelect OrgSelectionCallback
+	// Callback for persisting brand selection (set by Handler)
+	onBrandSelect BrandSelectionCallback
 }
 
-// NewToolContext creates a new org-scoped tool context (API key auth).
-func NewToolContext(svc *svc.ServiceContext, org db.Organization, requestID, userAgent string) *ToolContext {
+// NewToolContext creates a new brand-scoped tool context (API key auth).
+func NewToolContext(svc *svc.ServiceContext, brand db.Organization, requestID, userAgent string) *ToolContext {
 	return &ToolContext{
 		svc:       svc,
-		org:       &org,
+		brand:     &brand,
 		requestID: requestID,
 		userAgent: userAgent,
 		authMode:  AuthModeAPIKey,
@@ -58,7 +58,7 @@ func NewToolContext(svc *svc.ServiceContext, org db.Organization, requestID, use
 }
 
 // NewUserToolContext creates a new user-scoped tool context (OAuth auth).
-// The user must select an org using org_select before using other tools.
+// The user must select an org using brand.select before using other tools.
 func NewUserToolContext(svc *svc.ServiceContext, user db.User, requestID, userAgent, sessionID string) *ToolContext {
 	return &ToolContext{
 		svc:       svc,
@@ -70,9 +70,9 @@ func NewUserToolContext(svc *svc.ServiceContext, user db.User, requestID, userAg
 	}
 }
 
-// SetOrgSelectionCallback sets the callback for persisting org selection.
-func (t *ToolContext) SetOrgSelectionCallback(cb OrgSelectionCallback) {
-	t.onOrgSelect = cb
+// SetBrandSelectionCallback sets the callback for persisting brand selection.
+func (t *ToolContext) SetBrandSelectionCallback(cb BrandSelectionCallback) {
+	t.onBrandSelect = cb
 }
 
 // SessionID returns the MCP session ID.
@@ -80,40 +80,40 @@ func (t *ToolContext) SessionID() string {
 	return t.sessionID
 }
 
-// OrgID returns the organization ID for scoping queries.
-// Returns empty string if no org is available (OAuth without selection).
-func (t *ToolContext) OrgID() string {
-	org := t.currentOrg()
-	if org == nil {
+// BrandID returns the brand ID for scoping queries.
+// Returns empty string if no brand is available (OAuth without selection).
+func (t *ToolContext) BrandID() string {
+	brand := t.currentBrand()
+	if brand == nil {
 		return ""
 	}
-	return org.ID
+	return brand.ID
 }
 
-// Org returns the full organization record.
-// Returns empty Organization if no org is available.
-func (t *ToolContext) Org() db.Organization {
-	org := t.currentOrg()
-	if org == nil {
+// Brand returns the full brand record.
+// Returns empty Organization if no brand is available.
+func (t *ToolContext) Brand() db.Organization {
+	brand := t.currentBrand()
+	if brand == nil {
 		return db.Organization{}
 	}
-	return *org
+	return *brand
 }
 
-// HasOrg returns true if an organization is available for operations.
-func (t *ToolContext) HasOrg() bool {
-	return t.currentOrg() != nil
+// HasBrand returns true if an organization is available for operations.
+func (t *ToolContext) HasBrand() bool {
+	return t.currentBrand() != nil
 }
 
-// currentOrg returns the current org based on auth mode.
-func (t *ToolContext) currentOrg() *db.Organization {
+// currentBrand returns the current brand based on auth mode.
+func (t *ToolContext) currentBrand() *db.Organization {
 	if t.authMode == AuthModeAPIKey {
-		return t.org
+		return t.brand
 	}
-	// OAuth mode: use selected org
+	// OAuth mode: use selected brand
 	t.mu.RLock()
 	defer t.mu.RUnlock()
-	return t.selectedOrg
+	return t.selectedBrand
 }
 
 // AuthMode returns the authentication mode.
@@ -143,34 +143,34 @@ func (t *ToolContext) IsSuperAdmin() bool {
 	return t.user.Role == "super_admin"
 }
 
-// SelectOrg sets the current organization for OAuth sessions.
+// SelectBrand sets the current brand for OAuth sessions.
 // Also calls the persistence callback if set.
-func (t *ToolContext) SelectOrg(org db.Organization) {
+func (t *ToolContext) SelectBrand(brand db.Organization) {
 	t.mu.Lock()
-	t.selectedOrg = &org
-	cb := t.onOrgSelect
+	t.selectedBrand = &brand
+	cb := t.onBrandSelect
 	userID := t.UserID()
 	t.mu.Unlock()
 
 	// Call callback outside the lock to persist the selection
 	if cb != nil {
-		cb(userID, org.ID)
+		cb(userID, brand.ID)
 	}
 }
 
-// RestoreOrg sets the current organization without triggering the callback.
-// Used when restoring org selection from persistent storage.
-func (t *ToolContext) RestoreOrg(org db.Organization) {
+// RestoreBrand sets the current brand without triggering the callback.
+// Used when restoring brand selection from persistent storage.
+func (t *ToolContext) RestoreBrand(brand db.Organization) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	t.selectedOrg = &org
+	t.selectedBrand = &brand
 }
 
-// ClearOrg clears the selected organization (OAuth mode).
-func (t *ToolContext) ClearOrg() {
+// ClearBrand clears the selected brand (OAuth mode).
+func (t *ToolContext) ClearBrand() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	t.selectedOrg = nil
+	t.selectedBrand = nil
 }
 
 // DB returns the database store for queries.
@@ -222,17 +222,17 @@ func NewConflictError(message string) *ToolError {
 	return &ToolError{Code: "conflict", Message: message}
 }
 
-// ErrNoOrgSelected is returned when an org-scoped operation is attempted without an org selected.
-var ErrNoOrgSelected = &ToolError{
-	Code:    "no_org_selected",
-	Message: "No organization selected. Use org_list to see available organizations and org_select to choose one.",
+// ErrNoBrandSelected is returned when a brand-scoped operation is attempted without a brand selected.
+var ErrNoBrandSelected = &ToolError{
+	Code:    "no_brand_selected",
+	Message: "No brand selected. Use brand.list to see available brands and brand.select to choose one.",
 }
 
-// RequireOrg returns an error if no org is available.
-// Use this at the start of tools that need org context.
-func (t *ToolContext) RequireOrg() error {
-	if !t.HasOrg() {
-		return ErrNoOrgSelected
+// RequireBrand returns an error if no brand is available.
+// Use this at the start of tools that need brand context.
+func (t *ToolContext) RequireBrand() error {
+	if !t.HasBrand() {
+		return ErrNoBrandSelected
 	}
 	return nil
 }

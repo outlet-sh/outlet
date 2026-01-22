@@ -24,8 +24,8 @@ func NewServer(svc *svc.ServiceContext, r *http.Request) *mcp.Server {
 
 // NewServerWithContext creates a new MCP server and returns both the server and the ToolContext.
 // The ToolContext is returned so the caller can cache it for session persistence.
-// The onOrgSelect callback is called when org_select is used, for persisting the selection.
-func NewServerWithContext(svc *svc.ServiceContext, r *http.Request, onOrgSelect mcpctx.OrgSelectionCallback) (*mcp.Server, *mcpctx.ToolContext) {
+// The onBrandSelect callback is called when brand.select is used, for persisting the selection.
+func NewServerWithContext(svc *svc.ServiceContext, r *http.Request, onBrandSelect mcpctx.BrandSelectionCallback) (*mcp.Server, *mcpctx.ToolContext) {
 	server := mcp.NewServer(&mcp.Implementation{
 		Name:    "outlet",
 		Version: "1.0.0",
@@ -63,9 +63,9 @@ func NewServerWithContext(svc *svc.ServiceContext, r *http.Request, onOrgSelect 
 	// User must call brand.select to choose a brand - state persists in the session
 	toolCtx := mcpctx.NewUserToolContext(svc, *user, requestID, userAgent, sessionID)
 
-	// Set callback for persisting org selection
-	if onOrgSelect != nil {
-		toolCtx.SetOrgSelectionCallback(onOrgSelect)
+	// Set callback for persisting brand selection
+	if onBrandSelect != nil {
+		toolCtx.SetBrandSelectionCallback(onBrandSelect)
 	}
 
 	// Store additional user info in context for tools that need it

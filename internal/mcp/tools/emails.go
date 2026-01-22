@@ -430,7 +430,7 @@ func handleList(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInp
 }
 
 func handleListCreate(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -445,7 +445,7 @@ func handleListCreate(ctx context.Context, toolCtx *mcpctx.ToolContext, input Em
 	}
 
 	list, err := toolCtx.DB().CreateEmailList(ctx, db.CreateEmailListParams{
-		OrgID:       toolCtx.OrgID(),
+		OrgID:       toolCtx.BrandID(),
 		Name:        input.Name,
 		Slug:        slug,
 		Description: sql.NullString{String: input.Description, Valid: input.Description != ""},
@@ -466,11 +466,11 @@ func handleListCreate(ctx context.Context, toolCtx *mcpctx.ToolContext, input Em
 }
 
 func handleListList(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
-	lists, err := toolCtx.DB().ListEmailLists(ctx, toolCtx.OrgID())
+	lists, err := toolCtx.DB().ListEmailLists(ctx, toolCtx.BrandID())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to list lists: %w", err)
 	}
@@ -502,7 +502,7 @@ func handleListList(ctx context.Context, toolCtx *mcpctx.ToolContext, input Emai
 }
 
 func handleListGet(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -520,7 +520,7 @@ func handleListGet(ctx context.Context, toolCtx *mcpctx.ToolContext, input Email
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("list %s not found", input.ID))
 	}
 
-	if list.OrgID != toolCtx.OrgID() {
+	if list.OrgID != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("list %s not found", input.ID))
 	}
 
@@ -543,7 +543,7 @@ func handleListGet(ctx context.Context, toolCtx *mcpctx.ToolContext, input Email
 }
 
 func handleListUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -561,7 +561,7 @@ func handleListUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, input Em
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("list %s not found", input.ID))
 	}
 
-	if list.OrgID != toolCtx.OrgID() {
+	if list.OrgID != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("list %s not found", input.ID))
 	}
 
@@ -602,7 +602,7 @@ func handleListUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, input Em
 }
 
 func handleListDelete(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -620,7 +620,7 @@ func handleListDelete(ctx context.Context, toolCtx *mcpctx.ToolContext, input Em
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("list %s not found", input.ID))
 	}
 
-	if list.OrgID != toolCtx.OrgID() {
+	if list.OrgID != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("list %s not found", input.ID))
 	}
 
@@ -636,7 +636,7 @@ func handleListDelete(ctx context.Context, toolCtx *mcpctx.ToolContext, input Em
 }
 
 func handleListStats(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -654,7 +654,7 @@ func handleListStats(ctx context.Context, toolCtx *mcpctx.ToolContext, input Ema
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("list %s not found", input.ID))
 	}
 
-	if list.OrgID != toolCtx.OrgID() {
+	if list.OrgID != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("list %s not found", input.ID))
 	}
 
@@ -687,7 +687,7 @@ func handleListStats(ctx context.Context, toolCtx *mcpctx.ToolContext, input Ema
 }
 
 func handleListSubscribers(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -705,7 +705,7 @@ func handleListSubscribers(ctx context.Context, toolCtx *mcpctx.ToolContext, inp
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("list %s not found", input.ID))
 	}
 
-	if list.OrgID != toolCtx.OrgID() {
+	if list.OrgID != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("list %s not found", input.ID))
 	}
 
@@ -868,7 +868,7 @@ func handleSequence(ctx context.Context, toolCtx *mcpctx.ToolContext, input Emai
 }
 
 func handleSequenceCreate(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -898,7 +898,7 @@ func handleSequenceCreate(ctx context.Context, toolCtx *mcpctx.ToolContext, inpu
 		active = *input.Active
 	}
 
-	orgID := toolCtx.OrgID()
+	orgID := toolCtx.BrandID()
 	sequenceID := uuid.New().String()
 	sequence, err := toolCtx.DB().CreateSequence(ctx, db.CreateSequenceParams{
 		ID:           sequenceID,
@@ -927,7 +927,7 @@ func handleSequenceCreate(ctx context.Context, toolCtx *mcpctx.ToolContext, inpu
 }
 
 func handleSequenceList(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -942,7 +942,7 @@ func handleSequenceList(ctx context.Context, toolCtx *mcpctx.ToolContext, input 
 
 	items := make([]SequenceItem, 0)
 
-	orgID := toolCtx.OrgID()
+	orgID := toolCtx.BrandID()
 	sequences, err := toolCtx.DB().ListSequencesByOrg(ctx, sql.NullString{String: orgID, Valid: true})
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to list sequences: %w", err)
@@ -979,7 +979,7 @@ func handleSequenceList(ctx context.Context, toolCtx *mcpctx.ToolContext, input 
 }
 
 func handleSequenceGet(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -992,7 +992,7 @@ func handleSequenceGet(ctx context.Context, toolCtx *mcpctx.ToolContext, input E
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.ID))
 	}
 
-	if seq.OrgID.String != toolCtx.OrgID() {
+	if seq.OrgID.String != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.ID))
 	}
 
@@ -1025,7 +1025,7 @@ func handleSequenceGet(ctx context.Context, toolCtx *mcpctx.ToolContext, input E
 }
 
 func handleSequenceUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -1038,7 +1038,7 @@ func handleSequenceUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, inpu
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.ID))
 	}
 
-	if seq.OrgID.String != toolCtx.OrgID() {
+	if seq.OrgID.String != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.ID))
 	}
 
@@ -1085,7 +1085,7 @@ func handleSequenceUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, inpu
 }
 
 func handleSequenceDelete(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -1098,7 +1098,7 @@ func handleSequenceDelete(ctx context.Context, toolCtx *mcpctx.ToolContext, inpu
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.ID))
 	}
 
-	if seq.OrgID.String != toolCtx.OrgID() {
+	if seq.OrgID.String != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.ID))
 	}
 
@@ -1125,7 +1125,7 @@ func handleSequenceDelete(ctx context.Context, toolCtx *mcpctx.ToolContext, inpu
 }
 
 func handleSequenceStats(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -1138,7 +1138,7 @@ func handleSequenceStats(ctx context.Context, toolCtx *mcpctx.ToolContext, input
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.ID))
 	}
 
-	if seq.OrgID.String != toolCtx.OrgID() {
+	if seq.OrgID.String != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.ID))
 	}
 
@@ -1262,7 +1262,7 @@ func handleTemplate(ctx context.Context, toolCtx *mcpctx.ToolContext, input Emai
 }
 
 func handleTemplateCreate(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -1321,7 +1321,7 @@ func handleTemplateCreate(ctx context.Context, toolCtx *mcpctx.ToolContext, inpu
 }
 
 func handleTemplateList(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -1334,7 +1334,7 @@ func handleTemplateList(ctx context.Context, toolCtx *mcpctx.ToolContext, input 
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.SequenceID))
 	}
 
-	if seq.OrgID.String != toolCtx.OrgID() {
+	if seq.OrgID.String != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.SequenceID))
 	}
 
@@ -1362,7 +1362,7 @@ func handleTemplateList(ctx context.Context, toolCtx *mcpctx.ToolContext, input 
 }
 
 func handleTemplateGet(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -1380,7 +1380,7 @@ func handleTemplateGet(ctx context.Context, toolCtx *mcpctx.ToolContext, input E
 	}
 
 	seq, err := toolCtx.DB().GetSequenceByID(ctx, template.SequenceID.String)
-	if err != nil || seq.OrgID.String != toolCtx.OrgID() {
+	if err != nil || seq.OrgID.String != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("template %s not found", input.ID))
 	}
 
@@ -1397,7 +1397,7 @@ func handleTemplateGet(ctx context.Context, toolCtx *mcpctx.ToolContext, input E
 }
 
 func handleTemplateUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -1415,7 +1415,7 @@ func handleTemplateUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, inpu
 	}
 
 	seq, err := toolCtx.DB().GetSequenceByID(ctx, template.SequenceID.String)
-	if err != nil || seq.OrgID.String != toolCtx.OrgID() {
+	if err != nil || seq.OrgID.String != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("template %s not found", input.ID))
 	}
 
@@ -1472,7 +1472,7 @@ func handleTemplateUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, inpu
 }
 
 func handleTemplateDelete(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -1490,7 +1490,7 @@ func handleTemplateDelete(ctx context.Context, toolCtx *mcpctx.ToolContext, inpu
 	}
 
 	seq, err := toolCtx.DB().GetSequenceByID(ctx, template.SequenceID.String)
-	if err != nil || seq.OrgID.String != toolCtx.OrgID() {
+	if err != nil || seq.OrgID.String != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("template %s not found", input.ID))
 	}
 
@@ -1527,7 +1527,7 @@ type ListUnsubscribeOutput struct {
 }
 
 func handleListSubscribe(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -1549,12 +1549,12 @@ func handleListSubscribe(ctx context.Context, toolCtx *mcpctx.ToolContext, input
 	if err != nil {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("list %s not found", input.ID))
 	}
-	if list.OrgID != toolCtx.OrgID() {
+	if list.OrgID != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("list %s not found", input.ID))
 	}
 
 	// Find or create contact
-	orgID := toolCtx.OrgID()
+	orgID := toolCtx.BrandID()
 	contact, err := toolCtx.DB().GetContactByOrgAndEmail(ctx, db.GetContactByOrgAndEmailParams{
 		OrgID: sql.NullString{String: orgID, Valid: true},
 		Email: input.Email,
@@ -1603,7 +1603,7 @@ func handleListSubscribe(ctx context.Context, toolCtx *mcpctx.ToolContext, input
 }
 
 func handleListUnsubscribe(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -1625,12 +1625,12 @@ func handleListUnsubscribe(ctx context.Context, toolCtx *mcpctx.ToolContext, inp
 	if err != nil {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("list %s not found", input.ID))
 	}
-	if list.OrgID != toolCtx.OrgID() {
+	if list.OrgID != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("list %s not found", input.ID))
 	}
 
 	// Find contact
-	orgID := toolCtx.OrgID()
+	orgID := toolCtx.BrandID()
 	contact, err := toolCtx.DB().GetContactByOrgAndEmail(ctx, db.GetContactByOrgAndEmailParams{
 		OrgID: sql.NullString{String: orgID, Valid: true},
 		Email: input.Email,
@@ -1706,7 +1706,7 @@ func handleEnrollment(ctx context.Context, toolCtx *mcpctx.ToolContext, input Em
 }
 
 func handleEnrollmentEnroll(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -1723,14 +1723,14 @@ func handleEnrollmentEnroll(ctx context.Context, toolCtx *mcpctx.ToolContext, in
 	if err != nil {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.SequenceID))
 	}
-	if seq.OrgID.String != toolCtx.OrgID() {
+	if seq.OrgID.String != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.SequenceID))
 	}
 
 	// Verify contact exists and belongs to org
 	contact, err := toolCtx.DB().GetContactByOrgID(ctx, db.GetContactByOrgIDParams{
 		ID:    input.ContactID,
-		OrgID: sql.NullString{String: toolCtx.OrgID(), Valid: true},
+		OrgID: sql.NullString{String: toolCtx.BrandID(), Valid: true},
 	})
 	if err != nil {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("contact %s not found", input.ContactID))
@@ -1758,7 +1758,7 @@ func handleEnrollmentEnroll(ctx context.Context, toolCtx *mcpctx.ToolContext, in
 }
 
 func handleEnrollmentUnenroll(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -1775,7 +1775,7 @@ func handleEnrollmentUnenroll(ctx context.Context, toolCtx *mcpctx.ToolContext, 
 	if err != nil {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.SequenceID))
 	}
-	if seq.OrgID.String != toolCtx.OrgID() {
+	if seq.OrgID.String != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.SequenceID))
 	}
 
@@ -1804,7 +1804,7 @@ func handleEnrollmentUnenroll(ctx context.Context, toolCtx *mcpctx.ToolContext, 
 }
 
 func handleEnrollmentPause(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -1821,7 +1821,7 @@ func handleEnrollmentPause(ctx context.Context, toolCtx *mcpctx.ToolContext, inp
 	if err != nil {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.SequenceID))
 	}
-	if seq.OrgID.String != toolCtx.OrgID() {
+	if seq.OrgID.String != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.SequenceID))
 	}
 
@@ -1843,7 +1843,7 @@ func handleEnrollmentPause(ctx context.Context, toolCtx *mcpctx.ToolContext, inp
 }
 
 func handleEnrollmentResume(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -1860,7 +1860,7 @@ func handleEnrollmentResume(ctx context.Context, toolCtx *mcpctx.ToolContext, in
 	if err != nil {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.SequenceID))
 	}
-	if seq.OrgID.String != toolCtx.OrgID() {
+	if seq.OrgID.String != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.SequenceID))
 	}
 
@@ -1882,7 +1882,7 @@ func handleEnrollmentResume(ctx context.Context, toolCtx *mcpctx.ToolContext, in
 }
 
 func handleEnrollmentList(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -1893,7 +1893,7 @@ func handleEnrollmentList(ctx context.Context, toolCtx *mcpctx.ToolContext, inpu
 	// Verify contact exists and belongs to org
 	_, err := toolCtx.DB().GetContactByOrgID(ctx, db.GetContactByOrgIDParams{
 		ID:    input.ContactID,
-		OrgID: sql.NullString{String: toolCtx.OrgID(), Valid: true},
+		OrgID: sql.NullString{String: toolCtx.BrandID(), Valid: true},
 	})
 	if err != nil {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("contact %s not found", input.ContactID))
@@ -1901,7 +1901,7 @@ func handleEnrollmentList(ctx context.Context, toolCtx *mcpctx.ToolContext, inpu
 
 	states, err := toolCtx.DB().ListContactSequenceStatesWithDetails(ctx, db.ListContactSequenceStatesWithDetailsParams{
 		ContactID: sql.NullString{String: input.ContactID, Valid: true},
-		OrgID:     sql.NullString{String: toolCtx.OrgID(), Valid: true},
+		OrgID:     sql.NullString{String: toolCtx.BrandID(), Valid: true},
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to list enrollments: %w", err)
@@ -1997,7 +1997,7 @@ func handleEntryRule(ctx context.Context, toolCtx *mcpctx.ToolContext, input Ema
 }
 
 func handleEntryRuleCreate(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -2018,7 +2018,7 @@ func handleEntryRuleCreate(ctx context.Context, toolCtx *mcpctx.ToolContext, inp
 	if err != nil {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.SequenceID))
 	}
-	if seq.OrgID.String != toolCtx.OrgID() {
+	if seq.OrgID.String != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.SequenceID))
 	}
 
@@ -2057,7 +2057,7 @@ func handleEntryRuleCreate(ctx context.Context, toolCtx *mcpctx.ToolContext, inp
 }
 
 func handleEntryRuleList(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -2070,7 +2070,7 @@ func handleEntryRuleList(ctx context.Context, toolCtx *mcpctx.ToolContext, input
 	if err != nil {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.SequenceID))
 	}
-	if seq.OrgID.String != toolCtx.OrgID() {
+	if seq.OrgID.String != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.SequenceID))
 	}
 
@@ -2108,7 +2108,7 @@ func handleEntryRuleList(ctx context.Context, toolCtx *mcpctx.ToolContext, input
 }
 
 func handleEntryRuleUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -2124,7 +2124,7 @@ func handleEntryRuleUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, inp
 
 	// Verify sequence belongs to org
 	seq, err := toolCtx.DB().GetSequenceByID(ctx, rule.SequenceID)
-	if err != nil || seq.OrgID.String != toolCtx.OrgID() {
+	if err != nil || seq.OrgID.String != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("entry rule %s not found", input.ID))
 	}
 
@@ -2156,7 +2156,7 @@ func handleEntryRuleUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, inp
 }
 
 func handleEntryRuleDelete(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -2172,7 +2172,7 @@ func handleEntryRuleDelete(ctx context.Context, toolCtx *mcpctx.ToolContext, inp
 
 	// Verify sequence belongs to org
 	seq, err := toolCtx.DB().GetSequenceByID(ctx, rule.SequenceID)
-	if err != nil || seq.OrgID.String != toolCtx.OrgID() {
+	if err != nil || seq.OrgID.String != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("entry rule %s not found", input.ID))
 	}
 
@@ -2229,7 +2229,7 @@ func handleQueue(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailIn
 }
 
 func handleQueueList(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -2244,7 +2244,7 @@ func handleQueueList(ctx context.Context, toolCtx *mcpctx.ToolContext, input Ema
 	}
 
 	emails, err := toolCtx.DB().ListEmailQueueByOrg(ctx, db.ListEmailQueueByOrgParams{
-		OrgID:           sql.NullString{String: toolCtx.OrgID(), Valid: true},
+		OrgID:           sql.NullString{String: toolCtx.BrandID(), Valid: true},
 		FilterStatus:    filterStatus,
 		FilterContactID: filterContactID,
 	})
@@ -2275,7 +2275,7 @@ func handleQueueList(ctx context.Context, toolCtx *mcpctx.ToolContext, input Ema
 }
 
 func handleQueueCancel(ctx context.Context, toolCtx *mcpctx.ToolContext, input EmailInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 

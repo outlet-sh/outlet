@@ -35,16 +35,10 @@ Routes use SvelteKit's group syntax `(groupname)` for layout organization:
 
 ```
 src/routes/
-├── (www)/              # Public marketing site
-│   ├── (home)/         # Homepage with unique layout
-│   └── (pages)/        # Standard pages (articles, books, projects, etc.)
-├── (admin)/            # Admin dashboard (auth required)
 ├── (auth)/             # Login/auth pages
-├── (lp)/               # Landing pages
-│   └── lp/10-in-100/   # Funnel landing page
-├── (funnel)/           # Funnel checkout flow
-├── (workshop)/         # Workshop registration
-└── (thankyou)/         # Thank you pages
+├── (brand-select)/     # Brand selection UI
+├── [brandSlug]/        # Dynamic brand routes (dashboard, campaigns, lists, etc.)
+└── (onboarding)/       # Setup wizard for first-time configuration
 ```
 
 Each group can have its own `+layout.svelte` for different page structures.

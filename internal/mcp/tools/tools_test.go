@@ -239,23 +239,23 @@ func TestTemplateCreateOutput_Structure(t *testing.T) {
 
 // ========== Tool Context Requirement Tests ==========
 
-func TestToolContext_RequireOrg_WithOrg(t *testing.T) {
+func TestToolContext_RequireBrand_WithOrg(t *testing.T) {
 	orgID := uuid.New().String()
 	org := createTestOrg(orgID, "Test Org")
 	tc := mcpctx.NewToolContext(nil, org, "req-123", "test-agent/1.0")
 
-	err := tc.RequireOrg()
-	assert.NoError(t, err, "RequireOrg should not error when org is set")
+	err := tc.RequireBrand()
+	assert.NoError(t, err, "RequireBrand should not error when org is set")
 }
 
-func TestToolContext_RequireOrg_WithoutOrg(t *testing.T) {
+func TestToolContext_RequireBrand_WithoutOrg(t *testing.T) {
 	userID := uuid.New().String()
 	user := createTestUser(userID, "test@example.com", "admin")
 	tc := mcpctx.NewUserToolContext(nil, user, "req-123", "test-agent/1.0", "session-123")
 
-	err := tc.RequireOrg()
-	assert.Error(t, err, "RequireOrg should error when no org selected")
-	assert.Equal(t, mcpctx.ErrNoOrgSelected, err)
+	err := tc.RequireBrand()
+	assert.Error(t, err, "RequireBrand should error when no org selected")
+	assert.Equal(t, mcpctx.ErrNoBrandSelected, err)
 }
 
 // ========== BrandInput Tests (Unified Pattern) ==========

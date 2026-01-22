@@ -212,7 +212,7 @@ func campaignHandler(toolCtx *mcpctx.ToolContext) func(ctx context.Context, req 
 }
 
 func handleCampaignCreate(ctx context.Context, toolCtx *mcpctx.ToolContext, input CampaignInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -241,7 +241,7 @@ func handleCampaignCreate(ctx context.Context, toolCtx *mcpctx.ToolContext, inpu
 	campaignID := uuid.New().String()
 	campaign, err := toolCtx.DB().CreateCampaign(ctx, db.CreateCampaignParams{
 		ID:             campaignID,
-		OrgID:          toolCtx.OrgID(),
+		OrgID:          toolCtx.BrandID(),
 		Name:           input.Name,
 		Subject:        input.Subject,
 		PreviewText:    sql.NullString{String: input.PreviewText, Valid: input.PreviewText != ""},
@@ -270,7 +270,7 @@ func handleCampaignCreate(ctx context.Context, toolCtx *mcpctx.ToolContext, inpu
 }
 
 func handleCampaignList(ctx context.Context, toolCtx *mcpctx.ToolContext, input CampaignInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -279,14 +279,14 @@ func handleCampaignList(ctx context.Context, toolCtx *mcpctx.ToolContext, input 
 
 	if input.Status != "" {
 		campaigns, err = toolCtx.DB().ListCampaignsByStatus(ctx, db.ListCampaignsByStatusParams{
-			OrgID:      toolCtx.OrgID(),
+			OrgID:      toolCtx.BrandID(),
 			Status:     sql.NullString{String: input.Status, Valid: true},
 			PageOffset: 0,
 			PageSize:   100,
 		})
 	} else {
 		campaigns, err = toolCtx.DB().ListCampaigns(ctx, db.ListCampaignsParams{
-			OrgID:      toolCtx.OrgID(),
+			OrgID:      toolCtx.BrandID(),
 			PageOffset: 0,
 			PageSize:   100,
 		})
@@ -318,7 +318,7 @@ func handleCampaignList(ctx context.Context, toolCtx *mcpctx.ToolContext, input 
 }
 
 func handleCampaignGet(ctx context.Context, toolCtx *mcpctx.ToolContext, input CampaignInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -328,7 +328,7 @@ func handleCampaignGet(ctx context.Context, toolCtx *mcpctx.ToolContext, input C
 
 	campaign, err := toolCtx.DB().GetCampaign(ctx, db.GetCampaignParams{
 		ID:    input.ID,
-		OrgID: toolCtx.OrgID(),
+		OrgID: toolCtx.BrandID(),
 	})
 	if err != nil {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("campaign %s not found", input.ID))
@@ -363,7 +363,7 @@ func handleCampaignGet(ctx context.Context, toolCtx *mcpctx.ToolContext, input C
 }
 
 func handleCampaignUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, input CampaignInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -374,7 +374,7 @@ func handleCampaignUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, inpu
 	// Check campaign exists and is in draft status
 	campaign, err := toolCtx.DB().GetCampaign(ctx, db.GetCampaignParams{
 		ID:    input.ID,
-		OrgID: toolCtx.OrgID(),
+		OrgID: toolCtx.BrandID(),
 	})
 	if err != nil {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("campaign %s not found", input.ID))
@@ -394,7 +394,7 @@ func handleCampaignUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, inpu
 
 	updated, err := toolCtx.DB().UpdateCampaign(ctx, db.UpdateCampaignParams{
 		ID:             input.ID,
-		OrgID:          toolCtx.OrgID(),
+		OrgID:          toolCtx.BrandID(),
 		Name:           input.Name,
 		Subject:        input.Subject,
 		PreviewText:    input.PreviewText,
@@ -422,7 +422,7 @@ func handleCampaignUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, inpu
 }
 
 func handleCampaignDelete(ctx context.Context, toolCtx *mcpctx.ToolContext, input CampaignInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -433,7 +433,7 @@ func handleCampaignDelete(ctx context.Context, toolCtx *mcpctx.ToolContext, inpu
 	// Check campaign exists
 	_, err := toolCtx.DB().GetCampaign(ctx, db.GetCampaignParams{
 		ID:    input.ID,
-		OrgID: toolCtx.OrgID(),
+		OrgID: toolCtx.BrandID(),
 	})
 	if err != nil {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("campaign %s not found", input.ID))
@@ -441,7 +441,7 @@ func handleCampaignDelete(ctx context.Context, toolCtx *mcpctx.ToolContext, inpu
 
 	err = toolCtx.DB().DeleteCampaign(ctx, db.DeleteCampaignParams{
 		ID:    input.ID,
-		OrgID: toolCtx.OrgID(),
+		OrgID: toolCtx.BrandID(),
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to delete campaign (only draft campaigns can be deleted): %w", err)
@@ -454,7 +454,7 @@ func handleCampaignDelete(ctx context.Context, toolCtx *mcpctx.ToolContext, inpu
 }
 
 func handleCampaignSchedule(ctx context.Context, toolCtx *mcpctx.ToolContext, input CampaignInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -467,7 +467,7 @@ func handleCampaignSchedule(ctx context.Context, toolCtx *mcpctx.ToolContext, in
 
 	campaign, err := toolCtx.DB().ScheduleCampaign(ctx, db.ScheduleCampaignParams{
 		ID:          input.ID,
-		OrgID:       toolCtx.OrgID(),
+		OrgID:       toolCtx.BrandID(),
 		ScheduledAt: sql.NullString{String: input.ScheduledAt, Valid: true},
 	})
 	if err != nil {
@@ -483,7 +483,7 @@ func handleCampaignSchedule(ctx context.Context, toolCtx *mcpctx.ToolContext, in
 }
 
 func handleCampaignSend(ctx context.Context, toolCtx *mcpctx.ToolContext, input CampaignInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -494,7 +494,7 @@ func handleCampaignSend(ctx context.Context, toolCtx *mcpctx.ToolContext, input 
 	// Get campaign and verify it's in draft status
 	campaign, err := toolCtx.DB().GetCampaign(ctx, db.GetCampaignParams{
 		ID:    input.ID,
-		OrgID: toolCtx.OrgID(),
+		OrgID: toolCtx.BrandID(),
 	})
 	if err != nil {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("campaign %s not found", input.ID))
@@ -509,7 +509,7 @@ func handleCampaignSend(ctx context.Context, toolCtx *mcpctx.ToolContext, input 
 	// Update status to 'sending' - the campaign scheduler worker will pick it up
 	_, err = toolCtx.DB().UpdateCampaignStatus(ctx, db.UpdateCampaignStatusParams{
 		ID:     input.ID,
-		OrgID:  toolCtx.OrgID(),
+		OrgID:  toolCtx.BrandID(),
 		Status: sql.NullString{String: "sending", Valid: true},
 	})
 	if err != nil {
@@ -525,7 +525,7 @@ func handleCampaignSend(ctx context.Context, toolCtx *mcpctx.ToolContext, input 
 }
 
 func handleCampaignStats(ctx context.Context, toolCtx *mcpctx.ToolContext, input CampaignInput) (*mcp.CallToolResult, any, error) {
-	if err := toolCtx.RequireOrg(); err != nil {
+	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
 
@@ -535,7 +535,7 @@ func handleCampaignStats(ctx context.Context, toolCtx *mcpctx.ToolContext, input
 
 	campaign, err := toolCtx.DB().GetCampaign(ctx, db.GetCampaignParams{
 		ID:    input.ID,
-		OrgID: toolCtx.OrgID(),
+		OrgID: toolCtx.BrandID(),
 	})
 	if err != nil {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("campaign %s not found", input.ID))
