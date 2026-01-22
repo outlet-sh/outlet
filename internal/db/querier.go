@@ -34,6 +34,7 @@ type Querier interface {
 	CheckListSubscription(ctx context.Context, arg CheckListSubscriptionParams) (int64, error)
 	CleanupExpiredMCPOAuthCodes(ctx context.Context) error
 	CleanupExpiredMCPOAuthTokens(ctx context.Context) error
+	// Delete sessions older than 30 days
 	CleanupOldMCPSessions(ctx context.Context) error
 	ClearSuppressionList(ctx context.Context, orgID string) error
 	CompleteContactSequence(ctx context.Context, arg CompleteContactSequenceParams) error
@@ -258,6 +259,8 @@ type Querier interface {
 	GetMCPOAuthTokenByAccessHash(ctx context.Context, accessTokenHash string) (GetMCPOAuthTokenByAccessHashRow, error)
 	GetMCPOAuthTokenByRefreshHash(ctx context.Context, refreshTokenHash sql.NullString) (GetMCPOAuthTokenByRefreshHashRow, error)
 	GetMCPSession(ctx context.Context, sessionID string) (McpSession, error)
+	// Fallback: get most recent org selection for a user (when session ID changes)
+	GetMCPSessionByUser(ctx context.Context, userID string) (McpSession, error)
 	GetNextTemplate(ctx context.Context, arg GetNextTemplateParams) (GetNextTemplateRow, error)
 	GetOrgEmailConfig(ctx context.Context, id string) (GetOrgEmailConfigRow, error)
 	GetOrgEmailSettings(ctx context.Context, id string) (GetOrgEmailSettingsRow, error)

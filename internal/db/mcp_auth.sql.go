@@ -33,9 +33,10 @@ func (q *Queries) CleanupExpiredMCPOAuthTokens(ctx context.Context) error {
 
 const cleanupOldMCPSessions = `-- name: CleanupOldMCPSessions :exec
 DELETE FROM mcp_sessions
-WHERE updated_at < datetime('now', '-7 days')
+WHERE updated_at < datetime('now', '-30 days')
 `
 
+// Delete sessions older than 30 days
 func (q *Queries) CleanupOldMCPSessions(ctx context.Context) error {
 	_, err := q.db.ExecContext(ctx, cleanupOldMCPSessions)
 	return err
@@ -538,6 +539,27 @@ WHERE session_id = ?1
 
 func (q *Queries) GetMCPSession(ctx context.Context, sessionID string) (McpSession, error) {
 	row := q.db.QueryRowContext(ctx, getMCPSession, sessionID)
+	var i McpSession
+	err := row.Scan(
+		&i.SessionID,
+		&i.UserID,
+		&i.OrgID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getMCPSessionByUser = `-- name: GetMCPSessionByUser :one
+SELECT session_id, user_id, org_id, created_at, updated_at FROM mcp_sessions
+WHERE user_id = ?1 AND org_id IS NOT NULL
+ORDER BY updated_at DESC
+LIMIT 1
+`
+
+// Fallback: get most recent org selection for a user (when session ID changes)
+func (q *Queries) GetMCPSessionByUser(ctx context.Context, userID string) (McpSession, error) {
+	row := q.db.QueryRowContext(ctx, getMCPSessionByUser, userID)
 	var i McpSession
 	err := row.Scan(
 		&i.SessionID,

@@ -162,7 +162,10 @@ func (h *Handler) getServerForRequest(r *http.Request) *mcp.Server {
 	}
 	server, toolCtx := NewServerWithContext(h.svc, r, onOrgSelect)
 
-	// Try to restore org selection - check memory cache first, then DB
+	// Try to restore org selection - 3-level fallback:
+	// 1. Memory cache (fastest)
+	// 2. DB by session ID (after restart)
+	// 3. User's most recent org selection (if session ID changed)
 	var orgIDToRestore string
 	var found bool
 
@@ -171,7 +174,7 @@ func (h *Handler) getServerForRequest(r *http.Request) *mcp.Server {
 		found = true
 		fmt.Printf("[MCP] Found org in memory cache for session %s\n", sessionID)
 	} else {
-		// Not in memory - try DB (this happens after server restart)
+		// Not in memory - try DB by session ID (this happens after server restart)
 		dbSession, err := h.svc.DB.GetMCPSession(r.Context(), sessionID)
 		if err == nil && dbSession.OrgID.Valid {
 			orgIDToRestore = dbSession.OrgID.String
@@ -179,6 +182,25 @@ func (h *Handler) getServerForRequest(r *http.Request) *mcp.Server {
 			// Cache it for next time
 			h.orgSelectionCache.Store(sessionID, orgIDToRestore)
 			fmt.Printf("[MCP] Found org in DB for session %s\n", sessionID)
+		} else if toolCtx != nil && toolCtx.UserID() != "" {
+			// 3rd level fallback: Get user's most recent org selection
+			// This handles the case where client's session ID changed
+			userSession, err := h.svc.DB.GetMCPSessionByUser(r.Context(), toolCtx.UserID())
+			if err == nil && userSession.OrgID.Valid {
+				orgIDToRestore = userSession.OrgID.String
+				found = true
+				// Cache under new session ID
+				h.orgSelectionCache.Store(sessionID, orgIDToRestore)
+				// Persist under new session ID (async)
+				go func() {
+					_ = h.svc.DB.UpsertMCPSession(context.Background(), db.UpsertMCPSessionParams{
+						SessionID: sessionID,
+						UserID:    toolCtx.UserID(),
+						OrgID:     userSession.OrgID,
+					})
+				}()
+				fmt.Printf("[MCP] Found org from user's recent session for %s\n", sessionID)
+			}
 		}
 	}
 

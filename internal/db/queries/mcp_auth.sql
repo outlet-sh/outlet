@@ -147,9 +147,17 @@ ON CONFLICT (session_id) DO UPDATE SET
 SELECT * FROM mcp_sessions
 WHERE session_id = sqlc.arg(session_id);
 
+-- name: GetMCPSessionByUser :one
+-- Fallback: get most recent org selection for a user (when session ID changes)
+SELECT * FROM mcp_sessions
+WHERE user_id = sqlc.arg(user_id) AND org_id IS NOT NULL
+ORDER BY updated_at DESC
+LIMIT 1;
+
 -- name: DeleteMCPSession :exec
 DELETE FROM mcp_sessions WHERE session_id = sqlc.arg(session_id);
 
 -- name: CleanupOldMCPSessions :exec
+-- Delete sessions older than 30 days
 DELETE FROM mcp_sessions
-WHERE updated_at < datetime('now', '-7 days');
+WHERE updated_at < datetime('now', '-30 days');

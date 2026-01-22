@@ -196,6 +196,35 @@ func runServe(cmd *cobra.Command, args []string) {
 	domainVerificationWorker := workers.StartDomainVerificationWorker(ctx)
 	fmt.Println("Domain verification worker started")
 
+	// Start MCP session cleanup job (runs every hour, cleans sessions older than 30 days)
+	cleanupCtx, cleanupCancel := context.WithCancel(context.Background())
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+
+		// Run cleanup immediately on startup
+		if err := ctx.DB.CleanupOldMCPSessions(cleanupCtx); err != nil {
+			fmt.Printf("[MCP] Initial session cleanup failed: %v\n", err)
+		} else {
+			fmt.Println("[MCP] Initial session cleanup completed")
+		}
+
+		for {
+			select {
+			case <-cleanupCtx.Done():
+				fmt.Println("[MCP] Session cleanup job stopped")
+				return
+			case <-ticker.C:
+				if err := ctx.DB.CleanupOldMCPSessions(cleanupCtx); err != nil {
+					fmt.Printf("[MCP] Session cleanup failed: %v\n", err)
+				} else {
+					fmt.Println("[MCP] Session cleanup completed")
+				}
+			}
+		}
+	}()
+	fmt.Println("[MCP] Session cleanup job started (runs every hour)")
+
 	// Start SMTP ingress server if enabled
 	var smtpServer *outletsmtp.Server
 	if c.SMTP.Enabled {
@@ -223,6 +252,10 @@ func runServe(cmd *cobra.Command, args []string) {
 		go func() {
 			<-quit
 			fmt.Println("\nShutting down workers gracefully...")
+
+			// Stop MCP cleanup job
+			cleanupCancel()
+			fmt.Println("MCP session cleanup job stopped")
 
 			// Stop workers
 			if emailWorker != nil {
@@ -453,6 +486,11 @@ func runServe(cmd *cobra.Command, args []string) {
 
 	// Stop workers first (allow them to finish current work)
 	fmt.Println("Stopping workers...")
+
+	// Stop MCP cleanup job
+	cleanupCancel()
+	fmt.Println("MCP session cleanup job stopped")
+
 	if emailWorker != nil {
 		emailWorker.Stop()
 		fmt.Println("Email worker stopped")
