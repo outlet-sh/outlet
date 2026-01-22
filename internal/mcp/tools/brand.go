@@ -126,10 +126,10 @@ func brandHandler(toolCtx *mcpctx.ToolContext) func(ctx context.Context, req *mc
 }
 
 // ============================================================================
-// ORG HANDLERS
+// BRAND HANDLERS
 // ============================================================================
 
-// BrandListItem represents an organization in the list.
+// BrandListItem represents a brand in the list.
 type BrandListItem struct {
 	ID       string `json:"id"`
 	Name     string `json:"name"`
@@ -204,27 +204,27 @@ func handleBrandList(ctx context.Context, toolCtx *mcpctx.ToolContext, input Bra
 	items := make([]BrandListItem, 0)
 
 	if toolCtx.AuthMode() == mcpctx.AuthModeAPIKey {
-		org := toolCtx.Brand()
+		brand := toolCtx.Brand()
 		items = append(items, BrandListItem{
-			ID:       org.ID,
-			Name:     org.Name,
-			Slug:     org.Slug,
+			ID:       brand.ID,
+			Name:     brand.Name,
+			Slug:     brand.Slug,
 			Selected: true,
 		})
 	} else {
-		allOrgs, err := toolCtx.DB().ListOrganizations(ctx)
+		allBrands, err := toolCtx.DB().ListOrganizations(ctx)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to list organizations: %w", err)
+			return nil, nil, fmt.Errorf("failed to list brands: %w", err)
 		}
 
-		currentOrgID := toolCtx.BrandID()
-		for _, org := range allOrgs {
+		currentBrandID := toolCtx.BrandID()
+		for _, brand := range allBrands {
 			items = append(items, BrandListItem{
-				ID:       org.ID,
-				Name:     org.Name,
-				Slug:     org.Slug,
+				ID:       brand.ID,
+				Name:     brand.Name,
+				Slug:     brand.Slug,
 				Role:     "admin",
-				Selected: org.ID == currentOrgID,
+				Selected: brand.ID == currentBrandID,
 			})
 		}
 	}
@@ -247,12 +247,12 @@ func handleBrandSelect(ctx context.Context, toolCtx *mcpctx.ToolContext, input B
 		toolCtx.AuthMode(), toolCtx.SessionID(), input.BrandID, input.ID, input.Slug)
 
 	if toolCtx.AuthMode() == mcpctx.AuthModeAPIKey {
-		org := toolCtx.Brand()
-		fmt.Printf("[MCP brand.select] API key mode - returning brand: %s\n", org.Name)
+		brand := toolCtx.Brand()
+		fmt.Printf("[MCP brand.select] API key mode - returning brand: %s\n", brand.Name)
 		return nil, BrandSelectOutput{
-			ID:       org.ID,
-			Name:     org.Name,
-			Slug:     org.Slug,
+			ID:       brand.ID,
+			Name:     brand.Name,
+			Slug:     brand.Slug,
 			Selected: true,
 			Message:  "API key authentication is already scoped to this brand. No selection needed.",
 		}, nil
@@ -263,15 +263,15 @@ func handleBrandSelect(ctx context.Context, toolCtx *mcpctx.ToolContext, input B
 		return nil, nil, mcpctx.NewValidationError("either id, brand_id, or slug is required for brand.select", "id")
 	}
 
-	var fullOrg db.Organization
+	var fullBrand db.Organization
 	var err error
 
 	if brandID != "" {
 		fmt.Printf("[MCP brand.select] Looking up by ID: %s\n", brandID)
-		fullOrg, err = toolCtx.DB().GetOrganizationByID(ctx, brandID)
+		fullBrand, err = toolCtx.DB().GetOrganizationByID(ctx, brandID)
 	} else {
 		fmt.Printf("[MCP brand.select] Looking up by slug: %s\n", input.Slug)
-		fullOrg, err = toolCtx.DB().GetOrganizationBySlug(ctx, input.Slug)
+		fullBrand, err = toolCtx.DB().GetOrganizationBySlug(ctx, input.Slug)
 	}
 	if err != nil {
 		fmt.Printf("[MCP brand.select] ERROR: brand lookup failed: %v\n", err)
@@ -281,14 +281,14 @@ func handleBrandSelect(ctx context.Context, toolCtx *mcpctx.ToolContext, input B
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("brand with slug '%s' not found", input.Slug))
 	}
 
-	fmt.Printf("[MCP brand.select] Found brand: %s (%s), calling SelectBrand\n", fullOrg.Name, fullOrg.ID)
-	toolCtx.SelectBrand(fullOrg)
+	fmt.Printf("[MCP brand.select] Found brand: %s (%s), calling SelectBrand\n", fullBrand.Name, fullBrand.ID)
+	toolCtx.SelectBrand(fullBrand)
 	fmt.Printf("[MCP brand.select] SelectBrand completed, HasBrand: %v\n", toolCtx.HasBrand())
 
 	return nil, BrandSelectOutput{
-		ID:       fullOrg.ID,
-		Name:     fullOrg.Name,
-		Slug:     fullOrg.Slug,
+		ID:       fullBrand.ID,
+		Name:     fullBrand.Name,
+		Slug:     fullBrand.Slug,
 		Selected: true,
 		Message:  "Brand selected. All subsequent operations will use this brand.",
 	}, nil
@@ -298,16 +298,16 @@ func handleBrandGet(ctx context.Context, toolCtx *mcpctx.ToolContext, input Bran
 	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
-	org := toolCtx.Brand()
+	brand := toolCtx.Brand()
 
 	return nil, BrandGetOutput{
-		ID:          org.ID,
-		Name:        org.Name,
-		Slug:        org.Slug,
-		MaxContacts: org.MaxContacts.Int64,
-		FromName:    org.FromName.String,
-		FromEmail:   org.FromEmail.String,
-		ReplyTo:     org.ReplyTo.String,
+		ID:          brand.ID,
+		Name:        brand.Name,
+		Slug:        brand.Slug,
+		MaxContacts: brand.MaxContacts.Int64,
+		FromName:    brand.FromName.String,
+		FromEmail:   brand.FromEmail.String,
+		ReplyTo:     brand.ReplyTo.String,
 	}, nil
 }
 
@@ -315,7 +315,7 @@ func handleBrandUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, input B
 	if err := toolCtx.RequireBrand(); err != nil {
 		return nil, nil, err
 	}
-	org := toolCtx.Brand()
+	brand := toolCtx.Brand()
 
 	if input.FromName != "" || input.FromEmail != "" || input.ReplyTo != "" {
 		_, err := toolCtx.DB().UpdateOrgEmailSettings(ctx, db.UpdateOrgEmailSettingsParams{
@@ -335,34 +335,34 @@ func handleBrandUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, input B
 			Name: input.Name,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to update organization: %w", err)
+			return nil, nil, fmt.Errorf("failed to update brand: %w", err)
 		}
 	}
 
-	updatedOrg, err := toolCtx.DB().GetOrganizationByID(ctx, toolCtx.BrandID())
+	updatedBrand, err := toolCtx.DB().GetOrganizationByID(ctx, toolCtx.BrandID())
 	if err != nil {
 		return nil, BrandUpdateOutput{
-			ID:        org.ID,
-			Name:      org.Name,
-			FromName:  org.FromName.String,
-			FromEmail: org.FromEmail.String,
-			ReplyTo:   org.ReplyTo.String,
+			ID:        brand.ID,
+			Name:      brand.Name,
+			FromName:  brand.FromName.String,
+			FromEmail: brand.FromEmail.String,
+			ReplyTo:   brand.ReplyTo.String,
 			Updated:   true,
 		}, nil
 	}
 
 	return nil, BrandUpdateOutput{
-		ID:        updatedOrg.ID,
-		Name:      updatedOrg.Name,
-		FromName:  updatedOrg.FromName.String,
-		FromEmail: updatedOrg.FromEmail.String,
-		ReplyTo:   updatedOrg.ReplyTo.String,
+		ID:        updatedBrand.ID,
+		Name:      updatedBrand.Name,
+		FromName:  updatedBrand.FromName.String,
+		FromEmail: updatedBrand.FromEmail.String,
+		ReplyTo:   updatedBrand.ReplyTo.String,
 		Updated:   true,
 	}, nil
 }
 
 // ============================================================================
-// ORG CREATE/DELETE/STATS HANDLERS
+// BRAND CREATE/DELETE/STATS HANDLERS
 // ============================================================================
 
 // BrandCreateOutput defines output for brand.create.
@@ -413,28 +413,28 @@ func handleBrandCreate(ctx context.Context, toolCtx *mcpctx.ToolContext, input B
 	}
 	slug = strings.Trim(slug, "-")
 
-	orgID := uuid.New().String()
+	brandID := uuid.New().String()
 	apiKey := uuid.New().String()
 
-	org, err := toolCtx.DB().CreateOrganization(ctx, db.CreateOrganizationParams{
-		ID:          orgID,
+	brand, err := toolCtx.DB().CreateOrganization(ctx, db.CreateOrganizationParams{
+		ID:          brandID,
 		Name:        input.Name,
 		Slug:        slug,
 		ApiKey:      apiKey,
 		MaxContacts: sql.NullInt64{Int64: 10000, Valid: true},
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create organization: %w", err)
+		return nil, nil, fmt.Errorf("failed to create brand: %w", err)
 	}
 
-	// Auto-select the newly created organization so subsequent operations work immediately
-	toolCtx.SelectBrand(org)
+	// Auto-select the newly created brand so subsequent operations work immediately
+	toolCtx.SelectBrand(brand)
 
 	return nil, BrandCreateOutput{
-		ID:      org.ID,
-		Name:    org.Name,
-		Slug:    org.Slug,
-		APIKey:  org.ApiKey,
+		ID:      brand.ID,
+		Name:    brand.Name,
+		Slug:    brand.Slug,
+		APIKey:  brand.ApiKey,
 		Created: true,
 	}, nil
 }
@@ -445,21 +445,21 @@ func handleBrandDelete(ctx context.Context, toolCtx *mcpctx.ToolContext, input B
 	}
 
 	if !input.Confirm {
-		return nil, nil, mcpctx.NewValidationError("confirm=true is required to delete an organization", "confirm")
+		return nil, nil, mcpctx.NewValidationError("confirm=true is required to delete a brand", "confirm")
 	}
 
-	org := toolCtx.Brand()
+	brand := toolCtx.Brand()
 
-	err := toolCtx.DB().DeleteOrganization(ctx, org.ID)
+	err := toolCtx.DB().DeleteOrganization(ctx, brand.ID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to delete organization: %w", err)
+		return nil, nil, fmt.Errorf("failed to delete brand: %w", err)
 	}
 
 	return nil, BrandDeleteOutput{
-		ID:      org.ID,
-		Name:    org.Name,
+		ID:      brand.ID,
+		Name:    brand.Name,
 		Success: true,
-		Message: fmt.Sprintf("Organization %s deleted successfully", org.Name),
+		Message: fmt.Sprintf("Brand %s deleted successfully", brand.Name),
 	}, nil
 }
 
@@ -468,11 +468,11 @@ func handleBrandDashboardStats(ctx context.Context, toolCtx *mcpctx.ToolContext,
 		return nil, nil, err
 	}
 
-	orgID := toolCtx.BrandID()
+	brandID := toolCtx.BrandID()
 
 	// Get subscriber stats
 	var totalContacts, new30d, new7d int64
-	subscriberStats, err := toolCtx.DB().GetDashboardSubscriberStats(ctx, sql.NullString{String: orgID, Valid: true})
+	subscriberStats, err := toolCtx.DB().GetDashboardSubscriberStats(ctx, sql.NullString{String: brandID, Valid: true})
 	if err == nil {
 		totalContacts = subscriberStats.Total
 		if subscriberStats.New30d.Valid {
@@ -485,7 +485,7 @@ func handleBrandDashboardStats(ctx context.Context, toolCtx *mcpctx.ToolContext,
 
 	// Get email stats (30 days)
 	var emailsSent, opens, clicks int64
-	emailStats, err := toolCtx.DB().GetDashboardEmailStats30Days(ctx, orgID)
+	emailStats, err := toolCtx.DB().GetDashboardEmailStats30Days(ctx, brandID)
 	if err == nil {
 		emailsSent = interfaceToInt64(emailStats.EmailsSent)
 		opens = interfaceToInt64(emailStats.EmailsOpened)

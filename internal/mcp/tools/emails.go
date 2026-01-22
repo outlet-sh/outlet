@@ -785,11 +785,11 @@ func handleSequenceCreate(ctx context.Context, toolCtx *mcpctx.ToolContext, inpu
 		active = *input.Active
 	}
 
-	orgID := toolCtx.BrandID()
+	brandID := toolCtx.BrandID()
 	sequenceID := uuid.New().String()
 	sequence, err := toolCtx.DB().CreateSequence(ctx, db.CreateSequenceParams{
 		ID:           sequenceID,
-		OrgID:        sql.NullString{String: orgID, Valid: true},
+		OrgID:        sql.NullString{String: brandID, Valid: true},
 		ListID:       sql.NullInt64{Int64: listID, Valid: true},
 		Slug:         slug,
 		Name:         input.Name,
@@ -829,8 +829,8 @@ func handleSequenceList(ctx context.Context, toolCtx *mcpctx.ToolContext, input 
 
 	items := make([]SequenceItem, 0)
 
-	orgID := toolCtx.BrandID()
-	sequences, err := toolCtx.DB().ListSequencesByOrg(ctx, sql.NullString{String: orgID, Valid: true})
+	brandID := toolCtx.BrandID()
+	sequences, err := toolCtx.DB().ListSequencesByOrg(ctx, sql.NullString{String: brandID, Valid: true})
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to list sequences: %w", err)
 	}
@@ -1431,7 +1431,7 @@ func handleListSubscribe(ctx context.Context, toolCtx *mcpctx.ToolContext, input
 		return nil, nil, mcpctx.NewValidationError("id must be a valid ID", "id")
 	}
 
-	// Verify list exists and belongs to org
+	// Verify list exists and belongs to brand
 	list, err := toolCtx.DB().GetEmailList(ctx, listID)
 	if err != nil {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("list %s not found", input.ID))
@@ -1441,9 +1441,9 @@ func handleListSubscribe(ctx context.Context, toolCtx *mcpctx.ToolContext, input
 	}
 
 	// Find or create contact
-	orgID := toolCtx.BrandID()
+	brandID := toolCtx.BrandID()
 	contact, err := toolCtx.DB().GetContactByOrgAndEmail(ctx, db.GetContactByOrgAndEmailParams{
-		OrgID: sql.NullString{String: orgID, Valid: true},
+		OrgID: sql.NullString{String: brandID, Valid: true},
 		Email: input.Email,
 	})
 	if err != nil {
@@ -1451,7 +1451,7 @@ func handleListSubscribe(ctx context.Context, toolCtx *mcpctx.ToolContext, input
 		contactID := uuid.New().String()
 		contact, err = toolCtx.DB().CreateContact(ctx, db.CreateContactParams{
 			ID:     contactID,
-			OrgID:  sql.NullString{String: orgID, Valid: true},
+			OrgID:  sql.NullString{String: brandID, Valid: true},
 			Name:   "",
 			Email:  input.Email,
 			Source: sql.NullString{String: "mcp", Valid: true},
@@ -1507,7 +1507,7 @@ func handleListUnsubscribe(ctx context.Context, toolCtx *mcpctx.ToolContext, inp
 		return nil, nil, mcpctx.NewValidationError("id must be a valid ID", "id")
 	}
 
-	// Verify list exists and belongs to org
+	// Verify list exists and belongs to brand
 	list, err := toolCtx.DB().GetEmailList(ctx, listID)
 	if err != nil {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("list %s not found", input.ID))
@@ -1517,9 +1517,9 @@ func handleListUnsubscribe(ctx context.Context, toolCtx *mcpctx.ToolContext, inp
 	}
 
 	// Find contact
-	orgID := toolCtx.BrandID()
+	brandID := toolCtx.BrandID()
 	contact, err := toolCtx.DB().GetContactByOrgAndEmail(ctx, db.GetContactByOrgAndEmailParams{
-		OrgID: sql.NullString{String: orgID, Valid: true},
+		OrgID: sql.NullString{String: brandID, Valid: true},
 		Email: input.Email,
 	})
 	if err != nil {
@@ -1605,7 +1605,7 @@ func handleEnrollmentEnroll(ctx context.Context, toolCtx *mcpctx.ToolContext, in
 		return nil, nil, mcpctx.NewValidationError("contact_id is required", "contact_id")
 	}
 
-	// Verify sequence exists and belongs to org
+	// Verify sequence exists and belongs to brand
 	seq, err := toolCtx.DB().GetSequenceByID(ctx, input.SequenceID)
 	if err != nil {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.SequenceID))
@@ -1614,7 +1614,7 @@ func handleEnrollmentEnroll(ctx context.Context, toolCtx *mcpctx.ToolContext, in
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.SequenceID))
 	}
 
-	// Verify contact exists and belongs to org
+	// Verify contact exists and belongs to brand
 	contact, err := toolCtx.DB().GetContactByOrgID(ctx, db.GetContactByOrgIDParams{
 		ID:    input.ContactID,
 		OrgID: sql.NullString{String: toolCtx.BrandID(), Valid: true},
@@ -1657,7 +1657,7 @@ func handleEnrollmentUnenroll(ctx context.Context, toolCtx *mcpctx.ToolContext, 
 		return nil, nil, mcpctx.NewValidationError("contact_id is required", "contact_id")
 	}
 
-	// Verify sequence belongs to org
+	// Verify sequence belongs to brand
 	seq, err := toolCtx.DB().GetSequenceByID(ctx, input.SequenceID)
 	if err != nil {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.SequenceID))
@@ -1703,7 +1703,7 @@ func handleEnrollmentPause(ctx context.Context, toolCtx *mcpctx.ToolContext, inp
 		return nil, nil, mcpctx.NewValidationError("contact_id is required", "contact_id")
 	}
 
-	// Verify sequence belongs to org
+	// Verify sequence belongs to brand
 	seq, err := toolCtx.DB().GetSequenceByID(ctx, input.SequenceID)
 	if err != nil {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.SequenceID))
@@ -1742,7 +1742,7 @@ func handleEnrollmentResume(ctx context.Context, toolCtx *mcpctx.ToolContext, in
 		return nil, nil, mcpctx.NewValidationError("contact_id is required", "contact_id")
 	}
 
-	// Verify sequence belongs to org
+	// Verify sequence belongs to brand
 	seq, err := toolCtx.DB().GetSequenceByID(ctx, input.SequenceID)
 	if err != nil {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.SequenceID))
@@ -1777,7 +1777,7 @@ func handleEnrollmentList(ctx context.Context, toolCtx *mcpctx.ToolContext, inpu
 		return nil, nil, mcpctx.NewValidationError("contact_id is required", "contact_id")
 	}
 
-	// Verify contact exists and belongs to org
+	// Verify contact exists and belongs to brand
 	_, err := toolCtx.DB().GetContactByOrgID(ctx, db.GetContactByOrgIDParams{
 		ID:    input.ContactID,
 		OrgID: sql.NullString{String: toolCtx.BrandID(), Valid: true},
@@ -1900,7 +1900,7 @@ func handleEntryRuleCreate(ctx context.Context, toolCtx *mcpctx.ToolContext, inp
 		return nil, nil, mcpctx.NewValidationError("source_id is required", "source_id")
 	}
 
-	// Verify sequence belongs to org
+	// Verify sequence belongs to brand
 	seq, err := toolCtx.DB().GetSequenceByID(ctx, input.SequenceID)
 	if err != nil {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.SequenceID))
@@ -1952,7 +1952,7 @@ func handleEntryRuleList(ctx context.Context, toolCtx *mcpctx.ToolContext, input
 		return nil, nil, mcpctx.NewValidationError("sequence_id is required", "sequence_id")
 	}
 
-	// Verify sequence belongs to org
+	// Verify sequence belongs to brand
 	seq, err := toolCtx.DB().GetSequenceByID(ctx, input.SequenceID)
 	if err != nil {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("sequence %s not found", input.SequenceID))
@@ -2009,7 +2009,7 @@ func handleEntryRuleUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, inp
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("entry rule %s not found", input.ID))
 	}
 
-	// Verify sequence belongs to org
+	// Verify sequence belongs to brand
 	seq, err := toolCtx.DB().GetSequenceByID(ctx, rule.SequenceID)
 	if err != nil || seq.OrgID.String != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("entry rule %s not found", input.ID))
@@ -2057,7 +2057,7 @@ func handleEntryRuleDelete(ctx context.Context, toolCtx *mcpctx.ToolContext, inp
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("entry rule %s not found", input.ID))
 	}
 
-	// Verify sequence belongs to org
+	// Verify sequence belongs to brand
 	seq, err := toolCtx.DB().GetSequenceByID(ctx, rule.SequenceID)
 	if err != nil || seq.OrgID.String != toolCtx.BrandID() {
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("entry rule %s not found", input.ID))

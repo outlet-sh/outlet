@@ -310,7 +310,7 @@ func handleGDPRDelete(ctx context.Context, toolCtx *mcpctx.ToolContext, input GD
 		return nil, nil, mcpctx.NewValidationError("confirm=true is required to delete contact data", "confirm")
 	}
 
-	// Verify contact exists and belongs to org
+	// Verify contact exists and belongs to brand
 	contact, err := toolCtx.DB().GetContactByOrgID(ctx, db.GetContactByOrgIDParams{
 		ID:    input.ContactID,
 		OrgID: sql.NullString{String: toolCtx.BrandID(), Valid: true},

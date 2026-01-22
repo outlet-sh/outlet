@@ -91,7 +91,7 @@ func (t *ToolContext) BrandID() string {
 }
 
 // Brand returns the full brand record.
-// Returns empty Organization if no brand is available.
+// Returns zero-value struct if no brand is available.
 func (t *ToolContext) Brand() db.Organization {
 	brand := t.currentBrand()
 	if brand == nil {

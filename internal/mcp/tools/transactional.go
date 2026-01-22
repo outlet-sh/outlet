@@ -384,7 +384,7 @@ func handleTransactionalStats(ctx context.Context, toolCtx *mcpctx.ToolContext, 
 		return nil, nil, mcpctx.NewValidationError("id is required", "id")
 	}
 
-	// Verify template exists and belongs to org
+	// Verify template exists and belongs to brand
 	template, err := toolCtx.DB().GetTransactionalEmail(ctx, db.GetTransactionalEmailParams{
 		ID:    input.ID,
 		OrgID: toolCtx.BrandID(),

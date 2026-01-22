@@ -129,11 +129,11 @@ func handleOverviewStats(ctx context.Context, toolCtx *mcpctx.ToolContext, input
 		return nil, nil, err
 	}
 
-	orgID := toolCtx.BrandID()
+	brandID := toolCtx.BrandID()
 
 	// Get subscriber stats
 	var totalContacts, new30d, new7d int64
-	subscriberStats, err := toolCtx.DB().GetDashboardSubscriberStats(ctx, sql.NullString{String: orgID, Valid: true})
+	subscriberStats, err := toolCtx.DB().GetDashboardSubscriberStats(ctx, sql.NullString{String: brandID, Valid: true})
 	if err == nil {
 		totalContacts = subscriberStats.Total
 		if subscriberStats.New30d.Valid {
@@ -146,7 +146,7 @@ func handleOverviewStats(ctx context.Context, toolCtx *mcpctx.ToolContext, input
 
 	// Get email stats (30 days)
 	var emailsSent, opens, clicks int64
-	emailStats, err := toolCtx.DB().GetDashboardEmailStats30Days(ctx, orgID)
+	emailStats, err := toolCtx.DB().GetDashboardEmailStats30Days(ctx, brandID)
 	if err == nil {
 		emailsSent = interfaceToInt64(emailStats.EmailsSent)
 		opens = interfaceToInt64(emailStats.EmailsOpened)
