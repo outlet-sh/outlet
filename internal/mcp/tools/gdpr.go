@@ -17,70 +17,6 @@ import (
 // gdprActions defines valid actions for the GDPR tool.
 var gdprActions = []string{"lookup", "export", "delete", "get_consent", "update_consent"}
 
-// gdprOutputSchema defines the JSON Schema for all possible GDPR outputs.
-var gdprOutputSchema = map[string]any{
-	"type": "object",
-	"description": `Output varies by action:
-- lookup → {contact_id, email, name, status, created_at, found: true}
-- export → {contact: {...}, tags: [], campaigns_sent: [], sequence_emails: [], transactional_sends: [], clicks: []}
-- delete → {success: true, message: string}
-- get_consent → {contact_id, email, gdpr_consent, consent_timestamp}
-- update_consent → {contact_id, gdpr_consent, updated: true}`,
-	"oneOf": []map[string]any{
-		{
-			"title":       "LookupOutput",
-			"description": "Returned by lookup",
-			"type":        "object",
-			"properties": map[string]any{
-				"contact_id": map[string]any{"type": "string", "description": "Contact ID"},
-				"email":      map[string]any{"type": "string", "description": "Contact email"},
-				"name":       map[string]any{"type": "string", "description": "Contact name"},
-				"status":     map[string]any{"type": "string", "description": "Contact status"},
-				"created_at": map[string]any{"type": "string", "description": "Creation timestamp"},
-				"found":      map[string]any{"type": "boolean", "description": "Whether contact was found"},
-			},
-			"required": []string{"found"},
-		},
-		{
-			"title":       "ExportOutput",
-			"description": "Returned by export",
-			"type":        "object",
-			"properties": map[string]any{
-				"contact":             map[string]any{"type": "object", "description": "Contact details"},
-				"tags":                map[string]any{"type": "array", "description": "Contact tags"},
-				"campaigns_sent":      map[string]any{"type": "array", "description": "Campaign sends"},
-				"sequence_emails":     map[string]any{"type": "array", "description": "Sequence emails sent"},
-				"transactional_sends": map[string]any{"type": "array", "description": "Transactional emails sent"},
-				"clicks":              map[string]any{"type": "array", "description": "Link clicks"},
-			},
-			"required": []string{"contact"},
-		},
-		{
-			"title":       "DeleteOutput",
-			"description": "Returned by delete",
-			"type":        "object",
-			"properties": map[string]any{
-				"success": map[string]any{"type": "boolean", "const": true},
-				"message": map[string]any{"type": "string", "description": "Status message"},
-			},
-			"required": []string{"success", "message"},
-		},
-		{
-			"title":       "ConsentOutput",
-			"description": "Returned by get_consent and update_consent",
-			"type":        "object",
-			"properties": map[string]any{
-				"contact_id":        map[string]any{"type": "string", "description": "Contact ID"},
-				"email":             map[string]any{"type": "string", "description": "Contact email"},
-				"gdpr_consent":      map[string]any{"type": "boolean", "description": "GDPR consent status"},
-				"consent_timestamp": map[string]any{"type": "string", "description": "Last consent update timestamp"},
-				"updated":           map[string]any{"type": "boolean", "description": "Whether consent was updated"},
-			},
-			"required": []string{"contact_id"},
-		},
-	},
-}
-
 // GDPRInput defines input for the GDPR tool.
 type GDPRInput struct {
 	Action string `json:"action" jsonschema:"required,Action to perform: lookup, export, delete, get_consent, update_consent"`
@@ -120,7 +56,6 @@ Examples:
   gdpr(action: get_consent, contact_id: "uuid")
   gdpr(action: update_consent, contact_id: "uuid", gdpr_consent: true)
   gdpr(action: delete, contact_id: "uuid", confirm: true)`,
-		OutputSchema: gdprOutputSchema,
 	}, gdprHandler(toolCtx))
 }
 

@@ -54,118 +54,6 @@ var emailActions = map[string][]string{
 	"queue":      {"list", "cancel"},
 }
 
-// emailOutputSchema defines the JSON Schema for all possible email outputs.
-var emailOutputSchema = map[string]any{
-	"type": "object",
-	"description": `Output varies by resource and action:
-- list.create → {id, name, slug, description, double_optin, created: true}
-- list.list → {lists: ListItem[], total: number}
-- list.get → {id, name, slug, description, double_optin, subscriber_count}
-- list.update → {id, name, slug, description, double_optin, updated: true}
-- list.delete → {success: true, message: string}
-- sequence.create → {id, name, slug, list_id, trigger_event, sequence_type, active, created: true}
-- sequence.list → {sequences: SequenceItem[], total: number}
-- sequence.get → {id, name, slug, list_id, trigger_event, sequence_type, active, emails: []}
-- sequence.update → {id, name, trigger_event, sequence_type, active, updated: true}
-- sequence.delete → {success: true, message: string}
-- template.create → {id, sequence_id, subject, position, delay_hours, active, created: true}
-- template.list → {sequence_id, emails: TemplateItem[], total: number}
-- template.get → {id, sequence_id, position, subject, html_body, plain_text, delay_hours, active}
-- template.update → {id, sequence_id, subject, position, delay_hours, active, updated: true}
-- template.delete → {success: true, message: string}`,
-	"oneOf": []map[string]any{
-		{
-			"title":       "ListCreate",
-			"description": "Returned by list.create",
-			"type":        "object",
-			"properties": map[string]any{
-				"id":           map[string]any{"type": "string", "description": "List ID"},
-				"name":         map[string]any{"type": "string", "description": "List name"},
-				"slug":         map[string]any{"type": "string", "description": "URL-friendly slug"},
-				"description":  map[string]any{"type": "string", "description": "List description"},
-				"double_optin": map[string]any{"type": "boolean", "description": "Whether double opt-in is required"},
-				"created":      map[string]any{"type": "boolean", "const": true},
-			},
-			"required": []string{"id", "name", "slug", "created"},
-		},
-		{
-			"title":       "ListList",
-			"description": "Returned by list.list",
-			"type":        "object",
-			"properties": map[string]any{
-				"lists": map[string]any{"type": "array", "description": "List of email lists"},
-				"total": map[string]any{"type": "integer", "description": "Total count"},
-			},
-			"required": []string{"lists", "total"},
-		},
-		{
-			"title":       "ListGet",
-			"description": "Returned by list.get",
-			"type":        "object",
-			"properties": map[string]any{
-				"id":               map[string]any{"type": "string", "description": "List ID"},
-				"name":             map[string]any{"type": "string", "description": "List name"},
-				"slug":             map[string]any{"type": "string", "description": "URL-friendly slug"},
-				"description":      map[string]any{"type": "string", "description": "List description"},
-				"double_optin":     map[string]any{"type": "boolean", "description": "Whether double opt-in is required"},
-				"subscriber_count": map[string]any{"type": "integer", "description": "Number of active subscribers"},
-			},
-			"required": []string{"id", "name", "slug"},
-		},
-		{
-			"title":       "SequenceCreate",
-			"description": "Returned by sequence.create",
-			"type":        "object",
-			"properties": map[string]any{
-				"id":            map[string]any{"type": "string", "description": "Sequence ID"},
-				"name":          map[string]any{"type": "string", "description": "Sequence name"},
-				"slug":          map[string]any{"type": "string", "description": "URL-friendly slug"},
-				"list_id":       map[string]any{"type": "string", "description": "Attached list ID"},
-				"trigger_event": map[string]any{"type": "string", "description": "Trigger event"},
-				"sequence_type": map[string]any{"type": "string", "description": "Sequence type"},
-				"active":        map[string]any{"type": "boolean", "description": "Whether sequence is active"},
-				"created":       map[string]any{"type": "boolean", "const": true},
-			},
-			"required": []string{"id", "name", "slug", "created"},
-		},
-		{
-			"title":       "SequenceList",
-			"description": "Returned by sequence.list",
-			"type":        "object",
-			"properties": map[string]any{
-				"sequences": map[string]any{"type": "array", "description": "List of sequences"},
-				"total":     map[string]any{"type": "integer", "description": "Total count"},
-			},
-			"required": []string{"sequences", "total"},
-		},
-		{
-			"title":       "TemplateCreate",
-			"description": "Returned by template.create",
-			"type":        "object",
-			"properties": map[string]any{
-				"id":          map[string]any{"type": "string", "description": "Template/email ID"},
-				"sequence_id": map[string]any{"type": "string", "description": "Parent sequence ID"},
-				"subject":     map[string]any{"type": "string", "description": "Email subject"},
-				"position":    map[string]any{"type": "integer", "description": "Position in sequence"},
-				"delay_hours": map[string]any{"type": "integer", "description": "Hours delay before sending"},
-				"active":      map[string]any{"type": "boolean", "description": "Whether email is active"},
-				"created":     map[string]any{"type": "boolean", "const": true},
-			},
-			"required": []string{"id", "sequence_id", "subject", "created"},
-		},
-		{
-			"title":       "DeleteOutput",
-			"description": "Returned by *.delete actions",
-			"type":        "object",
-			"properties": map[string]any{
-				"success": map[string]any{"type": "boolean", "const": true},
-				"message": map[string]any{"type": "string", "description": "Status message"},
-			},
-			"required": []string{"success", "message"},
-		},
-	},
-}
-
 // EmailInput defines input for the unified email tool.
 type EmailInput struct {
 	Resource string `json:"resource" jsonschema:"required,Resource type: list, sequence, template, enrollment, entry_rule, or queue"`
@@ -278,7 +166,6 @@ Examples:
   email(resource: enrollment, action: list, contact_id: "uuid")
   email(resource: entry_rule, action: create, sequence_id: "uuid", trigger_type: "list_subscribe", source_id: "1")
   email(resource: queue, action: list, status: "pending")`,
-		OutputSchema: emailOutputSchema,
 	}, emailHandler(toolCtx))
 }
 

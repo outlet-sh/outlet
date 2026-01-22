@@ -21,70 +21,6 @@ var brandActions = map[string][]string{
 	"domain": {"list", "create", "get", "refresh", "delete"},
 }
 
-// brandOutputSchema defines the JSON Schema for all possible brand outputs.
-var brandOutputSchema = map[string]any{
-	"type": "object",
-	"description": `Output varies by resource and action:
-- brand.list → {brands: BrandItem[], total: number, auth_mode: string}
-- brand.select → {id, name, slug, selected: true, message: string}
-- brand.get → {id, name, slug, max_contacts, from_name, from_email, reply_to}
-- brand.update → {id, name, from_name, from_email, reply_to, updated: true}`,
-	"oneOf": []map[string]any{
-		{
-			"title":       "BrandList",
-			"description": "Returned by brand.list",
-			"type":        "object",
-			"properties": map[string]any{
-				"brands":    map[string]any{"type": "array", "description": "List of brands"},
-				"total":     map[string]any{"type": "integer", "description": "Total count"},
-				"auth_mode": map[string]any{"type": "string", "description": "Authentication mode: api_key or oauth"},
-			},
-			"required": []string{"brands", "total", "auth_mode"},
-		},
-		{
-			"title":       "BrandSelect",
-			"description": "Returned by brand.select",
-			"type":        "object",
-			"properties": map[string]any{
-				"id":       map[string]any{"type": "string", "description": "Brand UUID"},
-				"name":     map[string]any{"type": "string", "description": "Brand name"},
-				"slug":     map[string]any{"type": "string", "description": "URL-friendly slug"},
-				"selected": map[string]any{"type": "boolean", "description": "Whether selection was successful"},
-				"message":  map[string]any{"type": "string", "description": "Additional information"},
-			},
-			"required": []string{"id", "name", "slug", "selected"},
-		},
-		{
-			"title":       "BrandGet",
-			"description": "Returned by brand.get",
-			"type":        "object",
-			"properties": map[string]any{
-				"id":           map[string]any{"type": "string", "description": "Brand UUID"},
-				"name":         map[string]any{"type": "string", "description": "Brand name"},
-				"slug":         map[string]any{"type": "string", "description": "URL-friendly slug"},
-				"max_contacts": map[string]any{"type": "integer", "description": "Maximum allowed contacts"},
-				"from_name":    map[string]any{"type": "string", "description": "Email sender name"},
-				"from_email":   map[string]any{"type": "string", "description": "Email sender address"},
-				"reply_to":     map[string]any{"type": "string", "description": "Reply-to email address"},
-			},
-			"required": []string{"id", "name", "slug"},
-		},
-		{
-			"title":       "BrandUpdate",
-			"description": "Returned by brand.update",
-			"type":        "object",
-			"properties": map[string]any{
-				"id":         map[string]any{"type": "string", "description": "Brand UUID"},
-				"name":       map[string]any{"type": "string", "description": "Brand name"},
-				"from_name":  map[string]any{"type": "string", "description": "Email sender name"},
-				"from_email": map[string]any{"type": "string", "description": "Email sender address"},
-				"reply_to":   map[string]any{"type": "string", "description": "Reply-to email address"},
-				"updated":    map[string]any{"type": "boolean", "const": true},
-			},
-			"required": []string{"id", "name", "updated"},
-		},
-	},
-}
 
 // BrandInput defines input for the unified brand tool.
 type BrandInput struct {
@@ -151,7 +87,8 @@ Examples:
   brand(resource: domain, action: list)
   brand(resource: domain, action: create, domain: "example.com")
   brand(resource: domain, action: refresh, id: "uuid")`,
-		OutputSchema: brandOutputSchema,
+		// Note: OutputSchema removed - using `any` return type means SDK omits schema validation.
+		// The previous oneOf schema only covered 4 of the 12+ possible outputs, causing validation failures.
 	}, brandHandler(toolCtx))
 }
 

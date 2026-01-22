@@ -21,59 +21,6 @@ var statsActions = map[string][]string{
 	"contact":  {"get"},
 }
 
-// statsOutputSchema defines the JSON Schema for all possible stats outputs.
-var statsOutputSchema = map[string]any{
-	"type": "object",
-	"description": `Output varies by resource and action:
-- overview.get → {total_contacts, new_contacts_30d, new_contacts_7d, emails_sent_30d, opens_30d, clicks_30d}
-- email.get → {sent, opened, clicked, open_rate, click_rate}
-- contact.get → {contact_id, campaigns_sent, sequences_enrolled, transactional_sent, total_opens, total_clicks}`,
-	"oneOf": []map[string]any{
-		{
-			"title":       "OverviewStats",
-			"description": "Returned by overview.get",
-			"type":        "object",
-			"properties": map[string]any{
-				"total_contacts":    map[string]any{"type": "integer", "description": "Total contacts"},
-				"new_contacts_30d":  map[string]any{"type": "integer", "description": "New contacts in last 30 days"},
-				"new_contacts_7d":   map[string]any{"type": "integer", "description": "New contacts in last 7 days"},
-				"emails_sent_30d":   map[string]any{"type": "integer", "description": "Emails sent in last 30 days"},
-				"opens_30d":         map[string]any{"type": "integer", "description": "Opens in last 30 days"},
-				"clicks_30d":        map[string]any{"type": "integer", "description": "Clicks in last 30 days"},
-			},
-			"required": []string{"total_contacts"},
-		},
-		{
-			"title":       "EmailStats",
-			"description": "Returned by email.get",
-			"type":        "object",
-			"properties": map[string]any{
-				"sent":       map[string]any{"type": "integer", "description": "Total sent"},
-				"opened":     map[string]any{"type": "integer", "description": "Total opened"},
-				"clicked":    map[string]any{"type": "integer", "description": "Total clicked"},
-				"open_rate":  map[string]any{"type": "number", "description": "Open rate percentage"},
-				"click_rate": map[string]any{"type": "number", "description": "Click rate percentage"},
-			},
-			"required": []string{"sent"},
-		},
-		{
-			"title":       "ContactStats",
-			"description": "Returned by contact.get",
-			"type":        "object",
-			"properties": map[string]any{
-				"contact_id":         map[string]any{"type": "string", "description": "Contact ID"},
-				"email":              map[string]any{"type": "string", "description": "Contact email"},
-				"campaigns_sent":     map[string]any{"type": "integer", "description": "Campaign emails sent"},
-				"sequences_enrolled": map[string]any{"type": "integer", "description": "Sequences enrolled"},
-				"transactional_sent": map[string]any{"type": "integer", "description": "Transactional emails sent"},
-				"total_opens":        map[string]any{"type": "integer", "description": "Total email opens"},
-				"total_clicks":       map[string]any{"type": "integer", "description": "Total link clicks"},
-			},
-			"required": []string{"contact_id"},
-		},
-	},
-}
-
 // StatsInput defines input for the stats tool.
 type StatsInput struct {
 	Resource string `json:"resource" jsonschema:"required,Resource type: overview, email, or contact"`
@@ -106,7 +53,6 @@ Examples:
   stats(resource: email, action: get)
   stats(resource: email, action: get, sequence_id: "uuid")
   stats(resource: contact, action: get, contact_id: "uuid")`,
-		OutputSchema: statsOutputSchema,
 	}, statsHandler(toolCtx))
 }
 

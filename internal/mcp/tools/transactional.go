@@ -18,91 +18,6 @@ import (
 // transactionalActions defines valid actions for the transactional tool.
 var transactionalActions = []string{"create", "list", "get", "update", "delete", "stats"}
 
-// transactionalOutputSchema defines the JSON Schema for all possible transactional outputs.
-var transactionalOutputSchema = map[string]any{
-	"type": "object",
-	"description": `Output varies by action:
-- create → {id, name, slug, subject, active, created: true}
-- list → {templates: TemplateItem[], total: number}
-- get → {id, name, slug, description, subject, html_body, plain_text, from_name, from_email, reply_to, active}
-- update → {id, name, slug, subject, active, updated: true}
-- delete → {success: true, message: string}
-- stats → {id, name, total_sent, delivered, opened, clicked, bounced, failed, open_rate, click_rate}`,
-	"oneOf": []map[string]any{
-		{
-			"title":       "TransactionalCreate",
-			"description": "Returned by create",
-			"type":        "object",
-			"properties": map[string]any{
-				"id":      map[string]any{"type": "string", "description": "Template ID"},
-				"name":    map[string]any{"type": "string", "description": "Template name"},
-				"slug":    map[string]any{"type": "string", "description": "URL-friendly slug"},
-				"subject": map[string]any{"type": "string", "description": "Email subject"},
-				"active":  map[string]any{"type": "boolean", "description": "Whether template is active"},
-				"created": map[string]any{"type": "boolean", "const": true},
-			},
-			"required": []string{"id", "name", "slug", "subject", "created"},
-		},
-		{
-			"title":       "TransactionalList",
-			"description": "Returned by list",
-			"type":        "object",
-			"properties": map[string]any{
-				"templates": map[string]any{"type": "array", "description": "List of transactional templates"},
-				"total":     map[string]any{"type": "integer", "description": "Total count"},
-			},
-			"required": []string{"templates", "total"},
-		},
-		{
-			"title":       "TransactionalGet",
-			"description": "Returned by get",
-			"type":        "object",
-			"properties": map[string]any{
-				"id":          map[string]any{"type": "string", "description": "Template ID"},
-				"name":        map[string]any{"type": "string", "description": "Template name"},
-				"slug":        map[string]any{"type": "string", "description": "URL-friendly slug"},
-				"description": map[string]any{"type": "string", "description": "Template description"},
-				"subject":     map[string]any{"type": "string", "description": "Email subject"},
-				"html_body":   map[string]any{"type": "string", "description": "HTML content"},
-				"plain_text":  map[string]any{"type": "string", "description": "Plain text content"},
-				"from_name":   map[string]any{"type": "string", "description": "Sender name"},
-				"from_email":  map[string]any{"type": "string", "description": "Sender email"},
-				"reply_to":    map[string]any{"type": "string", "description": "Reply-to address"},
-				"active":      map[string]any{"type": "boolean", "description": "Whether template is active"},
-			},
-			"required": []string{"id", "name", "slug", "subject"},
-		},
-		{
-			"title":       "TransactionalStats",
-			"description": "Returned by stats",
-			"type":        "object",
-			"properties": map[string]any{
-				"id":         map[string]any{"type": "string", "description": "Template ID"},
-				"name":       map[string]any{"type": "string", "description": "Template name"},
-				"total_sent": map[string]any{"type": "integer", "description": "Total emails sent"},
-				"delivered":  map[string]any{"type": "integer", "description": "Delivered count"},
-				"opened":     map[string]any{"type": "integer", "description": "Opened count"},
-				"clicked":    map[string]any{"type": "integer", "description": "Clicked count"},
-				"bounced":    map[string]any{"type": "integer", "description": "Bounced count"},
-				"failed":     map[string]any{"type": "integer", "description": "Failed count"},
-				"open_rate":  map[string]any{"type": "number", "description": "Open rate percentage"},
-				"click_rate": map[string]any{"type": "number", "description": "Click rate percentage"},
-			},
-			"required": []string{"id", "name", "total_sent"},
-		},
-		{
-			"title":       "TransactionalDelete",
-			"description": "Returned by delete",
-			"type":        "object",
-			"properties": map[string]any{
-				"success": map[string]any{"type": "boolean", "const": true},
-				"message": map[string]any{"type": "string", "description": "Status message"},
-			},
-			"required": []string{"success", "message"},
-		},
-	},
-}
-
 // TransactionalInput defines input for the transactional tool.
 type TransactionalInput struct {
 	Action string `json:"action" jsonschema:"required,Action to perform: create, list, get, update, delete, stats"`
@@ -151,7 +66,6 @@ Examples:
   transactional(action: stats, id: "uuid")
   transactional(action: update, id: "uuid", subject: "New Subject")
   transactional(action: delete, id: "uuid")`,
-		OutputSchema: transactionalOutputSchema,
 	}, transactionalHandler(toolCtx))
 }
 

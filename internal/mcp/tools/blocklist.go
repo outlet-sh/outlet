@@ -20,103 +20,6 @@ var blocklistActions = map[string][]string{
 	"domain":      {"list", "add", "delete", "bulk_add"},
 }
 
-// blocklistOutputSchema defines the JSON Schema for all possible blocklist outputs.
-var blocklistOutputSchema = map[string]any{
-	"type": "object",
-	"description": `Output varies by resource and action:
-- suppression.list → {emails: SuppressionItem[], total: number, page, page_size}
-- suppression.add → {id, email, reason, source, added: true}
-- suppression.delete → {success: true, message: string}
-- suppression.bulk_add → {added_count, skipped_count, success: true}
-- suppression.clear → {cleared_count, success: true}
-- domain.list → {domains: DomainItem[], total: number, page, page_size}
-- domain.add → {id, domain, reason, added: true}
-- domain.delete → {success: true, message: string}
-- domain.bulk_add → {added_count, skipped_count, success: true}`,
-	"oneOf": []map[string]any{
-		{
-			"title":       "SuppressionList",
-			"description": "Returned by suppression.list",
-			"type":        "object",
-			"properties": map[string]any{
-				"emails":    map[string]any{"type": "array", "description": "List of suppressed emails"},
-				"total":     map[string]any{"type": "integer", "description": "Total count"},
-				"page":      map[string]any{"type": "integer", "description": "Current page"},
-				"page_size": map[string]any{"type": "integer", "description": "Items per page"},
-			},
-			"required": []string{"emails", "total"},
-		},
-		{
-			"title":       "SuppressionAdd",
-			"description": "Returned by suppression.add",
-			"type":        "object",
-			"properties": map[string]any{
-				"id":     map[string]any{"type": "integer", "description": "Suppression ID"},
-				"email":  map[string]any{"type": "string", "description": "Suppressed email"},
-				"reason": map[string]any{"type": "string", "description": "Reason for suppression"},
-				"source": map[string]any{"type": "string", "description": "Source of suppression"},
-				"added":  map[string]any{"type": "boolean", "const": true},
-			},
-			"required": []string{"email", "added"},
-		},
-		{
-			"title":       "BulkAddOutput",
-			"description": "Returned by *.bulk_add",
-			"type":        "object",
-			"properties": map[string]any{
-				"added_count":   map[string]any{"type": "integer", "description": "Number of items added"},
-				"skipped_count": map[string]any{"type": "integer", "description": "Number of items skipped (duplicates)"},
-				"success":       map[string]any{"type": "boolean", "const": true},
-			},
-			"required": []string{"added_count", "success"},
-		},
-		{
-			"title":       "ClearOutput",
-			"description": "Returned by suppression.clear",
-			"type":        "object",
-			"properties": map[string]any{
-				"cleared_count": map[string]any{"type": "integer", "description": "Number of items cleared"},
-				"success":       map[string]any{"type": "boolean", "const": true},
-			},
-			"required": []string{"cleared_count", "success"},
-		},
-		{
-			"title":       "DomainList",
-			"description": "Returned by domain.list",
-			"type":        "object",
-			"properties": map[string]any{
-				"domains":   map[string]any{"type": "array", "description": "List of blocked domains"},
-				"total":     map[string]any{"type": "integer", "description": "Total count"},
-				"page":      map[string]any{"type": "integer", "description": "Current page"},
-				"page_size": map[string]any{"type": "integer", "description": "Items per page"},
-			},
-			"required": []string{"domains", "total"},
-		},
-		{
-			"title":       "DomainAdd",
-			"description": "Returned by domain.add",
-			"type":        "object",
-			"properties": map[string]any{
-				"id":     map[string]any{"type": "integer", "description": "Domain ID"},
-				"domain": map[string]any{"type": "string", "description": "Blocked domain"},
-				"reason": map[string]any{"type": "string", "description": "Reason for blocking"},
-				"added":  map[string]any{"type": "boolean", "const": true},
-			},
-			"required": []string{"domain", "added"},
-		},
-		{
-			"title":       "DeleteOutput",
-			"description": "Returned by *.delete",
-			"type":        "object",
-			"properties": map[string]any{
-				"success": map[string]any{"type": "boolean", "const": true},
-				"message": map[string]any{"type": "string", "description": "Status message"},
-			},
-			"required": []string{"success", "message"},
-		},
-	},
-}
-
 // BlocklistInput defines input for the blocklist tool.
 type BlocklistInput struct {
 	Resource string `json:"resource" jsonschema:"required,Resource type: suppression or domain"`
@@ -176,7 +79,6 @@ Examples:
   blocklist(resource: domain, action: list)
   blocklist(resource: domain, action: add, domain: "spam.com", reason: "known spam domain")
   blocklist(resource: domain, action: bulk_add, domains: "spam1.com,spam2.com")`,
-		OutputSchema: blocklistOutputSchema,
 	}, blocklistHandler(toolCtx))
 }
 
