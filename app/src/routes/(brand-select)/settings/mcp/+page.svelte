@@ -15,21 +15,21 @@
 	let activeTab = $state<'claude-desktop' | 'chatgpt' | 'claude-code' | 'cursor'>('claude-desktop');
 
 	// MCP Tools grouped by category - uses unified resource/action pattern
-	// All tools require org(resource: org, action: select) first to select an organization
+	// All tools require brand(resource: brand, action: select) first to select a brand
 	const mcpTools = {
-		Organization: [
-			{ name: 'org(resource: org, action: list)', desc: 'List organizations you have access to' },
-			{ name: 'org(resource: org, action: select)', desc: 'Select an organization to work with' },
-			{ name: 'org(resource: org, action: get)', desc: 'Get current organization details' },
-			{ name: 'org(resource: org, action: update)', desc: 'Update organization settings' },
-			{ name: 'org(resource: org, action: create)', desc: 'Create a new organization' },
-			{ name: 'org(resource: org, action: delete)', desc: 'Delete an organization' },
-			{ name: 'org(resource: org, action: dashboard_stats)', desc: 'Get dashboard statistics' },
-			{ name: 'org(resource: domain, action: list)', desc: 'List domain identities' },
-			{ name: 'org(resource: domain, action: create)', desc: 'Add a domain for email sending' },
-			{ name: 'org(resource: domain, action: get)', desc: 'Get domain verification status' },
-			{ name: 'org(resource: domain, action: refresh)', desc: 'Refresh domain DNS verification' },
-			{ name: 'org(resource: domain, action: delete)', desc: 'Remove a domain identity' }
+		Brand: [
+			{ name: 'brand(resource: brand, action: list)', desc: 'List brands you have access to' },
+			{ name: 'brand(resource: brand, action: select)', desc: 'Select a brand to work with' },
+			{ name: 'brand(resource: brand, action: get)', desc: 'Get current brand details' },
+			{ name: 'brand(resource: brand, action: update)', desc: 'Update brand settings' },
+			{ name: 'brand(resource: brand, action: create)', desc: 'Create a new brand' },
+			{ name: 'brand(resource: brand, action: delete)', desc: 'Delete a brand' },
+			{ name: 'brand(resource: brand, action: dashboard_stats)', desc: 'Get dashboard statistics' },
+			{ name: 'brand(resource: domain, action: list)', desc: 'List domain identities' },
+			{ name: 'brand(resource: domain, action: create)', desc: 'Add a domain for email sending' },
+			{ name: 'brand(resource: domain, action: get)', desc: 'Get domain verification status' },
+			{ name: 'brand(resource: domain, action: refresh)', desc: 'Refresh domain DNS verification' },
+			{ name: 'brand(resource: domain, action: delete)', desc: 'Remove a domain identity' }
 		],
 		'Email Lists & Sequences': [
 			{ name: 'email(resource: list, action: create)', desc: 'Create an email list' },
@@ -130,7 +130,7 @@
 	};
 
 	let expandedCategories = $state<Record<string, boolean>>({
-		Organization: true,
+		Brand: true,
 		'Email Lists & Sequences': false,
 		'Sequence Enrollments': false,
 		Campaigns: false,
