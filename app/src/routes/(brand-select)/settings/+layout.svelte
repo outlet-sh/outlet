@@ -9,6 +9,7 @@
 		{ name: 'SMTP', href: '/settings/smtp' },
 		{ name: 'Integrations', href: '/settings/email' },
 		{ name: 'Users', href: '/settings/users' },
+		{ name: 'Brands', href: '/settings/brands' },
 		{ name: 'Backup', href: '/settings/backup' },
 		{ name: 'Updates', href: '/settings/updates' }
 	];

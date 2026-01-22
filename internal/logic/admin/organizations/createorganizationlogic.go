@@ -38,21 +38,21 @@ func (l *CreateOrganizationLogic) CreateOrganization(req *types.CreateOrgRequest
 	}
 	apiKey := hex.EncodeToString(apiKeyBytes)
 
-	// Set defaults
-	maxContacts := int64(1000)
-	if req.MaxContacts > 0 {
-		maxContacts = int64(req.MaxContacts)
-	}
-
 	// Generate org ID
 	orgID := uuid.New().String()
+
+	// Only set max_contacts if explicitly provided (otherwise NULL = unlimited)
+	maxContacts := sql.NullInt64{Valid: false}
+	if req.MaxContacts > 0 {
+		maxContacts = sql.NullInt64{Int64: int64(req.MaxContacts), Valid: true}
+	}
 
 	org, err := l.svcCtx.DB.CreateOrganization(l.ctx, db.CreateOrganizationParams{
 		ID:          orgID,
 		Name:        req.Name,
 		Slug:        req.Slug,
 		ApiKey:      apiKey,
-		MaxContacts: sql.NullInt64{Int64: maxContacts, Valid: true},
+		MaxContacts: maxContacts,
 		Settings:    sql.NullString{String: "{}", Valid: true},
 		AppUrl:      sql.NullString{String: req.AppUrl, Valid: req.AppUrl != ""},
 	})

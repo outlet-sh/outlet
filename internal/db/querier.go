@@ -453,6 +453,7 @@ type Querier interface {
 	UpdateMCPAPIKeyLastUsed(ctx context.Context, id string) error
 	UpdateMCPOAuthClient(ctx context.Context, arg UpdateMCPOAuthClientParams) (McpOauthClient, error)
 	UpdateOrgEmailSettings(ctx context.Context, arg UpdateOrgEmailSettingsParams) (Organization, error)
+	UpdateOrgMaxContacts(ctx context.Context, arg UpdateOrgMaxContactsParams) (Organization, error)
 	// Update an existing rule
 	UpdateOrgRule(ctx context.Context, arg UpdateOrgRuleParams) (OrgRule, error)
 	UpdateOrgSettings(ctx context.Context, arg UpdateOrgSettingsParams) error

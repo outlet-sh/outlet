@@ -88,3 +88,11 @@ RETURNING *;
 SELECT from_name, from_email, reply_to
 FROM organizations
 WHERE id = sqlc.arg(id);
+
+-- name: UpdateOrgMaxContacts :one
+UPDATE organizations
+SET
+    max_contacts = sqlc.arg(max_contacts),
+    updated_at = datetime('now')
+WHERE id = sqlc.arg(id)
+RETURNING *;

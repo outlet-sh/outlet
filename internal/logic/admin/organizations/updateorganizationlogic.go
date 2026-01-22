@@ -26,21 +26,43 @@ func NewUpdateOrganizationLogic(ctx context.Context, svcCtx *svc.ServiceContext)
 }
 
 func (l *UpdateOrganizationLogic) UpdateOrganization(req *types.UpdateOrgRequest) (resp *types.OrgInfo, err error) {
-	// Build update params with optional fields
-	params := db.UpdateOrganizationParams{
-		ID:   req.Id,
-		Name: req.Name, // Empty string becomes NULL via NULLIF in query
+	var org db.Organization
+
+	// Update max_contacts separately since it needs to allow NULL (unlimited)
+	// max_contacts: 0 = unlimited, >0 = limit
+	if req.MaxContacts >= 0 {
+		maxContacts := sql.NullInt64{Valid: false} // NULL = unlimited
+		if req.MaxContacts > 0 {
+			maxContacts = sql.NullInt64{Int64: int64(req.MaxContacts), Valid: true}
+		}
+		org, err = l.svcCtx.DB.UpdateOrgMaxContacts(l.ctx, db.UpdateOrgMaxContactsParams{
+			ID:          req.Id,
+			MaxContacts: maxContacts,
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	if req.MaxContacts > 0 {
-		params.MaxContacts = sql.NullInt64{Int64: int64(req.MaxContacts), Valid: true}
+	// Update other fields if provided
+	if req.Name != "" || req.AppUrl != "" {
+		params := db.UpdateOrganizationParams{
+			ID:     req.Id,
+			Name:   req.Name,
+			AppUrl: req.AppUrl,
+		}
+		org, err = l.svcCtx.DB.UpdateOrganization(l.ctx, params)
+		if err != nil {
+			return nil, err
+		}
 	}
-	// AppUrl uses COALESCE/NULLIF so empty string preserves existing value
-	params.AppUrl = req.AppUrl
 
-	org, err := l.svcCtx.DB.UpdateOrganization(l.ctx, params)
-	if err != nil {
-		return nil, err
+	// If we didn't update anything, fetch the current org
+	if org.ID == "" {
+		org, err = l.svcCtx.DB.GetOrganizationByID(l.ctx, req.Id)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &types.OrgInfo{

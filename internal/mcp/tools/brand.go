@@ -43,6 +43,9 @@ type BrandInput struct {
 	// Domain-specific
 	Domain string `json:"domain,omitempty" jsonschema:"Domain name (e.g., 'example.com'). For domain.create."`
 
+	// Limits
+	MaxContacts *int64 `json:"max_contacts,omitempty" jsonschema:"Set max contacts limit (0 or null for unlimited). For brand.update."`
+
 	// Delete confirmation
 	Confirm bool `json:"confirm,omitempty" jsonschema:"Set to true to confirm deletion. For brand.delete, domain.delete."`
 }
@@ -65,7 +68,7 @@ BRAND RESOURCE:
 - brand.list: List all brands you have access to
 - brand.select: Select a brand to work with (OAuth only, requires: brand_id or slug)
 - brand.get: Get current brand details
-- brand.update: Update brand settings
+- brand.update: Update brand settings (optional: name, from_name, from_email, reply_to, max_contacts)
 - brand.create: Create a new brand (requires: name)
 - brand.delete: Delete brand (requires: confirm=true)
 - brand.dashboard_stats: Get dashboard statistics
@@ -77,11 +80,18 @@ DOMAIN RESOURCE:
 - domain.refresh: Check verification status with SES (requires: id)
 - domain.delete: Remove a domain (requires: id)
 
+Max Contacts:
+- max_contacts: Set the maximum number of contacts allowed (brand.update)
+- Use 0 or omit for unlimited contacts
+- Positive number sets a specific limit
+
 Examples:
   brand(resource: brand, action: list)
   brand(resource: brand, action: select, slug: "my-company")
   brand(resource: brand, action: get)
   brand(resource: brand, action: update, from_email: "hello@example.com")
+  brand(resource: brand, action: update, max_contacts: 5000)
+  brand(resource: brand, action: update, max_contacts: 0)  # unlimited
   brand(resource: brand, action: create, name: "New Company")
   brand(resource: brand, action: dashboard_stats)
   brand(resource: domain, action: list)
@@ -167,12 +177,13 @@ type BrandGetOutput struct {
 
 // BrandUpdateOutput defines output for brand.update.
 type BrandUpdateOutput struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	FromName  string `json:"from_name,omitempty"`
-	FromEmail string `json:"from_email,omitempty"`
-	ReplyTo   string `json:"reply_to,omitempty"`
-	Updated   bool   `json:"updated"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	FromName    string `json:"from_name,omitempty"`
+	FromEmail   string `json:"from_email,omitempty"`
+	ReplyTo     string `json:"reply_to,omitempty"`
+	MaxContacts *int64 `json:"max_contacts,omitempty"`
+	Updated     bool   `json:"updated"`
 }
 
 func handleBrand(ctx context.Context, toolCtx *mcpctx.ToolContext, input BrandInput) (*mcp.CallToolResult, any, error) {
@@ -329,6 +340,22 @@ func handleBrandUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, input B
 		}
 	}
 
+	// Update max_contacts separately since it needs to allow NULL (unlimited)
+	if input.MaxContacts != nil {
+		maxContacts := sql.NullInt64{Valid: false} // NULL = unlimited
+		if *input.MaxContacts > 0 {
+			maxContacts = sql.NullInt64{Int64: *input.MaxContacts, Valid: true}
+		}
+		_, err := toolCtx.DB().UpdateOrgMaxContacts(ctx, db.UpdateOrgMaxContactsParams{
+			ID:          toolCtx.BrandID(),
+			MaxContacts: maxContacts,
+		})
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to update brand max_contacts: %w", err)
+		}
+	}
+
+	// Update name if provided
 	if input.Name != "" {
 		_, err := toolCtx.DB().UpdateOrganization(ctx, db.UpdateOrganizationParams{
 			ID:   toolCtx.BrandID(),
@@ -351,13 +378,20 @@ func handleBrandUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, input B
 		}, nil
 	}
 
+	// Convert max_contacts for output
+	var maxContacts *int64
+	if updatedBrand.MaxContacts.Valid {
+		maxContacts = &updatedBrand.MaxContacts.Int64
+	}
+
 	return nil, BrandUpdateOutput{
-		ID:        updatedBrand.ID,
-		Name:      updatedBrand.Name,
-		FromName:  updatedBrand.FromName.String,
-		FromEmail: updatedBrand.FromEmail.String,
-		ReplyTo:   updatedBrand.ReplyTo.String,
-		Updated:   true,
+		ID:          updatedBrand.ID,
+		Name:        updatedBrand.Name,
+		FromName:    updatedBrand.FromName.String,
+		FromEmail:   updatedBrand.FromEmail.String,
+		ReplyTo:     updatedBrand.ReplyTo.String,
+		MaxContacts: maxContacts,
+		Updated:     true,
 	}, nil
 }
 
@@ -421,7 +455,7 @@ func handleBrandCreate(ctx context.Context, toolCtx *mcpctx.ToolContext, input B
 		Name:        input.Name,
 		Slug:        slug,
 		ApiKey:      apiKey,
-		MaxContacts: sql.NullInt64{Int64: 10000, Valid: true},
+		MaxContacts: sql.NullInt64{Valid: false}, // NULL = unlimited
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create brand: %w", err)

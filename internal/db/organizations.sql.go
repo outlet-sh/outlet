@@ -456,6 +456,41 @@ func (q *Queries) UpdateOrgEmailSettings(ctx context.Context, arg UpdateOrgEmail
 	return i, err
 }
 
+const updateOrgMaxContacts = `-- name: UpdateOrgMaxContacts :one
+UPDATE organizations
+SET
+    max_contacts = ?1,
+    updated_at = datetime('now')
+WHERE id = ?2
+RETURNING id, name, slug, api_key, api_key_created_at, from_name, from_email, reply_to, max_contacts, settings, app_url, created_at, updated_at
+`
+
+type UpdateOrgMaxContactsParams struct {
+	MaxContacts sql.NullInt64 `json:"max_contacts"`
+	ID          string        `json:"id"`
+}
+
+func (q *Queries) UpdateOrgMaxContacts(ctx context.Context, arg UpdateOrgMaxContactsParams) (Organization, error) {
+	row := q.db.QueryRowContext(ctx, updateOrgMaxContacts, arg.MaxContacts, arg.ID)
+	var i Organization
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.ApiKey,
+		&i.ApiKeyCreatedAt,
+		&i.FromName,
+		&i.FromEmail,
+		&i.ReplyTo,
+		&i.MaxContacts,
+		&i.Settings,
+		&i.AppUrl,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const updateOrganization = `-- name: UpdateOrganization :one
 UPDATE organizations
 SET

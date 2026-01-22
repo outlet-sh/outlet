@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS organizations (
     from_name TEXT,
     from_email TEXT,
     reply_to TEXT,
-    max_contacts INTEGER DEFAULT 1000,
+    max_contacts INTEGER DEFAULT NULL,
     settings TEXT DEFAULT '{}',
     app_url TEXT,
     created_at TEXT DEFAULT (datetime('now')),
