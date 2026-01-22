@@ -151,7 +151,7 @@ func RegisterCampaignTool(server *mcp.Server, toolCtx *mcpctx.ToolContext) {
 		Title: "Campaign Management",
 		Description: `Manage email broadcast campaigns.
 
-PREREQUISITE: You must first select an organization using org(resource: org, action: select).
+PREREQUISITE: You must first select a brand using brand(resource: brand, action: select).
 
 Actions and Required Fields:
 - create: Create a new campaign (requires: name, subject, html_body, list_ids)

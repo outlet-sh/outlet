@@ -12,12 +12,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// createTestOrg creates a mock organization for testing
-func createTestOrg(id string, name string) db.Organization {
+// createTestBrand creates a mock brand for testing
+func createTestBrand(id string, name string) db.Organization {
 	return db.Organization{
 		ID:     id,
 		Name:   name,
-		Slug:   "test-org",
+		Slug:   "test-brand",
 		ApiKey: "test-api-key",
 	}
 }
@@ -36,14 +36,14 @@ func createTestUser(id string, email, role string) db.User {
 // ========== NewToolContext Tests ==========
 
 func TestNewToolContext_APIKeyMode(t *testing.T) {
-	orgID := uuid.New().String()
-	org := createTestOrg(orgID, "Test Organization")
+	brandID := uuid.New().String()
+	brand := createTestBrand(brandID, "Test Brand")
 
-	tc := NewToolContext(nil, org, "req-123", "test-agent/1.0")
+	tc := NewToolContext(nil, brand, "req-123", "test-agent/1.0")
 
 	assert.NotNil(t, tc, "ToolContext should not be nil")
 	assert.Equal(t, AuthModeAPIKey, tc.AuthMode(), "AuthMode should be APIKey")
-	assert.Equal(t, orgID, tc.BrandID(), "OrgID should match")
+	assert.Equal(t, brandID, tc.BrandID(), "BrandID should match")
 	assert.Equal(t, "req-123", tc.RequestID(), "RequestID should match")
 	assert.Equal(t, "test-agent/1.0", tc.UserAgent(), "UserAgent should match")
 	assert.True(t, tc.HasBrand(), "HasBrand should be true for API key mode")
@@ -58,32 +58,32 @@ func TestNewUserToolContext_OAuthMode(t *testing.T) {
 	assert.NotNil(t, tc, "ToolContext should not be nil")
 	assert.Equal(t, AuthModeOAuth, tc.AuthMode(), "AuthMode should be OAuth")
 	assert.Equal(t, userID, tc.UserID(), "UserID should match")
-	assert.Equal(t, "", tc.BrandID(), "OrgID should be empty before selection")
-	assert.False(t, tc.HasBrand(), "HasBrand should be false before org selection")
+	assert.Equal(t, "", tc.BrandID(), "BrandID should be empty before selection")
+	assert.False(t, tc.HasBrand(), "HasBrand should be false before brand selection")
 	assert.Equal(t, "session-123", tc.SessionID(), "SessionID should match")
 }
 
-// ========== Org Selection Tests ==========
+// ========== Brand Selection Tests ==========
 
 func TestToolContext_SelectBrand(t *testing.T) {
 	userID := uuid.New().String()
 	user := createTestUser(userID, "test@example.com", "admin")
 	tc := NewUserToolContext(nil, user, "req-123", "test-agent/1.0", "session-123")
 
-	orgID := uuid.New().String()
-	org := createTestOrg(orgID, "Selected Organization")
+	brandID := uuid.New().String()
+	brand := createTestBrand(brandID, "Selected Brand")
 
 	// Before selection
 	assert.False(t, tc.HasBrand(), "HasBrand should be false before selection")
-	assert.Equal(t, "", tc.BrandID(), "OrgID should be empty before selection")
+	assert.Equal(t, "", tc.BrandID(), "BrandID should be empty before selection")
 
-	// Select org
-	tc.SelectBrand(org)
+	// Select brand
+	tc.SelectBrand(brand)
 
 	// After selection
 	assert.True(t, tc.HasBrand(), "HasBrand should be true after selection")
-	assert.Equal(t, orgID, tc.BrandID(), "OrgID should match selected org")
-	assert.Equal(t, org.Name, tc.Brand().Name, "Org name should match")
+	assert.Equal(t, brandID, tc.BrandID(), "BrandID should match selected brand")
+	assert.Equal(t, brand.Name, tc.Brand().Name, "Brand name should match")
 }
 
 func TestToolContext_SelectBrand_CallsCallback(t *testing.T) {
@@ -91,24 +91,24 @@ func TestToolContext_SelectBrand_CallsCallback(t *testing.T) {
 	user := createTestUser(userID, "test@example.com", "admin")
 	tc := NewUserToolContext(nil, user, "req-123", "test-agent/1.0", "session-123")
 
-	orgID := uuid.New().String()
-	org := createTestOrg(orgID, "Selected Organization")
+	brandID := uuid.New().String()
+	brand := createTestBrand(brandID, "Selected Brand")
 
 	var callbackUserID string
-	var callbackOrgID string
+	var callbackBrandID string
 	callbackCalled := false
 
-	tc.SetBrandSelectionCallback(func(uid, oid string) {
+	tc.SetBrandSelectionCallback(func(uid, bid string) {
 		callbackCalled = true
 		callbackUserID = uid
-		callbackOrgID = oid
+		callbackBrandID = bid
 	})
 
-	tc.SelectBrand(org)
+	tc.SelectBrand(brand)
 
 	assert.True(t, callbackCalled, "Callback should be called")
 	assert.Equal(t, userID, callbackUserID, "Callback should receive user ID")
-	assert.Equal(t, orgID, callbackOrgID, "Callback should receive org ID")
+	assert.Equal(t, brandID, callbackBrandID, "Callback should receive brand ID")
 }
 
 func TestToolContext_RestoreBrand_DoesNotCallCallback(t *testing.T) {
@@ -116,19 +116,19 @@ func TestToolContext_RestoreBrand_DoesNotCallCallback(t *testing.T) {
 	user := createTestUser(userID, "test@example.com", "admin")
 	tc := NewUserToolContext(nil, user, "req-123", "test-agent/1.0", "session-123")
 
-	orgID := uuid.New().String()
-	org := createTestOrg(orgID, "Restored Organization")
+	brandID := uuid.New().String()
+	brand := createTestBrand(brandID, "Restored Brand")
 
 	callbackCalled := false
-	tc.SetBrandSelectionCallback(func(uid, oid string) {
+	tc.SetBrandSelectionCallback(func(uid, bid string) {
 		callbackCalled = true
 	})
 
-	tc.RestoreBrand(org)
+	tc.RestoreBrand(brand)
 
 	assert.False(t, callbackCalled, "Callback should not be called for RestoreBrand")
 	assert.True(t, tc.HasBrand(), "HasBrand should be true after restore")
-	assert.Equal(t, orgID, tc.BrandID(), "OrgID should match restored org")
+	assert.Equal(t, brandID, tc.BrandID(), "BrandID should match restored brand")
 }
 
 func TestToolContext_ClearBrand(t *testing.T) {
@@ -136,37 +136,37 @@ func TestToolContext_ClearBrand(t *testing.T) {
 	user := createTestUser(userID, "test@example.com", "admin")
 	tc := NewUserToolContext(nil, user, "req-123", "test-agent/1.0", "session-123")
 
-	orgID := uuid.New().String()
-	org := createTestOrg(orgID, "Organization to Clear")
-	tc.SelectBrand(org)
+	brandID := uuid.New().String()
+	brand := createTestBrand(brandID, "Brand to Clear")
+	tc.SelectBrand(brand)
 
 	assert.True(t, tc.HasBrand(), "HasBrand should be true after selection")
 
 	tc.ClearBrand()
 
 	assert.False(t, tc.HasBrand(), "HasBrand should be false after clear")
-	assert.Equal(t, "", tc.BrandID(), "OrgID should be empty after clear")
+	assert.Equal(t, "", tc.BrandID(), "BrandID should be empty after clear")
 }
 
 // ========== APIKey Mode Tests ==========
 
 func TestToolContext_APIKeyMode_AlwaysHasBrand(t *testing.T) {
-	orgID := uuid.New().String()
-	org := createTestOrg(orgID, "API Key Organization")
+	brandID := uuid.New().String()
+	brand := createTestBrand(brandID, "API Key Brand")
 
-	tc := NewToolContext(nil, org, "req-123", "test-agent/1.0")
+	tc := NewToolContext(nil, brand, "req-123", "test-agent/1.0")
 
-	// In API key mode, org is always set
+	// In API key mode, brand is always set
 	assert.True(t, tc.HasBrand(), "HasBrand should always be true in API key mode")
-	assert.Equal(t, orgID, tc.BrandID(), "OrgID should be set")
-	assert.Equal(t, org.Name, tc.Brand().Name, "Org should match")
+	assert.Equal(t, brandID, tc.BrandID(), "BrandID should be set")
+	assert.Equal(t, brand.Name, tc.Brand().Name, "Brand should match")
 }
 
 func TestToolContext_APIKeyMode_NoUserID(t *testing.T) {
-	orgID := uuid.New().String()
-	org := createTestOrg(orgID, "API Key Organization")
+	brandID := uuid.New().String()
+	brand := createTestBrand(brandID, "API Key Brand")
 
-	tc := NewToolContext(nil, org, "req-123", "test-agent/1.0")
+	tc := NewToolContext(nil, brand, "req-123", "test-agent/1.0")
 
 	assert.Equal(t, "", tc.UserID(), "UserID should be empty in API key mode")
 	assert.Nil(t, tc.User(), "User should be nil in API key mode")
@@ -212,13 +212,13 @@ func TestToolContext_User(t *testing.T) {
 // ========== RequireBrand Tests ==========
 
 func TestToolContext_RequireBrand_Success(t *testing.T) {
-	orgID := uuid.New().String()
-	org := createTestOrg(orgID, "Test Organization")
+	brandID := uuid.New().String()
+	brand := createTestBrand(brandID, "Test Brand")
 
-	tc := NewToolContext(nil, org, "req-123", "test-agent/1.0")
+	tc := NewToolContext(nil, brand, "req-123", "test-agent/1.0")
 
 	err := tc.RequireBrand()
-	assert.NoError(t, err, "RequireBrand should not return error when org is set")
+	assert.NoError(t, err, "RequireBrand should not return error when brand is set")
 }
 
 func TestToolContext_RequireBrand_Failure(t *testing.T) {
@@ -228,7 +228,7 @@ func TestToolContext_RequireBrand_Failure(t *testing.T) {
 	tc := NewUserToolContext(nil, user, "req-123", "test-agent/1.0", "session-123")
 
 	err := tc.RequireBrand()
-	require.Error(t, err, "RequireBrand should return error when no org selected")
+	require.Error(t, err, "RequireBrand should return error when no brand selected")
 	assert.Equal(t, ErrNoBrandSelected, err, "Error should be ErrNoBrandSelected")
 }
 
@@ -286,9 +286,9 @@ func TestNewConflictError(t *testing.T) {
 // ========== Context Value Tests ==========
 
 func TestWithToolContext_And_FromContext(t *testing.T) {
-	orgID := uuid.New().String()
-	org := createTestOrg(orgID, "Test Organization")
-	tc := NewToolContext(nil, org, "req-123", "test-agent/1.0")
+	brandID := uuid.New().String()
+	brand := createTestBrand(brandID, "Test Brand")
+	tc := NewToolContext(nil, brand, "req-123", "test-agent/1.0")
 
 	ctx := context.Background()
 	ctx = WithToolContext(ctx, tc)
@@ -296,7 +296,7 @@ func TestWithToolContext_And_FromContext(t *testing.T) {
 	retrieved := ToolContextFromContext(ctx)
 	require.NotNil(t, retrieved, "ToolContext should be retrievable from context")
 	assert.Equal(t, tc, retrieved, "Retrieved context should match original")
-	assert.Equal(t, orgID, retrieved.BrandID(), "OrgID should match")
+	assert.Equal(t, brandID, retrieved.BrandID(), "BrandID should match")
 }
 
 func TestToolContextFromContext_NilWhenNotSet(t *testing.T) {
@@ -315,7 +315,7 @@ func TestToolContextFromContext_WrongType(t *testing.T) {
 
 // ========== Concurrent Access Tests ==========
 
-func TestToolContext_ConcurrentOrgSelection(t *testing.T) {
+func TestToolContext_ConcurrentBrandSelection(t *testing.T) {
 	userID := uuid.New().String()
 	user := createTestUser(userID, "test@example.com", "admin")
 	tc := NewUserToolContext(nil, user, "req-123", "test-agent/1.0", "session-123")
@@ -323,18 +323,18 @@ func TestToolContext_ConcurrentOrgSelection(t *testing.T) {
 	var wg sync.WaitGroup
 	numGoroutines := 100
 
-	// Create different orgs to select
-	orgs := make([]db.Organization, numGoroutines)
+	// Create different brands to select
+	brands := make([]db.Organization, numGoroutines)
 	for i := 0; i < numGoroutines; i++ {
-		orgs[i] = createTestOrg(uuid.New().String(), "Org "+string(rune('A'+i%26)))
+		brands[i] = createTestBrand(uuid.New().String(), "Brand "+string(rune('A'+i%26)))
 	}
 
-	// Concurrent org selection
+	// Concurrent brand selection
 	for i := 0; i < numGoroutines; i++ {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
-			tc.SelectBrand(orgs[idx])
+			tc.SelectBrand(brands[idx])
 			// Read immediately after write
 			_ = tc.HasBrand()
 			_ = tc.BrandID()
@@ -343,14 +343,14 @@ func TestToolContext_ConcurrentOrgSelection(t *testing.T) {
 
 	wg.Wait()
 
-	// After all concurrent selections, should have an org
-	assert.True(t, tc.HasBrand(), "Should have an org after concurrent selections")
+	// After all concurrent selections, should have a brand
+	assert.True(t, tc.HasBrand(), "Should have a brand after concurrent selections")
 }
 
 func TestToolContext_ConcurrentReads(t *testing.T) {
-	orgID := uuid.New().String()
-	org := createTestOrg(orgID, "Test Organization")
-	tc := NewToolContext(nil, org, "req-123", "test-agent/1.0")
+	brandID := uuid.New().String()
+	brand := createTestBrand(brandID, "Test Brand")
+	tc := NewToolContext(nil, brand, "req-123", "test-agent/1.0")
 
 	var wg sync.WaitGroup
 	numGoroutines := 100
@@ -372,15 +372,15 @@ func TestToolContext_ConcurrentReads(t *testing.T) {
 	// Test passes if no race condition panic occurs
 }
 
-// ========== Empty/Nil Org Tests ==========
+// ========== Empty/Nil Brand Tests ==========
 
-func TestToolContext_Org_ReturnsEmptyWhenNil(t *testing.T) {
+func TestToolContext_Brand_ReturnsEmptyWhenNil(t *testing.T) {
 	userID := uuid.New().String()
 	user := createTestUser(userID, "test@example.com", "admin")
 	tc := NewUserToolContext(nil, user, "req-123", "test-agent/1.0", "session-123")
 
-	org := tc.Brand()
-	assert.Equal(t, db.Organization{}, org, "Org should return empty struct when not set")
+	brand := tc.Brand()
+	assert.Equal(t, db.Organization{}, brand, "Brand should return empty struct when not set")
 }
 
 // ========== Session ID Tests ==========
@@ -395,10 +395,10 @@ func TestToolContext_SessionID(t *testing.T) {
 }
 
 func TestToolContext_SessionID_EmptyForAPIKeyMode(t *testing.T) {
-	orgID := uuid.New().String()
-	org := createTestOrg(orgID, "Test Organization")
+	brandID := uuid.New().String()
+	brand := createTestBrand(brandID, "Test Brand")
 
-	tc := NewToolContext(nil, org, "req-123", "test-agent/1.0")
+	tc := NewToolContext(nil, brand, "req-123", "test-agent/1.0")
 
 	assert.Empty(t, tc.SessionID(), "SessionID should be empty for API key mode")
 }

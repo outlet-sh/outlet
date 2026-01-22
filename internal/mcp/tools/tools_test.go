@@ -10,12 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// createTestOrg creates a mock organization for testing
-func createTestOrg(id string, name string) db.Organization {
+// createTestBrand creates a mock brand for testing
+func createTestBrand(id string, name string) db.Organization {
 	return db.Organization{
 		ID:     id,
 		Name:   name,
-		Slug:   "test-org",
+		Slug:   "test-brand",
 		ApiKey: "test-api-key",
 	}
 }
@@ -239,22 +239,22 @@ func TestTemplateCreateOutput_Structure(t *testing.T) {
 
 // ========== Tool Context Requirement Tests ==========
 
-func TestToolContext_RequireBrand_WithOrg(t *testing.T) {
-	orgID := uuid.New().String()
-	org := createTestOrg(orgID, "Test Org")
-	tc := mcpctx.NewToolContext(nil, org, "req-123", "test-agent/1.0")
+func TestToolContext_RequireBrand_WithBrand(t *testing.T) {
+	brandID := uuid.New().String()
+	brand := createTestBrand(brandID, "Test Brand")
+	tc := mcpctx.NewToolContext(nil, brand, "req-123", "test-agent/1.0")
 
 	err := tc.RequireBrand()
-	assert.NoError(t, err, "RequireBrand should not error when org is set")
+	assert.NoError(t, err, "RequireBrand should not error when brand is set")
 }
 
-func TestToolContext_RequireBrand_WithoutOrg(t *testing.T) {
+func TestToolContext_RequireBrand_WithoutBrand(t *testing.T) {
 	userID := uuid.New().String()
 	user := createTestUser(userID, "test@example.com", "admin")
 	tc := mcpctx.NewUserToolContext(nil, user, "req-123", "test-agent/1.0", "session-123")
 
 	err := tc.RequireBrand()
-	assert.Error(t, err, "RequireBrand should error when no org selected")
+	assert.Error(t, err, "RequireBrand should error when no brand selected")
 	assert.Equal(t, mcpctx.ErrNoBrandSelected, err)
 }
 
@@ -287,13 +287,13 @@ func TestBrandInput_Select_WithSlug(t *testing.T) {
 	input := BrandInput{
 		Resource: "brand",
 		Action:   "select",
-		Slug:     "my-org",
+		Slug:     "my-brand",
 	}
 
 	assert.Equal(t, "brand", input.Resource)
 	assert.Equal(t, "select", input.Action)
 	assert.Empty(t, input.BrandID)
-	assert.Equal(t, "my-org", input.Slug)
+	assert.Equal(t, "my-brand", input.Slug)
 }
 
 func TestBrandInput_Update(t *testing.T) {
@@ -337,8 +337,8 @@ func TestBrandListItem_Structure(t *testing.T) {
 func TestBrandListOutput_Structure(t *testing.T) {
 	output := BrandListOutput{
 		Brands: []BrandListItem{
-			{ID: uuid.New().String(), Name: "Org 1", Slug: "org-1", Selected: true},
-			{ID: uuid.New().String(), Name: "Org 2", Slug: "org-2", Selected: false},
+			{ID: uuid.New().String(), Name: "Brand 1", Slug: "brand-1", Selected: true},
+			{ID: uuid.New().String(), Name: "Brand 2", Slug: "brand-2", Selected: false},
 		},
 		Total:    2,
 		AuthMode: "api_key",
@@ -357,7 +357,7 @@ func TestBrandSelectOutput_Structure(t *testing.T) {
 		Name:     "My Company",
 		Slug:     "my-company",
 		Selected: true,
-		Message:  "Organization selected.",
+		Message:  "Brand selected.",
 	}
 
 	assert.NotEmpty(t, output.ID)

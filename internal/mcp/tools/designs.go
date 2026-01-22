@@ -94,7 +94,7 @@ func RegisterDesignTool(server *mcp.Server, toolCtx *mcpctx.ToolContext) {
 		Title: "Email Design Templates",
 		Description: `Manage reusable email design templates.
 
-PREREQUISITE: You must first select an organization using org(resource: org, action: select).
+PREREQUISITE: You must first select a brand using brand(resource: brand, action: select).
 
 Actions and Required Fields:
 - create: Create a new design template (requires: name, html_body)

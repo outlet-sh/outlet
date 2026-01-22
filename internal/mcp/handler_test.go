@@ -15,12 +15,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// createTestOrg creates a mock organization for testing
-func createTestOrg(id string, name string) db.Organization {
+// createTestBrand creates a mock brand for testing
+func createTestBrand(id string, name string) db.Organization {
 	return db.Organization{
 		ID:     id,
 		Name:   name,
-		Slug:   "test-org",
+		Slug:   "test-brand",
 		ApiKey: "test-api-key",
 	}
 }
@@ -148,25 +148,25 @@ func TestHandler_SessionCache_Delete(t *testing.T) {
 	assert.False(t, ok, "Session should be deleted")
 }
 
-// ========== Org Selection Cache Tests ==========
+// ========== Brand Selection Cache Tests ==========
 
-func TestHandler_StoreOrgSelection(t *testing.T) {
-	// Note: StoreOrgSelection launches a goroutine that tries to persist to DB
+func TestHandler_StoreBrandSelection(t *testing.T) {
+	// Note: StoreBrandSelection launches a goroutine that tries to persist to DB
 	// Without a DB, this will panic in the background goroutine
 	// We test the memory cache directly instead
 
 	handler := NewHandler(nil, "https://example.com")
 
 	sessionID := "test-session"
-	orgID := uuid.New().String()
+	brandID := uuid.New().String()
 
 	// Directly test the in-memory cache (avoid triggering the DB goroutine)
-	handler.brandSelectionCache.Store(sessionID, orgID)
+	handler.brandSelectionCache.Store(sessionID, brandID)
 
 	// Check memory cache
 	cached, ok := handler.brandSelectionCache.Load(sessionID)
-	require.True(t, ok, "Org selection should be in memory cache")
-	assert.Equal(t, orgID, cached.(string), "OrgID should match")
+	require.True(t, ok, "Brand selection should be in memory cache")
+	assert.Equal(t, brandID, cached.(string), "BrandID should match")
 }
 
 func TestHandler_ClearBrandSelection(t *testing.T) {
@@ -177,47 +177,47 @@ func TestHandler_ClearBrandSelection(t *testing.T) {
 	handler := NewHandler(nil, "https://example.com")
 
 	sessionID := "session-to-clear"
-	orgID := uuid.New().String()
+	brandID := uuid.New().String()
 
 	// Store directly to cache
-	handler.brandSelectionCache.Store(sessionID, orgID)
+	handler.brandSelectionCache.Store(sessionID, brandID)
 
 	// Verify stored
 	_, ok := handler.brandSelectionCache.Load(sessionID)
-	assert.True(t, ok, "Org selection should be stored")
+	assert.True(t, ok, "Brand selection should be stored")
 
 	// Clear directly from cache (avoid triggering the DB goroutine)
 	handler.brandSelectionCache.Delete(sessionID)
 
 	// Verify cleared
 	_, ok = handler.brandSelectionCache.Load(sessionID)
-	assert.False(t, ok, "Org selection should be cleared")
+	assert.False(t, ok, "Brand selection should be cleared")
 }
 
 // ========== Multi-Tenant Isolation Tests ==========
 
-func TestHandler_MultiTenant_DifferentOrgsPerSession(t *testing.T) {
+func TestHandler_MultiTenant_DifferentBrandsPerSession(t *testing.T) {
 	_ = NewHandler(nil, "https://example.com") // Keep for session cache tests
 
-	// Create two users with different orgs
+	// Create two users with different brands
 	user1 := createTestUser(uuid.New().String(), "user1@example.com", "admin")
 	user2 := createTestUser(uuid.New().String(), "user2@example.com", "admin")
 
-	org1 := createTestOrg(uuid.New().String(), "Org 1")
-	org2 := createTestOrg(uuid.New().String(), "Org 2")
+	brand1 := createTestBrand(uuid.New().String(), "Brand 1")
+	brand2 := createTestBrand(uuid.New().String(), "Brand 2")
 
 	// Create tool contexts for each user
 	tc1 := mcpctx.NewUserToolContext(nil, user1, "req-1", "agent/1.0", "session-1")
 	tc2 := mcpctx.NewUserToolContext(nil, user2, "req-2", "agent/1.0", "session-2")
 
-	// Select different orgs
-	tc1.SelectBrand(org1)
-	tc2.SelectBrand(org2)
+	// Select different brands
+	tc1.SelectBrand(brand1)
+	tc2.SelectBrand(brand2)
 
 	// Verify isolation
-	assert.Equal(t, org1.ID, tc1.BrandID(), "User 1 should have Org 1")
-	assert.Equal(t, org2.ID, tc2.BrandID(), "User 2 should have Org 2")
-	assert.NotEqual(t, tc1.BrandID(), tc2.BrandID(), "Orgs should be different")
+	assert.Equal(t, brand1.ID, tc1.BrandID(), "User 1 should have Brand 1")
+	assert.Equal(t, brand2.ID, tc2.BrandID(), "User 2 should have Brand 2")
+	assert.NotEqual(t, tc1.BrandID(), tc2.BrandID(), "Brands should be different")
 }
 
 func TestHandler_MultiTenant_SameUserMultipleSessions(t *testing.T) {
@@ -226,8 +226,8 @@ func TestHandler_MultiTenant_SameUserMultipleSessions(t *testing.T) {
 	// Same user, different sessions (e.g., different browser tabs)
 	user := createTestUser(uuid.New().String(), "user@example.com", "admin")
 
-	org1 := createTestOrg(uuid.New().String(), "Org 1")
-	org2 := createTestOrg(uuid.New().String(), "Org 2")
+	brand1 := createTestBrand(uuid.New().String(), "Brand 1")
+	brand2 := createTestBrand(uuid.New().String(), "Brand 2")
 
 	// Create two sessions for same user
 	session1 := "session-browser-1"
@@ -236,44 +236,44 @@ func TestHandler_MultiTenant_SameUserMultipleSessions(t *testing.T) {
 	tc1 := mcpctx.NewUserToolContext(nil, user, "req-1", "agent/1.0", session1)
 	tc2 := mcpctx.NewUserToolContext(nil, user, "req-2", "agent/1.0", session2)
 
-	// User selects different orgs in different sessions
-	tc1.SelectBrand(org1)
-	tc2.SelectBrand(org2)
+	// User selects different brands in different sessions
+	tc1.SelectBrand(brand1)
+	tc2.SelectBrand(brand2)
 
 	// Store in handler's session cache
 	handler.sessionCache.Store(session1, &sessionData{toolCtx: tc1})
 	handler.sessionCache.Store(session2, &sessionData{toolCtx: tc2})
 
-	// Verify each session has its own org
+	// Verify each session has its own brand
 	cached1, _ := handler.sessionCache.Load(session1)
 	cached2, _ := handler.sessionCache.Load(session2)
 
 	data1 := cached1.(*sessionData)
 	data2 := cached2.(*sessionData)
 
-	assert.Equal(t, org1.ID, data1.toolCtx.BrandID(), "Session 1 should have Org 1")
-	assert.Equal(t, org2.ID, data2.toolCtx.BrandID(), "Session 2 should have Org 2")
+	assert.Equal(t, brand1.ID, data1.toolCtx.BrandID(), "Session 1 should have Brand 1")
+	assert.Equal(t, brand2.ID, data2.toolCtx.BrandID(), "Session 2 should have Brand 2")
 }
 
-func TestHandler_MultiTenant_OrgIsolation_RequireBrand(t *testing.T) {
-	// Test that RequireBrand properly enforces org selection
+func TestHandler_MultiTenant_BrandIsolation_RequireBrand(t *testing.T) {
+	// Test that RequireBrand properly enforces brand selection
 	user := createTestUser(uuid.New().String(), "user@example.com", "admin")
 
-	// Create context without org selection
+	// Create context without brand selection
 	tc := mcpctx.NewUserToolContext(nil, user, "req-1", "agent/1.0", "session-1")
 
-	// Should require org selection before operations
+	// Should require brand selection before operations
 	err := tc.RequireBrand()
-	assert.Error(t, err, "Should error when no org selected")
+	assert.Error(t, err, "Should error when no brand selected")
 	assert.Equal(t, mcpctx.ErrNoBrandSelected, err)
 
-	// Select org
-	org := createTestOrg(uuid.New().String(), "My Org")
-	tc.SelectBrand(org)
+	// Select brand
+	brand := createTestBrand(uuid.New().String(), "My Brand")
+	tc.SelectBrand(brand)
 
 	// Now should not error
 	err = tc.RequireBrand()
-	assert.NoError(t, err, "Should not error after org selection")
+	assert.NoError(t, err, "Should not error after brand selection")
 }
 
 // ========== Session Persistence Tests ==========
@@ -282,15 +282,15 @@ func TestHandler_SessionRestore_FromMemoryCache(t *testing.T) {
 	handler := NewHandler(nil, "https://example.com")
 
 	sessionID := "persistent-session"
-	orgID := uuid.New().String()
+	brandID := uuid.New().String()
 
-	// Store org selection in memory cache
-	handler.brandSelectionCache.Store(sessionID, orgID)
+	// Store brand selection in memory cache
+	handler.brandSelectionCache.Store(sessionID, brandID)
 
 	// Verify it can be retrieved
 	cached, ok := handler.brandSelectionCache.Load(sessionID)
-	require.True(t, ok, "Should find org in memory cache")
-	assert.Equal(t, orgID, cached.(string))
+	require.True(t, ok, "Should find brand in memory cache")
+	assert.Equal(t, brandID, cached.(string))
 }
 
 // ========== Concurrent Access Tests ==========
@@ -307,10 +307,10 @@ func TestHandler_ConcurrentSessionAccess(t *testing.T) {
 			defer wg.Done()
 
 			sessionID := "session-" + string(rune('0'+idx%10))
-			orgID := uuid.New().String()
+			brandID := uuid.New().String()
 
 			// Store
-			handler.brandSelectionCache.Store(sessionID, orgID)
+			handler.brandSelectionCache.Store(sessionID, brandID)
 
 			// Load
 			if cached, ok := handler.brandSelectionCache.Load(sessionID); ok {
@@ -331,8 +331,8 @@ func TestHandler_ConcurrentSessionAccess(t *testing.T) {
 	// Test passes if no race condition panic occurs
 }
 
-func TestHandler_ConcurrentOrgSelection(t *testing.T) {
-	// Note: StoreOrgSelection triggers a DB goroutine that panics without a DB
+func TestHandler_ConcurrentBrandSelection(t *testing.T) {
+	// Note: StoreBrandSelection triggers a DB goroutine that panics without a DB
 	// We test the concurrent cache access directly instead
 	handler := NewHandler(nil, "https://example.com")
 
@@ -347,19 +347,19 @@ func TestHandler_ConcurrentOrgSelection(t *testing.T) {
 			defer wg.Done()
 
 			sessionID := uuid.New().String()
-			orgID := uuid.New().String()
+			brandID := uuid.New().String()
 
 			// Create context
 			tc := mcpctx.NewUserToolContext(nil, user, "req", "agent", sessionID)
 
-			// Select org
-			org := createTestOrg(orgID, "Test Org")
-			tc.SelectBrand(org)
+			// Select brand
+			brand := createTestBrand(brandID, "Test Brand")
+			tc.SelectBrand(brand)
 
 			// Store directly in cache (avoid DB goroutine)
-			handler.brandSelectionCache.Store(sessionID, orgID)
+			handler.brandSelectionCache.Store(sessionID, brandID)
 
-			// Read org
+			// Read brand
 			_ = tc.BrandID()
 			_ = tc.HasBrand()
 
@@ -408,46 +408,46 @@ func TestHandler_ToolContext_UserInfo(t *testing.T) {
 	assert.Equal(t, "session-abc", tc.SessionID(), "SessionID should match")
 }
 
-func TestHandler_ToolContext_OrgContext(t *testing.T) {
-	org := createTestOrg(uuid.New().String(), "Test Company")
+func TestHandler_ToolContext_BrandContext(t *testing.T) {
+	brand := createTestBrand(uuid.New().String(), "Test Company")
 
-	tc := mcpctx.NewToolContext(nil, org, "req-123", "test-agent/1.0")
+	tc := mcpctx.NewToolContext(nil, brand, "req-123", "test-agent/1.0")
 
-	assert.Equal(t, org.ID, tc.BrandID(), "OrgID should match")
-	assert.True(t, tc.HasBrand(), "Should have org")
+	assert.Equal(t, brand.ID, tc.BrandID(), "BrandID should match")
+	assert.True(t, tc.HasBrand(), "Should have brand")
 	assert.Equal(t, mcpctx.AuthModeAPIKey, tc.AuthMode(), "Should be API key mode")
 	assert.Empty(t, tc.SessionID(), "SessionID should be empty for API key mode")
 }
 
 // ========== OAuth vs API Key Mode Tests ==========
 
-func TestHandler_APIKeyMode_NoOrgSelection(t *testing.T) {
-	org := createTestOrg(uuid.New().String(), "API Key Org")
+func TestHandler_APIKeyMode_NoBrandSelection(t *testing.T) {
+	brand := createTestBrand(uuid.New().String(), "API Key Brand")
 
-	// API key mode: org is set directly, no selection needed
-	tc := mcpctx.NewToolContext(nil, org, "req-123", "agent/1.0")
+	// API key mode: brand is set directly, no selection needed
+	tc := mcpctx.NewToolContext(nil, brand, "req-123", "agent/1.0")
 
-	assert.True(t, tc.HasBrand(), "Should have org in API key mode")
-	assert.Equal(t, org.ID, tc.BrandID())
+	assert.True(t, tc.HasBrand(), "Should have brand in API key mode")
+	assert.Equal(t, brand.ID, tc.BrandID())
 	assert.NoError(t, tc.RequireBrand(), "RequireBrand should pass")
 }
 
-func TestHandler_OAuthMode_RequiresOrgSelection(t *testing.T) {
+func TestHandler_OAuthMode_RequiresBrandSelection(t *testing.T) {
 	user := createTestUser(uuid.New().String(), "user@example.com", "admin")
 
-	// OAuth mode: org must be selected
+	// OAuth mode: brand must be selected
 	tc := mcpctx.NewUserToolContext(nil, user, "req-123", "agent/1.0", "session-123")
 
-	assert.False(t, tc.HasBrand(), "Should not have org before selection")
+	assert.False(t, tc.HasBrand(), "Should not have brand before selection")
 	assert.Equal(t, "", tc.BrandID())
 	assert.Error(t, tc.RequireBrand(), "RequireBrand should fail before selection")
 
-	// Select org
-	org := createTestOrg(uuid.New().String(), "Selected Org")
-	tc.SelectBrand(org)
+	// Select brand
+	brand := createTestBrand(uuid.New().String(), "Selected Brand")
+	tc.SelectBrand(brand)
 
-	assert.True(t, tc.HasBrand(), "Should have org after selection")
-	assert.Equal(t, org.ID, tc.BrandID())
+	assert.True(t, tc.HasBrand(), "Should have brand after selection")
+	assert.Equal(t, brand.ID, tc.BrandID())
 	assert.NoError(t, tc.RequireBrand(), "RequireBrand should pass after selection")
 }
 
@@ -482,13 +482,13 @@ func TestHandler_UUIDSessionID(t *testing.T) {
 
 	// UUID-style session IDs should work
 	sessionID := uuid.New().String()
-	orgID := uuid.New().String()
+	brandID := uuid.New().String()
 
-	handler.brandSelectionCache.Store(sessionID, orgID)
+	handler.brandSelectionCache.Store(sessionID, brandID)
 
 	cached, ok := handler.brandSelectionCache.Load(sessionID)
 	assert.True(t, ok, "UUID session ID should work")
-	assert.Equal(t, orgID, cached.(string))
+	assert.Equal(t, brandID, cached.(string))
 }
 
 func TestHandler_SpecialCharacterSessionID(t *testing.T) {
@@ -496,13 +496,13 @@ func TestHandler_SpecialCharacterSessionID(t *testing.T) {
 
 	// Session IDs with special characters
 	sessionID := "session-with-special!@#$%"
-	orgID := uuid.New().String()
+	brandID := uuid.New().String()
 
-	handler.brandSelectionCache.Store(sessionID, orgID)
+	handler.brandSelectionCache.Store(sessionID, brandID)
 
 	cached, ok := handler.brandSelectionCache.Load(sessionID)
 	assert.True(t, ok, "Special character session ID should work")
-	assert.Equal(t, orgID, cached.(string))
+	assert.Equal(t, brandID, cached.(string))
 }
 
 // ========== HTTP Method Tests ==========
@@ -532,28 +532,28 @@ func TestHandler_DifferentHTTPMethods(t *testing.T) {
 	}
 }
 
-// ========== Org Selection Callback Tests ==========
+// ========== Brand Selection Callback Tests ==========
 
-func TestHandler_OrgSelectionCallback(t *testing.T) {
+func TestHandler_BrandSelectionCallback(t *testing.T) {
 	user := createTestUser(uuid.New().String(), "user@example.com", "admin")
 	tc := mcpctx.NewUserToolContext(nil, user, "req-123", "agent/1.0", "session-123")
 
 	var callbackUserID string
-	var callbackOrgID string
+	var callbackBrandID string
 	callbackCalled := false
 
-	tc.SetBrandSelectionCallback(func(uid, oid string) {
+	tc.SetBrandSelectionCallback(func(uid, bid string) {
 		callbackCalled = true
 		callbackUserID = uid
-		callbackOrgID = oid
+		callbackBrandID = bid
 	})
 
-	org := createTestOrg(uuid.New().String(), "Test Org")
-	tc.SelectBrand(org)
+	brand := createTestBrand(uuid.New().String(), "Test Brand")
+	tc.SelectBrand(brand)
 
 	assert.True(t, callbackCalled, "Callback should be called")
 	assert.Equal(t, user.ID, callbackUserID, "Callback should receive user ID")
-	assert.Equal(t, org.ID, callbackOrgID, "Callback should receive org ID")
+	assert.Equal(t, brand.ID, callbackBrandID, "Callback should receive brand ID")
 }
 
 // ========== Token Info Context Tests ==========

@@ -131,7 +131,7 @@ func RegisterWebhookTool(server *mcp.Server, toolCtx *mcpctx.ToolContext) {
 		Title: "Webhook Management",
 		Description: `Manage outbound webhooks for event notifications.
 
-PREREQUISITE: You must first select an organization using org(resource: org, action: select).
+PREREQUISITE: You must first select a brand using brand(resource: brand, action: select).
 
 Actions and Required Fields:
 - create: Create a new webhook (requires: url, events)

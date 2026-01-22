@@ -39,12 +39,12 @@ func RegisterStatsTool(server *mcp.Server, toolCtx *mcpctx.ToolContext) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:  "stats",
 		Title: "Statistics and Analytics",
-		Description: `Get statistics and analytics for your organization.
+		Description: `Get statistics and analytics for your brand.
 
-PREREQUISITE: You must first select an organization using org(resource: org, action: select).
+PREREQUISITE: You must first select a brand using brand(resource: brand, action: select).
 
 Resources and Actions:
-- overview.get: Get overall organization statistics
+- overview.get: Get overall brand statistics
 - email.get: Get email performance statistics (optional: sequence_id)
 - contact.get: Get statistics for a specific contact (requires: contact_id)
 

@@ -103,10 +103,10 @@ func RegisterEmailTool(server *mcp.Server, toolCtx *mcpctx.ToolContext) {
 		Title: "Email Management",
 		Description: `Manage email lists, sequences, templates, enrollments, entry rules, and email queue.
 
-PREREQUISITE: You must first select an organization using org(resource: org, action: select).
+PREREQUISITE: You must first select a brand using brand(resource: brand, action: select).
 
 Resources:
-- list: Email lists for organizing subscribers
+- list: Email lists for grouping subscribers
 - sequence: Automated drip campaigns attached to lists
 - template: Individual emails within a sequence
 - enrollment: Manage contact sequence enrollments

@@ -49,7 +49,7 @@ func RegisterTransactionalTool(server *mcp.Server, toolCtx *mcpctx.ToolContext) 
 		Title: "Transactional Email Management",
 		Description: `Manage transactional email templates.
 
-PREREQUISITE: You must first select an organization using org(resource: org, action: select).
+PREREQUISITE: You must first select a brand using brand(resource: brand, action: select).
 
 Actions and Required Fields:
 - create: Create a transactional email template (requires: name, subject, html_body)

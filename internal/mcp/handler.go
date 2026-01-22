@@ -27,12 +27,12 @@ type Handler struct {
 
 	// sessionCache stores MCP servers + ToolContext by session ID (in-memory).
 	// Each session has its own server with its own ToolContext (brand selection).
-	// This allows multiple clients per user with different orgs.
+	// This allows multiple clients per user with different brands.
 	sessionCache sync.Map // map[sessionID]*sessionData
 
 	// brandSelectionCache is an in-memory cache of brand selections.
 	// Backed by mcp_sessions DB table for persistence across restarts.
-	brandSelectionCache sync.Map // map[sessionID]string (org ID)
+	brandSelectionCache sync.Map // map[sessionID]string (brand ID)
 }
 
 // sessionData holds cached session data.
@@ -58,7 +58,7 @@ func NewHandler(svc *svc.ServiceContext, baseURL string) *Handler {
 	// This allows sessions to survive server restarts because:
 	// 1. Client continues using their old session ID after restart
 	// 2. SDK doesn't reject it (stateless)
-	// 3. We restore brand selection from our persistent orgSelectionStore
+	// 3. We restore brand selection from our persistent brandSelectionStore
 	streamHandler := mcp.NewStreamableHTTPHandler(
 		h.getServerForRequest,
 		&mcp.StreamableHTTPOptions{
@@ -131,7 +131,7 @@ func (h *Handler) writeUnauthorized(w http.ResponseWriter, msg string) {
 }
 
 // getServerForRequest returns a cached server for the session, or creates a new one.
-// We cache by SESSION ID to support multiple clients per user with different orgs.
+// We cache by SESSION ID to support multiple clients per user with different brands.
 // In stateless mode, the SDK doesn't track sessions - we do it ourselves.
 // The authMiddleware ensures a session ID is always present in the request header.
 // This allows brand selection to survive server restarts.
@@ -149,7 +149,7 @@ func (h *Handler) getServerForRequest(r *http.Request) *mcp.Server {
 	// Check cache first - if we have this session, reuse it
 	if cached, ok := h.sessionCache.Load(sessionID); ok {
 		data := cached.(*sessionData)
-		fmt.Printf("[MCP] Using cached session: %s (hasOrg: %v)\n", sessionID, data.toolCtx != nil && data.toolCtx.HasBrand())
+		fmt.Printf("[MCP] Using cached session: %s (hasBrand: %v)\n", sessionID, data.toolCtx != nil && data.toolCtx.HasBrand())
 		return data.server
 	}
 
@@ -172,7 +172,7 @@ func (h *Handler) getServerForRequest(r *http.Request) *mcp.Server {
 	if storedBrandID, ok := h.brandSelectionCache.Load(sessionID); ok {
 		brandIDToRestore = storedBrandID.(string)
 		found = true
-		fmt.Printf("[MCP] Found org in memory cache for session %s\n", sessionID)
+		fmt.Printf("[MCP] Found brand in memory cache for session %s\n", sessionID)
 	} else {
 		// Not in memory - try DB by session ID (this happens after server restart)
 		dbSession, err := h.svc.DB.GetMCPSession(r.Context(), sessionID)
@@ -181,7 +181,7 @@ func (h *Handler) getServerForRequest(r *http.Request) *mcp.Server {
 			found = true
 			// Cache it for next time
 			h.brandSelectionCache.Store(sessionID, brandIDToRestore)
-			fmt.Printf("[MCP] Found org in DB for session %s\n", sessionID)
+			fmt.Printf("[MCP] Found brand in DB for session %s\n", sessionID)
 		} else if toolCtx != nil && toolCtx.UserID() != "" {
 			// 3rd level fallback: Get user's most recent brand selection
 			// This handles the case where client's session ID changed
@@ -199,20 +199,20 @@ func (h *Handler) getServerForRequest(r *http.Request) *mcp.Server {
 						OrgID:     userSession.OrgID,
 					})
 				}()
-				fmt.Printf("[MCP] Found org from user's recent session for %s\n", sessionID)
+				fmt.Printf("[MCP] Found brand from user's recent session for %s\n", sessionID)
 			}
 		}
 	}
 
 	if found && toolCtx != nil {
-		// Fetch the org from DB and restore selection
-		org, err := h.svc.DB.GetOrganizationByID(r.Context(), brandIDToRestore)
+		// Fetch the brand from DB and restore selection
+		brand, err := h.svc.DB.GetOrganizationByID(r.Context(), brandIDToRestore)
 		if err == nil {
-			// Set the org directly without callback (it's already persisted)
-			toolCtx.RestoreBrand(org)
-			fmt.Printf("[MCP] Restored brand selection for session %s: org=%s\n", sessionID, org.Name)
+			// Set the brand directly without callback (it's already persisted)
+			toolCtx.RestoreBrand(brand)
+			fmt.Printf("[MCP] Restored brand selection for session %s: brand=%s\n", sessionID, brand.Name)
 		} else {
-			fmt.Printf("[MCP] Failed to restore org %s for session %s: %v\n", brandIDToRestore, sessionID, err)
+			fmt.Printf("[MCP] Failed to restore brand %s for session %s: %v\n", brandIDToRestore, sessionID, err)
 		}
 	}
 
@@ -240,7 +240,7 @@ func (h *Handler) StoreBrandSelection(sessionID string, userID, brandID string) 
 		if err != nil {
 			fmt.Printf("[MCP] Failed to persist session to DB: %v\n", err)
 		} else {
-			fmt.Printf("[MCP] Persisted brand selection to DB: session=%s org=%s\n", sessionID, brandID)
+			fmt.Printf("[MCP] Persisted brand selection to DB: session=%s brand=%s\n", sessionID, brandID)
 		}
 	}()
 }

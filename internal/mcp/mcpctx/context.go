@@ -58,7 +58,7 @@ func NewToolContext(svc *svc.ServiceContext, brand db.Organization, requestID, u
 }
 
 // NewUserToolContext creates a new user-scoped tool context (OAuth auth).
-// The user must select an org using brand.select before using other tools.
+// The user must select a brand using brand.select before using other tools.
 func NewUserToolContext(svc *svc.ServiceContext, user db.User, requestID, userAgent, sessionID string) *ToolContext {
 	return &ToolContext{
 		svc:       svc,
@@ -100,7 +100,7 @@ func (t *ToolContext) Brand() db.Organization {
 	return *brand
 }
 
-// HasBrand returns true if an organization is available for operations.
+// HasBrand returns true if a brand is available for operations.
 func (t *ToolContext) HasBrand() bool {
 	return t.currentBrand() != nil
 }

@@ -53,11 +53,11 @@ func RegisterBlocklistTool(server *mcp.Server, toolCtx *mcpctx.ToolContext) {
 		Title: "Email Blocklist Management",
 		Description: `Manage email suppression list and blocked domains.
 
-PREREQUISITE: You must first select an organization using org(resource: org, action: select).
+PREREQUISITE: You must first select a brand using brand(resource: brand, action: select).
 
 Resources:
-- suppression: Per-organization email suppression list
-- domain: Per-organization blocked domain list
+- suppression: Per-brand email suppression list
+- domain: Per-brand blocked domain list
 
 Actions and Required Fields:
 - suppression.list: List suppressed emails (optional: page, page_size)
