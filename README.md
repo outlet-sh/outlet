@@ -164,17 +164,69 @@ with smtplib.SMTP("mail.yourdomain.com", 587) as server:
     server.send_message(msg)
 ```
 
-**Configuration** (in `etc/outlet.yaml`):
+**Configuration via Environment Variables** (recommended for Docker):
+
+```bash
+SMTP_ENABLED=true              # Enable SMTP server
+SMTP_PORT=587                  # Standard submission port (default: 587)
+SMTP_ALLOW_INSECURE_AUTH=true  # Allow AUTH without TLS (for testing/internal use)
+SMTP_TLS_CERT=/path/to/cert.pem   # TLS certificate (optional)
+SMTP_TLS_KEY=/path/to/key.pem     # TLS private key (optional)
+```
+
+**Docker Compose example with SMTP:**
 
 ```yaml
-SMTP:
-  Enabled: true
-  Port: 587              # Standard submission port
-  TLSCert: /path/to/cert.pem
-  TLSKey: /path/to/key.pem
-  MaxMessageBytes: 26214400  # 25MB
-  MaxRecipients: 100
+services:
+  outlet:
+    image: ghcr.io/outlet-sh/outlet:main-latest
+    ports:
+      - "443:443"
+      - "80:80"
+      - "587:587"     # SMTP submission port
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PRODUCTION_MODE=true
+      - APP_DOMAIN=mail.yourdomain.com
+      - APP_BASE_URL=https://mail.yourdomain.com
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      # SMTP Configuration
+      - SMTP_ENABLED=true
+      - SMTP_PORT=587
+      - SMTP_ALLOW_INSECURE_AUTH=false  # Set to true only if not using TLS
+      - SMTP_TLS_CERT=/app/certs/cert.pem
+      - SMTP_TLS_KEY=/app/certs/key.pem
+    restart: always
 ```
+
+**Configuration via YAML** (for direct binary):
+
+```yaml
+# In etc/outlet.yaml
+SMTP:
+  enabled: "true"
+  port: "587"
+  tlscert: /path/to/cert.pem
+  tlskey: /path/to/key.pem
+  allowinsecureauth: "false"   # Set to "true" only without TLS
+```
+
+**Testing with curl:**
+
+```bash
+curl -v --url 'smtp://mail.yourdomain.com:587' \
+  --mail-from 'hello@yourdomain.com' \
+  --mail-rcpt 'recipient@example.com' \
+  --user 'api:your-api-key' \
+  --upload-file - <<< "Subject: Test Email
+
+This is a test email sent via Outlet SMTP."
+```
+
+**Note:** For production use, always configure TLS certificates. The `SMTP_ALLOW_INSECURE_AUTH=true` option should only be used for testing or when running behind a TLS-terminating proxy.
 
 ### Automation
 - Autoresponder sequences
@@ -239,6 +291,16 @@ Configuration uses environment variables. Create a `.env` file or set them direc
 | `ANTHROPIC_API_KEY` | Claude AI integration |
 | `STRIPE_SECRET_KEY` | Payment processing |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook verification |
+
+### SMTP Ingress Server
+
+| Variable | Description |
+|----------|-------------|
+| `SMTP_ENABLED` | Set to `true` to enable SMTP server |
+| `SMTP_PORT` | SMTP port (default: `587`) |
+| `SMTP_TLS_CERT` | Path to TLS certificate file |
+| `SMTP_TLS_KEY` | Path to TLS private key file |
+| `SMTP_ALLOW_INSECURE_AUTH` | Set to `true` to allow AUTH without TLS (testing only) |
 
 ## Amazon SES Setup
 
