@@ -84,3 +84,4 @@ SMTP:
   port: "${SMTP_PORT}"
   tlscert: "${SMTP_TLS_CERT}"
   tlskey: "${SMTP_TLS_KEY}"
+  allowinsecureauth: "${SMTP_ALLOW_INSECURE_AUTH}"
