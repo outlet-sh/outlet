@@ -8,6 +8,7 @@ import (
 	"github.com/outlet-sh/outlet/internal/db"
 	"github.com/outlet-sh/outlet/internal/svc"
 
+	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -40,9 +41,24 @@ type Session struct {
 	recipients []string
 }
 
-// AuthPlain handles PLAIN authentication
+// AuthMechanisms returns the supported auth mechanisms (implements smtp.AuthSession)
+func (s *Session) AuthMechanisms() []string {
+	return []string{sasl.Plain}
+}
+
+// Auth returns the SASL server for the given mechanism (implements smtp.AuthSession)
+func (s *Session) Auth(mech string) (sasl.Server, error) {
+	if mech != sasl.Plain {
+		return nil, errors.New("unsupported authentication mechanism")
+	}
+	return sasl.NewPlainServer(func(identity, username, password string) error {
+		return s.authPlain(username, password)
+	}), nil
+}
+
+// authPlain handles PLAIN authentication
 // Username can be "api" or org slug (flexible), password is the API key
-func (s *Session) AuthPlain(username, password string) error {
+func (s *Session) authPlain(username, password string) error {
 	if password == "" {
 		logx.Infof("SMTP: Auth failed - empty password from %s", s.conn.Conn().RemoteAddr())
 		return errors.New("invalid credentials")
