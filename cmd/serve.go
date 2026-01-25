@@ -62,8 +62,18 @@ func runServe(cmd *cobra.Command, args []string) {
 
 	var c config.Config
 
+	// Debug: print SMTP-related env vars and raw config
+	expandedConfig := os.ExpandEnv(string(EmbeddedConfig))
+	if idx := strings.Index(expandedConfig, "SMTP:"); idx >= 0 {
+		end := idx + 200
+		if end > len(expandedConfig) {
+			end = len(expandedConfig)
+		}
+		log.Printf("DEBUG: SMTP config section: %s", expandedConfig[idx:end])
+	}
+
 	// Use embedded config with env var expansion
-	if err := conf.LoadFromYamlBytes([]byte(os.ExpandEnv(string(EmbeddedConfig))), &c); err != nil {
+	if err := conf.LoadFromYamlBytes([]byte(expandedConfig), &c); err != nil {
 		fmt.Printf("Failed to load embedded config: %v\n", err)
 		os.Exit(1)
 	}

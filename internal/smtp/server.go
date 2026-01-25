@@ -44,7 +44,8 @@ func (s *Server) Start() error {
 	s.server.MaxMessageBytes = int64(s.config.MaxMessageBytes)
 	s.server.MaxRecipients = s.config.MaxRecipients
 	s.server.AllowInsecureAuth = s.config.IsAllowInsecureAuth()
-	logx.Infof("SMTP: AllowInsecureAuth config value: %q, parsed: %v", s.config.AllowInsecureAuth, s.server.AllowInsecureAuth)
+	logx.Infof("SMTP: Config - enabled=%q port=%q allowinsecureauth=%q tlscert=%q",
+		s.config.Enabled, s.config.Port, s.config.AllowInsecureAuth, s.config.TLSCert)
 
 	// Configure TLS if certificates provided
 	if s.config.TLSCert != "" && s.config.TLSKey != "" {
