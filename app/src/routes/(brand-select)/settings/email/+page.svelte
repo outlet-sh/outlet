@@ -3,7 +3,7 @@
 	import AwsIamPolicy from '$lib/components/admin/AwsIamPolicy.svelte';
 	import { onMount } from 'svelte';
 	import { getPlatformSettingsByCategory, updateEmailSettings } from '$lib/api/generate/outlet';
-	import { Cloud, Server, CheckCircle, AlertCircle } from 'lucide-svelte';
+	import { Cloud, Server, CheckCircle, AlertCircle, Pencil } from 'lucide-svelte';
 
 	let saving = $state(false);
 	let saved = $state(false);
@@ -20,12 +20,14 @@
 	let smtpUser = $state('');
 	let smtpPassword = $state('');
 	let hasExistingSmtpPassword = $state(false);
+	let editingSmtp = $state(false);
 
 	// SES form fields
 	let awsAccessKey = $state('');
 	let awsSecretKey = $state('');
 	let awsRegion = $state('us-east-1');
 	let hasExistingAwsKey = $state(false);
+	let editingAwsCredentials = $state(false);
 
 	const regionOptions = [
 		{ value: 'us-east-1', label: 'US East (N. Virginia)' },
@@ -193,31 +195,58 @@
 							<p class="mt-1 text-sm text-text-muted">Choose the region closest to your audience for best delivery performance</p>
 						</div>
 
-						<div class="sm:col-span-3">
-							<label for="aws-access-key" class="form-label">Access Key ID</label>
-							<Input
-								type="text"
-								id="aws-access-key"
-								bind:value={awsAccessKey}
-								placeholder="AKIAIOSFODNN7EXAMPLE"
-							/>
-							{#if hasExistingAwsKey && awsAccessKey}
-								<p class="mt-1 text-sm text-green-600">Configured</p>
-							{/if}
-						</div>
+						{#if hasExistingAwsKey && !editingAwsCredentials}
+							<!-- Show configured state -->
+							<div class="sm:col-span-6">
+								<div class="flex items-center justify-between p-4 bg-surface-secondary rounded-lg border border-border">
+									<div class="flex items-center gap-3">
+										<CheckCircle class="h-5 w-5 text-green-500" />
+										<div>
+											<p class="font-medium text-text">AWS Credentials Configured</p>
+											<p class="text-sm text-text-muted">
+												Access Key ID: <code class="bg-surface-tertiary px-1.5 py-0.5 rounded text-xs">{awsAccessKey}</code>
+											</p>
+											<p class="text-sm text-text-muted">
+												Secret Access Key: <code class="bg-surface-tertiary px-1.5 py-0.5 rounded text-xs">••••••••••••••••</code>
+											</p>
+										</div>
+									</div>
+									<Button type="secondary" size="sm" onclick={() => (editingAwsCredentials = true)}>
+										<Pencil class="h-4 w-4 mr-1.5" />
+										Change
+									</Button>
+								</div>
+							</div>
+						{:else}
+							<!-- Show input fields for new/editing credentials -->
+							<div class="sm:col-span-3">
+								<label for="aws-access-key" class="form-label">Access Key ID</label>
+								<Input
+									type="text"
+									id="aws-access-key"
+									bind:value={awsAccessKey}
+									placeholder="AKIAIOSFODNN7EXAMPLE"
+								/>
+							</div>
 
-						<div class="sm:col-span-3">
-							<label for="aws-secret-key" class="form-label">Secret Access Key</label>
-							<Input
-								type="password"
-								id="aws-secret-key"
-								bind:value={awsSecretKey}
-								placeholder={hasExistingAwsKey ? '••••••••••••••••' : ''}
-							/>
-							{#if hasExistingAwsKey}
-								<p class="mt-1 text-sm text-text-muted">Leave blank to keep existing key</p>
+							<div class="sm:col-span-3">
+								<label for="aws-secret-key" class="form-label">Secret Access Key</label>
+								<Input
+									type="password"
+									id="aws-secret-key"
+									bind:value={awsSecretKey}
+									placeholder=""
+								/>
+							</div>
+
+							{#if editingAwsCredentials}
+								<div class="sm:col-span-6">
+									<Button type="secondary" size="sm" onclick={() => (editingAwsCredentials = false)}>
+										Cancel
+									</Button>
+								</div>
 							{/if}
-						</div>
+						{/if}
 					</div>
 
 					<div class="pt-4 border-t border-border">
@@ -270,18 +299,39 @@
 							<Input type="text" id="smtp-user" bind:value={smtpUser} placeholder="apikey" />
 						</div>
 
-						<div class="sm:col-span-3">
-							<label for="smtp-password" class="form-label">Password / API Key</label>
-							<Input
-								type="password"
-								id="smtp-password"
-								bind:value={smtpPassword}
-								placeholder={hasExistingSmtpPassword ? '••••••••••••••••' : ''}
-							/>
-							{#if hasExistingSmtpPassword}
-								<p class="mt-1 text-sm text-text-muted">Leave blank to keep existing password</p>
-							{/if}
-						</div>
+						{#if hasExistingSmtpPassword && !editingSmtp}
+							<!-- Show configured state for password -->
+							<div class="sm:col-span-3">
+								<label class="form-label">Password / API Key</label>
+								<div class="flex items-center gap-2 p-2 bg-surface-secondary rounded-lg border border-border">
+									<CheckCircle class="h-4 w-4 text-green-500 flex-shrink-0" />
+									<code class="text-sm text-text-muted">••••••••••••••••</code>
+									<Button type="secondary" size="sm" class="ml-auto" onclick={() => (editingSmtp = true)}>
+										<Pencil class="h-3 w-3 mr-1" />
+										Change
+									</Button>
+								</div>
+							</div>
+						{:else}
+							<div class="sm:col-span-3">
+								<label for="smtp-password" class="form-label">Password / API Key</label>
+								<Input
+									type="password"
+									id="smtp-password"
+									bind:value={smtpPassword}
+									placeholder=""
+								/>
+								{#if editingSmtp}
+									<button
+										type="button"
+										class="mt-1 text-sm text-text-muted hover:text-text"
+										onclick={() => (editingSmtp = false)}
+									>
+										Cancel
+									</button>
+								{/if}
+							</div>
+						{/if}
 					</div>
 
 					<div class="pt-4 border-t border-border">

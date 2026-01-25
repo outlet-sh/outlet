@@ -3,7 +3,7 @@
 	import type { BackupInfo, BackupSettingsResponse } from '$lib/api';
 	import { getToken } from '$lib/auth';
 	import { Button, Card, Input, Alert, LoadingSpinner, Badge, SaveButton, Toggle, AlertDialog } from '$lib/components/ui';
-	import { Plus, Download, Trash2, RefreshCw, HardDrive, Cloud, Copy, ExternalLink } from 'lucide-svelte';
+	import { Plus, Download, Trash2, RefreshCw, HardDrive, Cloud, Copy, ExternalLink, CheckCircle, Pencil } from 'lucide-svelte';
 	import { getWebSocketClient } from '$lib/websocket/client';
 	import { onDestroy, onMount } from 'svelte';
 
@@ -33,6 +33,9 @@
 	let showDeleteConfirm = $state(false);
 	let backupToDelete = $state<BackupInfo | null>(null);
 	let deleting = $state(false);
+
+	// Edit S3 credentials state
+	let editingS3Credentials = $state(false);
 
 	// IAM Policy copy state
 	let copiedPolicy = $state(false);
@@ -382,26 +385,56 @@
 							placeholder="backups/outlet/"
 						/>
 					</div>
-					<div class="grid grid-cols-2 gap-4">
-						<div>
-							<label for="s3-access-key" class="form-label">Access Key ID</label>
-							<Input
-								id="s3-access-key"
-								type="password"
-								bind:value={editS3AccessKey}
-								placeholder={settings?.has_s3_creds ? '••••••••' : 'Enter access key'}
-							/>
+					{#if settings?.has_s3_creds && !editingS3Credentials}
+						<!-- Show configured state -->
+						<div class="flex items-center justify-between p-4 bg-surface-secondary rounded-lg border border-border">
+							<div class="flex items-center gap-3">
+								<CheckCircle class="h-5 w-5 text-green-500" />
+								<div>
+									<p class="font-medium text-text">AWS Credentials Configured</p>
+									<p class="text-sm text-text-muted">
+										Access Key ID: <code class="bg-surface-tertiary px-1.5 py-0.5 rounded text-xs">••••••••</code>
+									</p>
+									<p class="text-sm text-text-muted">
+										Secret Access Key: <code class="bg-surface-tertiary px-1.5 py-0.5 rounded text-xs">••••••••</code>
+									</p>
+								</div>
+							</div>
+							<Button type="secondary" size="sm" onclick={() => (editingS3Credentials = true)}>
+								<Pencil class="h-4 w-4 mr-1.5" />
+								Change
+							</Button>
 						</div>
-						<div>
-							<label for="s3-secret-key" class="form-label">Secret Access Key</label>
-							<Input
-								id="s3-secret-key"
-								type="password"
-								bind:value={editS3SecretKey}
-								placeholder={settings?.has_s3_creds ? '••••••••' : 'Enter secret key'}
-							/>
+					{:else}
+						<!-- Show input fields for new/editing credentials -->
+						<div class="grid grid-cols-2 gap-4">
+							<div>
+								<label for="s3-access-key" class="form-label">Access Key ID</label>
+								<Input
+									id="s3-access-key"
+									type="text"
+									bind:value={editS3AccessKey}
+									placeholder="AKIAIOSFODNN7EXAMPLE"
+								/>
+							</div>
+							<div>
+								<label for="s3-secret-key" class="form-label">Secret Access Key</label>
+								<Input
+									id="s3-secret-key"
+									type="password"
+									bind:value={editS3SecretKey}
+									placeholder=""
+								/>
+							</div>
 						</div>
-					</div>
+						{#if editingS3Credentials}
+							<div>
+								<Button type="secondary" size="sm" onclick={() => (editingS3Credentials = false)}>
+									Cancel
+								</Button>
+							</div>
+						{/if}
+					{/if}
 
 					<div class="mt-6 pt-4 border-t border-border">
 						<div class="flex items-center justify-between mb-3">
