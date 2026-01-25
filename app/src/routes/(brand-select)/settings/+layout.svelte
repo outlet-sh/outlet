@@ -6,7 +6,6 @@
 	const tabs = [
 		{ name: 'MCP', href: '/settings/mcp' },
 		{ name: 'API', href: '/settings/api' },
-		{ name: 'SMTP', href: '/settings/smtp' },
 		{ name: 'Integrations', href: '/settings/email' },
 		{ name: 'Users', href: '/settings/users' },
 		{ name: 'Brands', href: '/settings/brands' },

@@ -481,12 +481,6 @@ console.log('Message ID:', result.message_id);`}
 				</div>
 			</div>
 		</div>
-
-		{#snippet footer()}
-			<div class="flex justify-end">
-				<Button type="primary" onclick={closeCreateModal}>Done</Button>
-			</div>
-		{/snippet}
 	{:else}
 		<div class="space-y-4">
 			<div>
@@ -500,14 +494,18 @@ console.log('Message ID:', result.message_id);`}
 				<p class="mt-1 text-xs text-text-muted">A descriptive name to identify this key</p>
 			</div>
 		</div>
+	{/if}
 
-		{#snippet footer()}
-			<div class="flex justify-end gap-3">
+	{#snippet footer()}
+		<div class="flex justify-end gap-3">
+			{#if newKeyValue}
+				<Button type="primary" onclick={closeCreateModal}>Done</Button>
+			{:else}
 				<Button type="secondary" onclick={closeCreateModal}>Cancel</Button>
 				<Button type="primary" onclick={createKey} disabled={creating || !newKeyName.trim()}>
 					{creating ? 'Creating...' : 'Create Key'}
 				</Button>
-			</div>
-		{/snippet}
-	{/if}
+			{/if}
+		</div>
+	{/snippet}
 </Modal>

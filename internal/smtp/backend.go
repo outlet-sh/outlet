@@ -57,17 +57,24 @@ func (s *Session) Auth(mech string) (sasl.Server, error) {
 }
 
 // authPlain handles PLAIN authentication
-// Username can be "api" or org slug (flexible), password is the API key
+// Username MUST match the org slug, password is the API key
+// Authentication format: brand-slug:api-key
 func (s *Session) authPlain(username, password string) error {
 	if password == "" {
 		logx.Infof("SMTP: Auth failed - empty password from %s", s.conn.Conn().RemoteAddr())
 		return errors.New("invalid credentials")
 	}
 
-	// Use the API key middleware's getOrg method for validation
+	// Validate API key first
 	org, err := s.svcCtx.DB.GetOrganizationByAPIKey(context.Background(), password)
 	if err != nil {
 		logx.Infof("SMTP: Auth failed - invalid API key from %s (user=%s)", s.conn.Conn().RemoteAddr(), username)
+		return errors.New("invalid credentials")
+	}
+
+	// Username MUST match org slug - enforces brand isolation
+	if username != org.Slug {
+		logx.Infof("SMTP: Auth failed - username %s doesn't match org slug %s from %s", username, org.Slug, s.conn.Conn().RemoteAddr())
 		return errors.New("invalid credentials")
 	}
 

@@ -9,6 +9,7 @@
 	let tabs = $derived([
 		{ name: 'General', href: `/${brandSlug}/settings` },
 		{ name: 'Email', href: `/${brandSlug}/settings/email` },
+		{ name: 'SMTP', href: `/${brandSlug}/settings/smtp` },
 		{ name: 'Webhooks', href: `/${brandSlug}/settings/webhooks` },
 		{ name: 'Privacy', href: `/${brandSlug}/settings/privacy` }
 	]);

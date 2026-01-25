@@ -35,22 +35,31 @@ Open `http://localhost:9888` and log in with your admin credentials.
 
 ### Option 2: Docker Compose
 
+Create a `.env` file:
+
+```bash
+# .env
+JWT_SECRET=your-secret-key-here
+JWT_REFRESH_SECRET=your-refresh-secret-here
+ENCRYPTION_KEY=your-32-byte-hex-key
+PRODUCTION_MODE=true
+APP_DOMAIN=mail.yourdomain.com
+APP_BASE_URL=https://mail.yourdomain.com
+```
+
+Create `compose.yaml`:
+
 ```yaml
 services:
   outlet:
-    image: outlet/outlet:latest
+    image: ghcr.io/outlet-sh/outlet:latest
     ports:
       - "443:443"
       - "80:80"
+      - "587:587"
     volumes:
-      - ./data:/data
-    environment:
-      - PRODUCTION_MODE=true
-      - APP_DOMAIN=mail.yourdomain.com
-      - JWT_SECRET=your-secret-key-here
-      - JWT_REFRESH_SECRET=your-refresh-secret-here
-      - ADMIN_EMAIL=admin@example.com
-      - ADMIN_PASSWORD=your-admin-password
+      - ./data:/app/data
+    env_file: .env
     restart: always
 ```
 
@@ -116,8 +125,10 @@ sudo systemctl start outlet
 Send emails through Outlet using standard SMTP protocol — a **100% drop-in replacement** for any existing SMTP setup. Point your application, Postfix relay, or any mail client at Outlet and get all the platform features automatically.
 
 **Authentication:**
-- Username: `api` (or your org slug)
-- Password: Your organization API key
+- Username: Your brand slug (e.g., `my-company`)
+- Password: Your brand's API key
+
+The username **must** match the brand slug associated with your API key. This enforces brand isolation and prevents cross-brand sending.
 
 **Custom Headers** for advanced control:
 
@@ -137,7 +148,7 @@ swaks --to user@example.com \
       --from hello@yourdomain.com \
       --server mail.yourdomain.com:587 \
       --auth PLAIN \
-      --auth-user api \
+      --auth-user my-brand \
       --auth-password "your-api-key" \
       --tls \
       --header "X-Outlet-List: customers" \
@@ -160,7 +171,7 @@ msg["X-Outlet-Tags"] = "welcome,new-user"
 
 with smtplib.SMTP("mail.yourdomain.com", 587) as server:
     server.starttls()
-    server.login("api", "your-api-key")
+    server.login("my-brand", "your-api-key")
     server.send_message(msg)
 ```
 
@@ -176,29 +187,39 @@ SMTP_TLS_KEY=/path/to/key.pem     # TLS private key (optional)
 
 **Docker Compose example with SMTP:**
 
+Create a `.env` file:
+
+```bash
+# .env
+JWT_SECRET=your-secret-key-here
+JWT_REFRESH_SECRET=your-refresh-secret-here
+ENCRYPTION_KEY=your-32-byte-hex-key
+PRODUCTION_MODE=true
+APP_DOMAIN=mail.yourdomain.com
+APP_BASE_URL=https://mail.yourdomain.com
+
+# SMTP Configuration
+SMTP_ENABLED=true
+SMTP_PORT=587
+SMTP_ALLOW_INSECURE_AUTH=false
+SMTP_TLS_CERT=/app/certs/cert.pem
+SMTP_TLS_KEY=/app/certs/key.pem
+```
+
+Create `compose.yaml`:
+
 ```yaml
 services:
   outlet:
-    image: ghcr.io/outlet-sh/outlet:main-latest
+    image: ghcr.io/outlet-sh/outlet:latest
     ports:
       - "443:443"
       - "80:80"
       - "587:587"     # SMTP submission port
     volumes:
       - ./data:/app/data
-    environment:
-      - PRODUCTION_MODE=true
-      - APP_DOMAIN=mail.yourdomain.com
-      - APP_BASE_URL=https://mail.yourdomain.com
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
-      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
-      # SMTP Configuration
-      - SMTP_ENABLED=true
-      - SMTP_PORT=587
-      - SMTP_ALLOW_INSECURE_AUTH=false  # Set to true only if not using TLS
-      - SMTP_TLS_CERT=/app/certs/cert.pem
-      - SMTP_TLS_KEY=/app/certs/key.pem
+      - ./certs:/app/certs
+    env_file: .env
     restart: always
 ```
 
@@ -220,7 +241,7 @@ SMTP:
 curl -v --url 'smtp://mail.yourdomain.com:587' \
   --mail-from 'hello@yourdomain.com' \
   --mail-rcpt 'recipient@example.com' \
-  --user 'api:your-api-key' \
+  --user 'my-brand:your-api-key' \
   --upload-file - <<< "Subject: Test Email
 
 This is a test email sent via Outlet SMTP."

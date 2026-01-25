@@ -341,7 +341,7 @@ func TestAuthMiddleware_Handle_WithOrgIDHeader(t *testing.T) {
 
 	handler(rr, req)
 
-	assert.Equal(t, orgID, capturedOrgID, "OrgIDKey should be set in context from X-Org-Id header")
+	assert.Equal(t, orgID.String(), capturedOrgID, "OrgIDKey should be set in context from X-Org-Id header")
 }
 
 func TestAuthMiddleware_Handle_InvalidOrgIDHeader(t *testing.T) {
