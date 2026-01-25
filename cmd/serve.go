@@ -227,7 +227,7 @@ func runServe(cmd *cobra.Command, args []string) {
 
 	// Start SMTP ingress server if enabled
 	var smtpServer *outletsmtp.Server
-	if c.SMTP.Enabled {
+	if c.SMTP.IsEnabled() {
 		smtpConfig := c.SMTP
 		// Use app domain if SMTP domain not set
 		if smtpConfig.Domain == "" {
@@ -237,7 +237,7 @@ func runServe(cmd *cobra.Command, args []string) {
 		if err := smtpServer.Start(); err != nil {
 			fmt.Printf("Warning: Failed to start SMTP server: %v\n", err)
 		} else {
-			fmt.Printf("SMTP ingress server started on port %d\n", smtpConfig.Port)
+			fmt.Printf("SMTP ingress server started on port %d\n", smtpConfig.GetPort())
 		}
 	}
 

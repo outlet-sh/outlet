@@ -78,9 +78,9 @@ GRPC:
 
 # SMTP Ingress Server (optional, disabled by default)
 # Allows sending emails via SMTP protocol with API key authentication
-# Uncomment and configure to enable SMTP submission on port 587
-# SMTP:
-#   Enabled: true
-#   Port: 587
-#   TLSCert: /path/to/cert.pem
-#   TLSKey: /path/to/key.pem
+# Set SMTP_ENABLED=true to enable SMTP submission
+SMTP:
+  enabled: "${SMTP_ENABLED}"
+  port: "${SMTP_PORT}"
+  tlscert: "${SMTP_TLS_CERT}"
+  tlskey: "${SMTP_TLS_KEY}"

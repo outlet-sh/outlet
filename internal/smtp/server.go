@@ -37,13 +37,13 @@ func (s *Server) Start() error {
 	backend := NewBackend(s.svcCtx)
 
 	s.server = smtp.NewServer(backend)
-	s.server.Addr = fmt.Sprintf(":%d", s.config.Port)
+	s.server.Addr = fmt.Sprintf(":%d", s.config.GetPort())
 	s.server.Domain = s.config.Domain
 	s.server.ReadTimeout = 60 * time.Second
 	s.server.WriteTimeout = 60 * time.Second
 	s.server.MaxMessageBytes = int64(s.config.MaxMessageBytes)
 	s.server.MaxRecipients = s.config.MaxRecipients
-	s.server.AllowInsecureAuth = s.config.AllowInsecureAuth
+	s.server.AllowInsecureAuth = s.config.IsAllowInsecureAuth()
 
 	// Configure TLS if certificates provided
 	if s.config.TLSCert != "" && s.config.TLSKey != "" {

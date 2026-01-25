@@ -78,13 +78,34 @@ func (c *Config) ValidateAndWarn() []string {
 }
 
 // SMTPConfig configures the SMTP ingress server
+// String fields are used for env var support (empty string = default value)
 type SMTPConfig struct {
-	Enabled           bool   `json:",optional"`           // Enable SMTP server (default: false)
-	Port              int    `json:",default=587"`        // SMTP port (default: 587)
-	Domain            string `json:",optional"`           // Server domain (uses App.Domain if empty)
-	TLSCert           string `json:",optional"`           // Path to TLS certificate
-	TLSKey            string `json:",optional"`           // Path to TLS private key
-	MaxMessageBytes   int    `json:",default=26214400"`   // Max message size (default: 25MB)
-	MaxRecipients     int    `json:",default=100"`        // Max recipients per message
-	AllowInsecureAuth bool   `json:",optional"`           // Allow auth without TLS (default: false)
+	Enabled           string `json:"enabled,optional"`           // "true" to enable SMTP server
+	Port              string `json:"port,optional"`              // SMTP port (default: 587)
+	Domain            string `json:"domain,optional"`            // Server domain (uses App.Domain if empty)
+	TLSCert           string `json:"tlscert,optional"`           // Path to TLS certificate
+	TLSKey            string `json:"tlskey,optional"`            // Path to TLS private key
+	MaxMessageBytes   int    `json:"maxmessagebytes,default=26214400"` // Max message size (default: 25MB)
+	MaxRecipients     int    `json:"maxrecipients,default=100"`  // Max recipients per message
+	AllowInsecureAuth string `json:"allowinsecureauth,optional"` // "true" to allow auth without TLS
+}
+
+// IsEnabled returns true if SMTP server should be started
+func (c SMTPConfig) IsEnabled() bool {
+	return strings.ToLower(c.Enabled) == "true" || c.Enabled == "1"
+}
+
+// GetPort returns the SMTP port (default: 587)
+func (c SMTPConfig) GetPort() int {
+	if c.Port == "" {
+		return 587
+	}
+	port := 587
+	fmt.Sscanf(c.Port, "%d", &port)
+	return port
+}
+
+// IsAllowInsecureAuth returns true if insecure auth is allowed
+func (c SMTPConfig) IsAllowInsecureAuth() bool {
+	return strings.ToLower(c.AllowInsecureAuth) == "true" || c.AllowInsecureAuth == "1"
 }
