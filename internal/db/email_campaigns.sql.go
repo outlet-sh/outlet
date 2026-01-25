@@ -337,6 +337,44 @@ func (q *Queries) GetActiveSubscribersForList(ctx context.Context, listID int64)
 	return items, nil
 }
 
+const getAllOrgsEmailStats30Days = `-- name: GetAllOrgsEmailStats30Days :many
+SELECT
+    org_id,
+    COALESCE(SUM(sent_count), 0) as emails_sent
+FROM email_campaigns
+WHERE status = 'sent'
+  AND datetime(completed_at) > datetime('now', '-30 days')
+GROUP BY org_id
+`
+
+type GetAllOrgsEmailStats30DaysRow struct {
+	OrgID      string      `json:"org_id"`
+	EmailsSent interface{} `json:"emails_sent"`
+}
+
+func (q *Queries) GetAllOrgsEmailStats30Days(ctx context.Context) ([]GetAllOrgsEmailStats30DaysRow, error) {
+	rows, err := q.db.QueryContext(ctx, getAllOrgsEmailStats30Days)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllOrgsEmailStats30DaysRow
+	for rows.Next() {
+		var i GetAllOrgsEmailStats30DaysRow
+		if err := rows.Scan(&i.OrgID, &i.EmailsSent); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getCampaign = `-- name: GetCampaign :one
 SELECT id, org_id, design_id, name, subject, preview_text, from_name, from_email, reply_to, html_body, plain_text, list_ids, exclude_list_ids, segment_filter, status, scheduled_at, started_at, completed_at, track_opens, track_clicks, recipients_count, sent_count, delivered_count, opened_count, clicked_count, bounced_count, complained_count, unsubscribed_count, created_at, updated_at FROM email_campaigns
 WHERE id = ?1 AND org_id = ?2

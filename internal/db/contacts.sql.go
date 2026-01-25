@@ -195,6 +195,42 @@ func (q *Queries) DeleteUnconfirmedContactsOlderThan(ctx context.Context, arg De
 	return result.RowsAffected()
 }
 
+const getAllOrgsContactStats = `-- name: GetAllOrgsContactStats :many
+SELECT
+    org_id,
+    COUNT(*) as total_contacts
+FROM contacts
+GROUP BY org_id
+`
+
+type GetAllOrgsContactStatsRow struct {
+	OrgID         sql.NullString `json:"org_id"`
+	TotalContacts int64          `json:"total_contacts"`
+}
+
+func (q *Queries) GetAllOrgsContactStats(ctx context.Context) ([]GetAllOrgsContactStatsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getAllOrgsContactStats)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllOrgsContactStatsRow
+	for rows.Next() {
+		var i GetAllOrgsContactStatsRow
+		if err := rows.Scan(&i.OrgID, &i.TotalContacts); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getContact = `-- name: GetContact :one
 SELECT id, org_id, name, email, source, created_at, updated_at, email_verified, verification_token, verification_sent_at, verified_at, unsubscribed_at, blocked_at, status, gdpr_consent, gdpr_consent_at FROM contacts WHERE id = ?1
 `

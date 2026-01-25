@@ -2,12 +2,23 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import * as api from '$lib/api';
-	import type { OrgInfo, SESQuotaResponse } from '$lib/api';
+	import type { OrgInfo, SESQuotaResponse, OrgStats } from '$lib/api';
 	import { Button, Card, Input, Badge, Modal, Alert, LoadingSpinner, Drawer } from '$lib/components/ui';
-	import { Plus, Building2, ChevronRight, Cloud, Cpu, Copy, Check, Info } from 'lucide-svelte';
+	import { Plus, Building2, ChevronRight, Cloud, Cpu, Copy, Check, Info, ArrowUpAZ, CalendarDays, Users, Mail, List } from 'lucide-svelte';
 
 	let loading = $state(true);
 	let organizations = $state<OrgInfo[]>([]);
+	let orgStats = $state<Record<string, OrgStats>>({});
+	let sortBy = $state<'name' | 'date'>('name');
+	let sortedOrganizations = $derived(
+		[...organizations].sort((a, b) => {
+			if (sortBy === 'name') {
+				return a.name.localeCompare(b.name);
+			} else {
+				return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+			}
+		})
+	);
 	let error = $state('');
 
 	// SES quota state
@@ -66,6 +77,11 @@
 		return Math.round(num).toString();
 	}
 
+	function formatDate(dateStr: string): string {
+		const date = new Date(dateStr);
+		return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+	}
+
 	async function selectOrg(org: OrgInfo) {
 		localStorage.setItem('currentOrgId', org.id);
 		localStorage.setItem('currentOrgName', org.name);
@@ -99,8 +115,12 @@
 		error = '';
 
 		try {
-			const response = await api.listOrganizations();
-			organizations = response.organizations || [];
+			const [orgsResponse, statsResponse] = await Promise.all([
+				api.listOrganizations(),
+				api.getAllOrganizationsStats()
+			]);
+			organizations = orgsResponse.organizations || [];
+			orgStats = statsResponse.stats || {};
 		} catch (err) {
 			console.error('Failed to load organizations:', err);
 			error = 'Failed to load organizations';
@@ -211,8 +231,30 @@
 						</div>
 					</Card>
 				{:else}
+					<!-- Sort toggle -->
+					<div class="mb-4 flex items-center gap-2">
+						<span class="text-xs text-text-muted">Sort by:</span>
+						<div class="flex rounded-lg border border-border overflow-hidden">
+							<button
+								onclick={() => sortBy = 'name'}
+								class="flex items-center gap-1.5 px-3 py-1.5 text-xs transition-colors {sortBy === 'name' ? 'bg-primary text-white' : 'bg-bg hover:bg-bg-secondary text-text-muted'}"
+							>
+								<ArrowUpAZ class="h-3.5 w-3.5" />
+								Name
+							</button>
+							<button
+								onclick={() => sortBy = 'date'}
+								class="flex items-center gap-1.5 px-3 py-1.5 text-xs transition-colors {sortBy === 'date' ? 'bg-primary text-white' : 'bg-bg hover:bg-bg-secondary text-text-muted'}"
+							>
+								<CalendarDays class="h-3.5 w-3.5" />
+								Newest
+							</button>
+						</div>
+					</div>
+
 					<div class="space-y-2">
-						{#each organizations as org}
+						{#each sortedOrganizations as org}
+							{@const stats = orgStats[org.id]}
 							<button
 								onclick={() => selectOrg(org)}
 								class="w-full text-left bg-bg border border-border rounded-lg p-4 hover:border-primary/50 hover:bg-bg-secondary transition-all group"
@@ -231,7 +273,27 @@
 											{/if}
 										</div>
 									</div>
-									<ChevronRight class="w-5 h-5 text-text-muted group-hover:text-primary transition-colors" />
+									<div class="flex items-center gap-4">
+										<!-- Stats -->
+										{#if stats}
+											<div class="hidden sm:flex items-center gap-3 text-xs text-text-muted">
+												<span class="flex items-center gap-1" title="Contacts">
+													<Users class="w-3.5 h-3.5" />
+													{formatNumber(stats.total_contacts)}
+												</span>
+												<span class="flex items-center gap-1" title="Emails sent (30d)">
+													<Mail class="w-3.5 h-3.5" />
+													{formatNumber(stats.emails_sent_30d)}
+												</span>
+												<span class="flex items-center gap-1" title="Lists">
+													<List class="w-3.5 h-3.5" />
+													{stats.list_count}
+												</span>
+											</div>
+										{/if}
+										<span class="text-xs text-text-muted hidden lg:block">{formatDate(org.created_at)}</span>
+										<ChevronRight class="w-5 h-5 text-text-muted group-hover:text-primary transition-colors" />
+									</div>
 								</div>
 							</button>
 						{/each}

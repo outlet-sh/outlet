@@ -169,6 +169,9 @@ type Querier interface {
 	GetActiveSubscribersForList(ctx context.Context, listID int64) ([]GetActiveSubscribersForListRow, error)
 	// Get all rules for an organization (including disabled), for admin listing
 	GetAllOrgRules(ctx context.Context, orgID string) ([]OrgRule, error)
+	GetAllOrgsContactStats(ctx context.Context) ([]GetAllOrgsContactStatsRow, error)
+	GetAllOrgsEmailStats30Days(ctx context.Context) ([]GetAllOrgsEmailStats30DaysRow, error)
+	GetAllOrgsListCounts(ctx context.Context) ([]GetAllOrgsListCountsRow, error)
 	GetAuthTokenByToken(ctx context.Context, token string) (AuthToken, error)
 	// Get recent automation log entries for an organization
 	GetAutomationLog(ctx context.Context, arg GetAutomationLogParams) ([]AutomationLog, error)

@@ -18,9 +18,11 @@ func DownloadBackupHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		}
 
 		l := backup.NewDownloadBackupLogic(r.Context(), svcCtx)
-		err := l.Download(w, r, &req)
+		err := l.DownloadBackup(&req)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
+		} else {
+			httpx.Ok(w)
 		}
 	}
 }

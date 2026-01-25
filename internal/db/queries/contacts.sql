@@ -175,6 +175,13 @@ SELECT
         0
     ) as previous_period;
 
+-- name: GetAllOrgsContactStats :many
+SELECT
+    org_id,
+    COUNT(*) as total_contacts
+FROM contacts
+GROUP BY org_id;
+
 -- ============================================
 -- GDPR EXPORT QUERIES
 -- ============================================

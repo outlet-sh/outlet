@@ -568,6 +568,13 @@ export function createOrganization(req: components.CreateOrgRequest) {
 
 /**
  * @description 
+ */
+export function getAllOrganizationsStats() {
+	return webapi.get<components.OrgBulkStatsResponse>(`/api/admin/organizations-stats`)
+}
+
+/**
+ * @description 
  * @param params
  */
 export function getOrganization(params: components.GetOrgRequestParams, id: string) {

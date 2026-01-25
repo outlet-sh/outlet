@@ -178,6 +178,42 @@ func (q *Queries) DeleteEmailList(ctx context.Context, id int64) error {
 	return err
 }
 
+const getAllOrgsListCounts = `-- name: GetAllOrgsListCounts :many
+SELECT
+    org_id,
+    COUNT(*) as list_count
+FROM email_lists
+GROUP BY org_id
+`
+
+type GetAllOrgsListCountsRow struct {
+	OrgID     string `json:"org_id"`
+	ListCount int64  `json:"list_count"`
+}
+
+func (q *Queries) GetAllOrgsListCounts(ctx context.Context) ([]GetAllOrgsListCountsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getAllOrgsListCounts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllOrgsListCountsRow
+	for rows.Next() {
+		var i GetAllOrgsListCountsRow
+		if err := rows.Scan(&i.OrgID, &i.ListCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getEmailList = `-- name: GetEmailList :one
 SELECT id, public_id, org_id, name, slug, description, double_optin, confirmation_email_subject, confirmation_email_body, created_at, updated_at, public_page_enabled, thank_you_url, confirm_redirect_url, unsubscribe_redirect_url, thank_you_email_enabled, thank_you_email_subject, thank_you_email_body, already_subscribed_url, goodbye_email_enabled, goodbye_email_subject, goodbye_email_body, unsubscribe_behavior, unsubscribe_scope FROM email_lists
 WHERE id = ?1

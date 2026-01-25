@@ -192,11 +192,8 @@
 								{#each allOrgs as brand}
 									<button
 										onclick={() => navigateToOrg(brand.slug)}
-										class="w-full px-3 py-2 flex items-center gap-3 text-left transition-colors hover:bg-base-100 {brand.id === org?.id ? 'bg-base-50' : ''}"
+										class="w-full px-3 py-2 flex items-center gap-2 text-left transition-colors hover:bg-base-100 {brand.id === org?.id ? 'bg-base-50' : ''}"
 									>
-										<span class="flex items-center justify-center h-8 w-8 rounded-md text-xs font-semibold text-white bg-primary flex-shrink-0">
-											{brand.name[0].toUpperCase()}
-										</span>
 										<span class="flex-1 text-sm font-medium text-text truncate">{brand.name}</span>
 										{#if brand.id === org?.id}
 											<Check class="h-4 w-4 text-primary flex-shrink-0" />
@@ -207,11 +204,9 @@
 							<div class="border-t border-border mt-1 pt-1">
 								<button
 									onclick={openCreateBrand}
-									class="w-full px-3 py-2 flex items-center gap-3 text-left transition-colors hover:bg-base-100 text-text-muted hover:text-text"
+									class="w-full px-3 py-2 flex items-center gap-2 text-left transition-colors hover:bg-base-100 text-text-muted hover:text-text"
 								>
-									<span class="flex items-center justify-center h-8 w-8 rounded-md border-2 border-dashed border-base-300 flex-shrink-0">
-										<Plus class="h-4 w-4" />
-									</span>
+									<Plus class="h-4 w-4" />
 									<span class="text-sm">Add brand</span>
 								</button>
 							</div>
@@ -272,7 +267,7 @@
 								onclick={(e) => { e.stopPropagation(); showUserMenu = false; showBrandSwitcher = !showBrandSwitcher; }}
 								class="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors hover:bg-base-100 group"
 							>
-								<span class="flex items-center justify-center h-7 w-7 rounded-md text-xs font-semibold text-white bg-primary">{(org?.name || 'O')[0].toUpperCase()}</span>
+								<span class="text-sm text-text-muted">Brand:</span>
 								<span class="font-medium text-sm">{org?.name || 'Organization'}</span>
 								<ChevronDown class="h-4 w-4 text-text-muted group-hover:text-text transition-colors" />
 							</button>
@@ -285,11 +280,8 @@
 										{#each allOrgs as brand}
 											<button
 												onclick={() => navigateToOrg(brand.slug)}
-												class="w-full px-3 py-2 flex items-center gap-3 text-left transition-colors hover:bg-base-100 {brand.id === org?.id ? 'bg-base-50' : ''}"
+												class="w-full px-3 py-2 flex items-center gap-2 text-left transition-colors hover:bg-base-100 {brand.id === org?.id ? 'bg-base-50' : ''}"
 											>
-												<span class="flex items-center justify-center h-8 w-8 rounded-md text-xs font-semibold text-white bg-primary flex-shrink-0">
-													{brand.name[0].toUpperCase()}
-												</span>
 												<span class="flex-1 text-sm font-medium text-text truncate">{brand.name}</span>
 												{#if brand.id === org?.id}
 													<Check class="h-4 w-4 text-primary flex-shrink-0" />
@@ -300,11 +292,9 @@
 									<div class="border-t border-border mt-1 pt-1">
 										<button
 											onclick={openCreateBrand}
-											class="w-full px-3 py-2 flex items-center gap-3 text-left transition-colors hover:bg-base-100 text-text-muted hover:text-text"
+											class="w-full px-3 py-2 flex items-center gap-2 text-left transition-colors hover:bg-base-100 text-text-muted hover:text-text"
 										>
-											<span class="flex items-center justify-center h-8 w-8 rounded-md border-2 border-dashed border-base-300 flex-shrink-0">
-												<Plus class="h-4 w-4" />
-											</span>
+											<Plus class="h-4 w-4" />
 											<span class="text-sm">Add brand</span>
 										</button>
 									</div>

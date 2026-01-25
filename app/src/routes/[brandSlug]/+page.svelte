@@ -132,60 +132,68 @@
 		<!-- Email Metrics -->
 		<div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
 			<!-- Total Subscribers -->
-			<Card>
-				<div class="flex items-start justify-between">
-					<div>
-						<p class="text-xs font-medium text-text-muted uppercase tracking-wide">Subscribers</p>
-						<p class="text-2xl font-bold text-text mt-1">{formatNumber(totalSubscribers)}</p>
-						<p class="text-xs text-text-muted mt-1">{lists.length} list{lists.length !== 1 ? 's' : ''}</p>
+			<a href="{basePath}/lists" class="block">
+				<Card class="hover:shadow-md transition-shadow cursor-pointer">
+					<div class="flex items-start justify-between">
+						<div>
+							<p class="text-xs font-medium text-text-muted uppercase tracking-wide">Subscribers</p>
+							<p class="text-2xl font-bold text-text mt-1">{formatNumber(totalSubscribers)}</p>
+							<p class="text-xs text-text-muted mt-1">{lists.length} list{lists.length !== 1 ? 's' : ''}</p>
+						</div>
+						<div class="p-2 bg-blue-100 rounded-lg">
+							<Users class="h-5 w-5 text-blue-600" />
+						</div>
 					</div>
-					<div class="p-2 bg-blue-100 rounded-lg">
-						<Users class="h-5 w-5 text-blue-600" />
-					</div>
-				</div>
-			</Card>
+				</Card>
+			</a>
 
 			<!-- Emails Sent -->
-			<Card>
-				<div class="flex items-start justify-between">
-					<div>
-						<p class="text-xs font-medium text-text-muted uppercase tracking-wide">Emails Sent</p>
-						<p class="text-2xl font-bold text-text mt-1">{formatNumber(emailStats?.total_sent)}</p>
-						<p class="text-xs text-text-muted mt-1">All time</p>
+			<a href="{basePath}/campaigns" class="block">
+				<Card class="hover:shadow-md transition-shadow cursor-pointer">
+					<div class="flex items-start justify-between">
+						<div>
+							<p class="text-xs font-medium text-text-muted uppercase tracking-wide">Emails Sent</p>
+							<p class="text-2xl font-bold text-text mt-1">{formatNumber(emailStats?.total_sent)}</p>
+							<p class="text-xs text-text-muted mt-1">All time</p>
+						</div>
+						<div class="p-2 bg-green-100 rounded-lg">
+							<Send class="h-5 w-5 text-green-600" />
+						</div>
 					</div>
-					<div class="p-2 bg-green-100 rounded-lg">
-						<Send class="h-5 w-5 text-green-600" />
-					</div>
-				</div>
-			</Card>
+				</Card>
+			</a>
 
 			<!-- Open Rate -->
-			<Card>
-				<div class="flex items-start justify-between">
-					<div>
-						<p class="text-xs font-medium text-text-muted uppercase tracking-wide">Open Rate</p>
-						<p class="text-2xl font-bold text-text mt-1">{formatPercent(emailStats?.open_rate)}</p>
-						<p class="text-xs text-text-muted mt-1">{formatNumber(emailStats?.total_opened)} opened</p>
+			<a href="{basePath}/campaigns" class="block">
+				<Card class="hover:shadow-md transition-shadow cursor-pointer">
+					<div class="flex items-start justify-between">
+						<div>
+							<p class="text-xs font-medium text-text-muted uppercase tracking-wide">Open Rate</p>
+							<p class="text-2xl font-bold text-text mt-1">{formatPercent(emailStats?.open_rate)}</p>
+							<p class="text-xs text-text-muted mt-1">{formatNumber(emailStats?.total_opened)} opened</p>
+						</div>
+						<div class="p-2 bg-purple-100 rounded-lg">
+							<Mail class="h-5 w-5 text-purple-600" />
+						</div>
 					</div>
-					<div class="p-2 bg-purple-100 rounded-lg">
-						<Mail class="h-5 w-5 text-purple-600" />
-					</div>
-				</div>
-			</Card>
+				</Card>
+			</a>
 
 			<!-- Click Rate -->
-			<Card>
-				<div class="flex items-start justify-between">
-					<div>
-						<p class="text-xs font-medium text-text-muted uppercase tracking-wide">Click Rate</p>
-						<p class="text-2xl font-bold text-text mt-1">{formatPercent(emailStats?.click_rate)}</p>
-						<p class="text-xs text-text-muted mt-1">{formatNumber(emailStats?.total_clicked)} clicked</p>
+			<a href="{basePath}/campaigns" class="block">
+				<Card class="hover:shadow-md transition-shadow cursor-pointer">
+					<div class="flex items-start justify-between">
+						<div>
+							<p class="text-xs font-medium text-text-muted uppercase tracking-wide">Click Rate</p>
+							<p class="text-2xl font-bold text-text mt-1">{formatPercent(emailStats?.click_rate)}</p>
+							<p class="text-xs text-text-muted mt-1">{formatNumber(emailStats?.total_clicked)} clicked</p>
+						</div>
+						<div class="p-2 bg-cyan-100 rounded-lg">
+							<MousePointerClick class="h-5 w-5 text-cyan-600" />
+						</div>
 					</div>
-					<div class="p-2 bg-cyan-100 rounded-lg">
-						<MousePointerClick class="h-5 w-5 text-cyan-600" />
-					</div>
-				</div>
-			</Card>
+				</Card>
+			</a>
 		</div>
 
 		<!-- Secondary Stats Row -->

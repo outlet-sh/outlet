@@ -16,6 +16,13 @@ SELECT * FROM email_lists
 WHERE org_id = sqlc.arg(org_id)
 ORDER BY created_at DESC;
 
+-- name: GetAllOrgsListCounts :many
+SELECT
+    org_id,
+    COUNT(*) as list_count
+FROM email_lists
+GROUP BY org_id;
+
 -- name: GetEmailList :one
 SELECT * FROM email_lists
 WHERE id = sqlc.arg(id);

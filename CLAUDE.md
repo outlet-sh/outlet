@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Outlet is a self-hosted email platform (marketing + transactional) built with go-zero framework and SvelteKit. Single binary deployment with embedded frontend, SQLite database (WAL mode), and MCP (Model Context Protocol) integration for AI assistants.
+Outlet is a self-hosted email platform (marketing + transactional) built with go-zero framework and SvelteKit 5. Single binary deployment with embedded frontend, SQLite database (WAL mode), and MCP (Model Context Protocol) integration for AI assistants.
 
 **Module**: `github.com/outlet-sh/outlet`
 
@@ -12,12 +12,14 @@ Outlet is a self-hosted email platform (marketing + transactional) built with go
 
 ### Backend (Go)
 ```bash
+air               # Run with hot reload (recommended for development)
 make build        # Build main binary to bin/outlet
-make run          # Build and run (uses air for hot reload)
+make run          # Build and run the binary
 make test         # Run Go tests
 make gen          # Regenerate API code from outlet.api (NEVER run goctl directly)
 make sqlc-gen     # Generate type-safe Go code from SQL queries
 make gen-sdk      # Generate SDK clients (TypeScript, Python, Go, PHP)
+make proto-gen    # Generate gRPC code from proto files
 make gen-all      # All code generation (API + sqlc + proto)
 ```
 
@@ -65,6 +67,10 @@ internal/
 │   ├── tracking/      # Email open/click tracking
 │   └── webhook/       # Outbound webhook dispatcher
 ├── mcp/               # MCP server for AI integrations
+│   ├── tools/         # MCP tool implementations (brand, campaigns, contacts, etc.)
+│   ├── mcpauth/       # MCP authentication (API key + OAuth)
+│   ├── mcpctx/        # MCP request context
+│   └── oauth/         # OAuth 2.0 handler for MCP
 ├── middleware/        # Auth, rate limiting, API key validation
 ├── events/            # Event bus for internal pub/sub
 ├── workers/           # Background workers (email sending, retries)
@@ -91,13 +97,15 @@ See `app/CLAUDE.md` for detailed frontend guidance.
 
 **Error Handling**: All API errors return JSON via `internal/errorx/errorx.go`. Use `errorx.NewBadRequestError()`, `errorx.NewNotFoundError()`, etc.
 
+**MCP Tools**: MCP tools are implemented in `internal/mcp/tools/`. Each tool file (brand.go, campaigns.go, contacts.go, etc.) registers handlers in `registry.go`.
+
 **Production Mode**: When `ProductionMode: true` in config:
 - Serves Let's Encrypt HTTPS on :443
 - Embeds the SvelteKit static build
 - Redirects www → non-www, HTTP → HTTPS
 
 **Development Mode**: When `ProductionMode: false`:
-- Go backend on port 8888 (air hot reloads automatically)
+- Go backend on port 8888 (use `air` for hot reload)
 - Frontend dev server on port 5173 (run separately with `cd app && pnpm dev`)
 - With Docker: backend mapped to port 20202 externally (Vite proxies to this)
 
@@ -105,7 +113,7 @@ See `app/CLAUDE.md` for detailed frontend guidance.
 
 1. **NEVER run goctl commands directly** - Always use `make gen` to regenerate API code
 2. **Use pnpm** for all frontend package management
-3. **No restart needed** - Project uses air for Go hot reloading
+3. **Hot reload available** - Run `air` for Go hot reloading (no restart needed)
 4. **Always build before pushing** - Run `make build` and `cd app && pnpm build`
 5. **Idiomatic Go only** - One function with parameters, not multiple function variants
 6. **Styles in app.css only** - No inline styles or `<style>` blocks in Svelte files
@@ -144,6 +152,25 @@ This project uses **Svelte 5 with runes**. Do NOT use Svelte 4 patterns.
 - Computed: `let y = $derived(x * 2)` NOT `$: y = x * 2`
 - Effects: `$effect(() => {})` NOT `$: { }`
 - Event handlers: Pass functions as props, not `createEventDispatcher`
+- Slots: `{@render children?.()}` NOT `<slot />`
+
+## Generated API Types (CRITICAL)
+
+TypeScript client generated from `outlet.api` uses **snake_case** (matching Go/JSON):
+
+```typescript
+// WRONG - assumes camelCase
+stats.withStripe;
+customer.createdAt;
+api.adminListCustomers({ pageSize: 10 });
+
+// CORRECT - matches generated types
+stats.with_stripe;
+customer.created_at;
+api.adminListCustomers({ page_size: 10 });
+```
+
+Always check `app/src/lib/api/generate/outletComponents.ts` for exact property names.
 
 ## Environment Configuration
 
@@ -151,6 +178,7 @@ Configuration loaded from `etc/outlet.yaml` or environment variables. Key settin
 - `DATABASE_PATH` / `Database.Path` - SQLite database path (default: `./data/outlet.db`)
 - `JWT_SECRET` / `Auth.AccessSecret` - JWT access token secret
 - `JWT_REFRESH_SECRET` / `Auth.RefreshSecret` - JWT refresh token secret
+- `ENCRYPTION_KEY` / `Encryption.Key` - 32-byte hex key for credential encryption
 - `PRODUCTION_MODE` / `App.ProductionMode` - Enable HTTPS/Let's Encrypt
 - `APP_DOMAIN` / `App.Domain` - Domain for production
 
@@ -160,8 +188,8 @@ go-zero config uses struct tags:
 
 ## First Run Setup
 
-On first launch, the app automatically redirects to `/setup` where you:
-1. Create the admin account (email/password) via the onboarding wizard
+On first launch, the app redirects to `/setup` where you:
+1. Create the admin account via the onboarding wizard
 2. Configure SMTP settings for email sending
 
 No admin credentials need to be set in config files - the setup wizard handles everything.

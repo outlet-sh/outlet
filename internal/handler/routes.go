@@ -495,6 +495,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				},
 				{
 					Method:  http.MethodGet,
+					Path:    "/organizations-stats",
+					Handler: adminorganizations.GetAllOrganizationsStatsHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodGet,
 					Path:    "/organizations/:id",
 					Handler: adminorganizations.GetOrganizationHandler(serverCtx),
 				},

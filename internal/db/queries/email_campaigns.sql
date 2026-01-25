@@ -276,3 +276,12 @@ FROM email_campaigns
 WHERE org_id = sqlc.arg(org_id)
   AND status = 'sent'
   AND datetime(completed_at) > datetime('now', '-30 days');
+
+-- name: GetAllOrgsEmailStats30Days :many
+SELECT
+    org_id,
+    COALESCE(SUM(sent_count), 0) as emails_sent
+FROM email_campaigns
+WHERE status = 'sent'
+  AND datetime(completed_at) > datetime('now', '-30 days')
+GROUP BY org_id;

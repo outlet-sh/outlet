@@ -1231,6 +1231,10 @@ export interface NewsletterSubscribeRequest {
 	interests?: string
 }
 
+export interface OrgBulkStatsResponse {
+	stats: { [key: string]: OrgStats } // Map of org_id -> stats
+}
+
 export interface OrgEmailConfigInfo {
 	ses_rate_limit: number // Emails per second
 	ses_rate_burst: number // Burst size
@@ -1263,6 +1267,12 @@ export interface OrgInfo {
 export interface OrgListResponse {
 	organizations: Array<OrgInfo>
 	total: number
+}
+
+export interface OrgStats {
+	total_contacts: number
+	emails_sent_30d: number
+	list_count: number
 }
 
 export interface PauseSequenceRequest {

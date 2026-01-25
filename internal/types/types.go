@@ -1145,6 +1145,10 @@ type NewsletterSubscribeRequest struct {
 	Interests string `json:"interests,optional"`
 }
 
+type OrgBulkStatsResponse struct {
+	Stats map[string]OrgStats `json:"stats"` // Map of org_id -> stats
+}
+
 type OrgEmailConfigInfo struct {
 	SESRateLimit  float64 `json:"ses_rate_limit"`  // Emails per second
 	SESRateBurst  int     `json:"ses_rate_burst"`  // Burst size
@@ -1177,6 +1181,12 @@ type OrgInfo struct {
 type OrgListResponse struct {
 	Organizations []OrgInfo `json:"organizations"`
 	Total         int       `json:"total"`
+}
+
+type OrgStats struct {
+	TotalContacts int64 `json:"total_contacts"`
+	EmailsSent30d int64 `json:"emails_sent_30d"`
+	ListCount     int64 `json:"list_count"`
 }
 
 type PauseSequenceRequest struct {

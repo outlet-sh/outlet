@@ -962,6 +962,15 @@ type (
 		HasMCPConfigured bool `json:"has_mcp_configured"`
 		EmailConfigured  bool `json:"email_configured"` // Org has from_email set
 	}
+	// Bulk stats for all organizations
+	OrgBulkStatsResponse {
+		Stats map[string]OrgStats `json:"stats"` // Map of org_id -> stats
+	}
+	OrgStats {
+		TotalContacts int64 `json:"total_contacts"`
+		EmailsSent30d int64 `json:"emails_sent_30d"`
+		ListCount     int64 `json:"list_count"`
+	}
 	// ========== Platform Settings Types ==========
 	// Platform-wide configuration settings (SMTP, OAuth)
 	PlatformSettingInfo {
@@ -2130,6 +2139,9 @@ service outlet {
 
 	@handler GetDashboardStats
 	get /organizations/:id/dashboard-stats (GetDashboardStatsRequest) returns (DashboardStatsResponse)
+
+	@handler GetAllOrganizationsStats
+	get /organizations-stats returns (OrgBulkStatsResponse)
 }
 
 // Platform Settings (Super Admin only)
