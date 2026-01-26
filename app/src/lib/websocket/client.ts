@@ -4,6 +4,8 @@
  * Handles real-time communication with the backend.
  */
 
+import { authStore } from '$lib/stores/auth.svelte';
+
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
 export interface WebSocketMessage<T = any> {
@@ -82,8 +84,11 @@ class WebSocketClient {
 	 * Connect to the WebSocket server
 	 */
 	connect(userId?: string): void {
+		// Get user ID from auth store if not provided
 		if (userId) {
 			this.userId = userId;
+		} else if (authStore.user?.id) {
+			this.userId = authStore.user.id;
 		}
 
 		if (this.ws?.readyState === WebSocket.OPEN) {

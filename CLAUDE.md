@@ -109,6 +109,11 @@ See `app/CLAUDE.md` for detailed frontend guidance.
 - Frontend dev server on port 5173 (run separately with `cd app && pnpm dev`)
 - With Docker: backend mapped to port 20202 externally (Vite proxies to this)
 
+**SMTP Ingress Server**: Optional SMTP server for receiving emails via standard SMTP protocol:
+- Enabled via `SMTP_ENABLED=true` environment variable
+- Authenticates with brand API keys (`brand-slug:api-key`)
+- Configured in `internal/smtp/` (backend.go, server.go, processor.go)
+
 ## Critical Rules
 
 1. **NEVER run goctl commands directly** - Always use `make gen` to regenerate API code
@@ -172,6 +177,14 @@ api.adminListCustomers({ page_size: 10 });
 
 Always check `app/src/lib/api/generate/outletComponents.ts` for exact property names.
 
+## Multi-Tenant Architecture
+
+Outlet uses a **brand-based multi-tenancy** model:
+- Each brand (organization) has its own API key, contacts, lists, campaigns
+- Routes are scoped by brand: `/[brandSlug]/campaigns`, `/[brandSlug]/settings`
+- API keys are per-brand and used for both REST API and SMTP authentication
+- Brand context is set via URL slug, not global state
+
 ## Environment Configuration
 
 Configuration loaded from `etc/outlet.yaml` or environment variables. Key settings:
@@ -181,6 +194,9 @@ Configuration loaded from `etc/outlet.yaml` or environment variables. Key settin
 - `ENCRYPTION_KEY` / `Encryption.Key` - 32-byte hex key for credential encryption
 - `PRODUCTION_MODE` / `App.ProductionMode` - Enable HTTPS/Let's Encrypt
 - `APP_DOMAIN` / `App.Domain` - Domain for production
+- `SMTP_ENABLED` - Enable SMTP ingress server
+- `SMTP_PORT` - SMTP port (default: 587)
+- `SMTP_ALLOW_INSECURE_AUTH` - Allow AUTH without TLS (testing only)
 
 go-zero config uses struct tags:
 - `json:",optional"` - field not required
