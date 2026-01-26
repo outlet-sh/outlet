@@ -11,6 +11,7 @@ import (
 
 	"github.com/outlet-sh/outlet/internal/db"
 	"github.com/outlet-sh/outlet/internal/mcp/mcpctx"
+	"github.com/outlet-sh/outlet/internal/utils"
 
 	"github.com/google/uuid"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -332,6 +333,7 @@ func handleListCreate(ctx context.Context, toolCtx *mcpctx.ToolContext, input Em
 	}
 
 	list, err := toolCtx.DB().CreateEmailList(ctx, db.CreateEmailListParams{
+		PublicID:    utils.GeneratePublicID(),
 		OrgID:       toolCtx.BrandID(),
 		Name:        input.Name,
 		Slug:        slug,
