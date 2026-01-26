@@ -76,14 +76,19 @@ func (l *UpdateOrgEmailSettingsLogic) ensureDomainIdentity(orgID, fromEmail stri
 	}
 	domain := parts[1]
 
-	// Check if domain identity already exists
+	// Check if domain identity already exists and is properly verified
 	existing, err := l.svcCtx.DB.GetDomainIdentityByDomain(l.ctx, db.GetDomainIdentityByDomainParams{
 		OrgID:  orgID,
 		Domain: domain,
 	})
 	if err == nil && existing.ID != "" {
-		l.Infof("Domain identity already exists for %s", domain)
-		return
+		// If domain exists but verification never started, we'll re-trigger it below
+		// Otherwise, the domain is already being verified or is verified
+		if existing.VerificationStatus.String != "not_started" && existing.VerificationStatus.String != "" {
+			l.Infof("Domain identity already exists for %s (status: %s)", domain, existing.VerificationStatus.String)
+			return
+		}
+		l.Infof("Domain identity exists but verification not started for %s, will re-trigger", domain)
 	}
 
 	// Get AWS credentials
@@ -121,23 +126,39 @@ func (l *UpdateOrgEmailSettingsLogic) ensureDomainIdentity(orgID, fromEmail stri
 		return
 	}
 
-	// Create domain identity record
-	_, err = l.svcCtx.DB.CreateDomainIdentity(l.ctx, db.CreateDomainIdentityParams{
-		ID:                 uuid.New().String(),
-		OrgID:              orgID,
-		Domain:             domain,
-		VerificationStatus: sql.NullString{String: result.VerificationStatus, Valid: true},
-		DkimStatus:         sql.NullString{String: result.DKIMStatus, Valid: true},
-		VerificationToken:  sql.NullString{String: result.VerificationToken, Valid: result.VerificationToken != ""},
-		DkimTokens:         sql.NullString{String: string(dkimTokensJSON), Valid: true},
-		DnsRecords:         sql.NullString{String: dnsRecordsJSON, Valid: true},
-	})
-	if err != nil {
-		l.Errorf("Failed to save domain identity for %s: %v", domain, err)
-		return
+	// Create or update domain identity record
+	if existing.ID != "" {
+		// Update existing domain identity that was in "not_started" state
+		_, err = l.svcCtx.DB.UpdateDomainIdentityFull(l.ctx, db.UpdateDomainIdentityFullParams{
+			ID:                 existing.ID,
+			VerificationStatus: sql.NullString{String: result.VerificationStatus, Valid: true},
+			DkimStatus:         sql.NullString{String: result.DKIMStatus, Valid: true},
+			VerificationToken:  sql.NullString{String: result.VerificationToken, Valid: result.VerificationToken != ""},
+			DnsRecords:         sql.NullString{String: dnsRecordsJSON, Valid: true},
+		})
+		if err != nil {
+			l.Errorf("Failed to update domain identity for %s: %v", domain, err)
+			return
+		}
+		l.Infof("Re-triggered verification for domain identity %s", domain)
+	} else {
+		// Create new domain identity
+		_, err = l.svcCtx.DB.CreateDomainIdentity(l.ctx, db.CreateDomainIdentityParams{
+			ID:                 uuid.New().String(),
+			OrgID:              orgID,
+			Domain:             domain,
+			VerificationStatus: sql.NullString{String: result.VerificationStatus, Valid: true},
+			DkimStatus:         sql.NullString{String: result.DKIMStatus, Valid: true},
+			VerificationToken:  sql.NullString{String: result.VerificationToken, Valid: result.VerificationToken != ""},
+			DkimTokens:         sql.NullString{String: string(dkimTokensJSON), Valid: true},
+			DnsRecords:         sql.NullString{String: dnsRecordsJSON, Valid: true},
+		})
+		if err != nil {
+			l.Errorf("Failed to save domain identity for %s: %v", domain, err)
+			return
+		}
+		l.Infof("Auto-created domain identity for %s", domain)
 	}
-
-	l.Infof("Auto-created domain identity for %s", domain)
 
 	// Set up bounce/complaint/delivery notifications via SNS -> webhook
 	if l.svcCtx.Config.App.BaseURL != "" {

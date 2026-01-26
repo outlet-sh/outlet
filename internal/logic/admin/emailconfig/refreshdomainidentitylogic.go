@@ -60,6 +60,63 @@ func (l *RefreshDomainIdentityLogic) RefreshDomainIdentity(req *types.RefreshDom
 		return nil, errorx.NewInternalError("Failed to check domain status with AWS SES: " + err.Error())
 	}
 
+	// If status is "not_started", the domain was never registered with SES - register it now
+	if status.VerificationStatus == "not_started" {
+		l.Infof("Domain %s not registered with SES, initiating verification...", identity.Domain)
+		result, verifyErr := email.VerifyDomainIdentity(l.ctx, region, accessKey, secretKey, identity.Domain)
+		if verifyErr != nil {
+			l.Errorf("Failed to verify domain identity: %v", verifyErr)
+			return nil, errorx.NewInternalError("Failed to initiate domain verification: " + verifyErr.Error())
+		}
+
+		// Update with new DNS records and pending status
+		dnsRecordsJSON, _ := email.DNSRecordsToJSON(result.DNSRecords)
+		updated, err := l.svcCtx.DB.UpdateDomainIdentityFull(l.ctx, db.UpdateDomainIdentityFullParams{
+			ID:                 identity.ID,
+			VerificationStatus: sql.NullString{String: result.VerificationStatus, Valid: true},
+			DkimStatus:         sql.NullString{String: result.DKIMStatus, Valid: true},
+			VerificationToken:  sql.NullString{String: result.VerificationToken, Valid: result.VerificationToken != ""},
+			DnsRecords:         sql.NullString{String: dnsRecordsJSON, Valid: true},
+		})
+		if err != nil {
+			l.Errorf("Failed to update domain identity: %v", err)
+			return nil, errorx.NewInternalError("Failed to save domain verification data")
+		}
+
+		// Parse DNS records for response
+		var dnsRecords []types.DNSRecord
+		for _, r := range result.DNSRecords {
+			dnsRecords = append(dnsRecords, types.DNSRecord{
+				Type:     r.Type,
+				Name:     r.Name,
+				Value:    r.Value,
+				Priority: r.Priority,
+				Purpose:  r.Purpose,
+			})
+		}
+
+		// Set up bounce notifications
+		if l.svcCtx.Config.App.BaseURL != "" {
+			webhookURL := l.svcCtx.Config.App.BaseURL + "/webhooks/ses/" + req.OrgId
+			if notifErr := email.SetupBounceNotifications(l.ctx, region, accessKey, secretKey, identity.Domain, webhookURL); notifErr != nil {
+				l.Errorf("Failed to set up bounce notifications: %v", notifErr)
+				// Don't fail the request - notifications can be set up later
+			}
+		}
+
+		return &types.DomainIdentityInfo{
+			Id:                 updated.ID,
+			OrgId:              updated.OrgID,
+			Domain:             updated.Domain,
+			VerificationStatus: updated.VerificationStatus.String,
+			DKIMStatus:         updated.DkimStatus.String,
+			MailFromStatus:     updated.MailFromStatus.String,
+			DNSRecords:         dnsRecords,
+			LastCheckedAt:      updated.LastCheckedAt.String,
+			CreatedAt:          updated.CreatedAt.String,
+		}, nil
+	}
+
 	// Update the status in the database
 	updated, err := l.svcCtx.DB.UpdateDomainIdentityStatus(l.ctx, db.UpdateDomainIdentityStatusParams{
 		ID:                 identity.ID,

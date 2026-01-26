@@ -10,6 +10,7 @@ import (
 
 	"github.com/outlet-sh/outlet/internal/db"
 	"github.com/outlet-sh/outlet/internal/mcp/mcpctx"
+	"github.com/outlet-sh/outlet/internal/services/email"
 
 	"github.com/google/uuid"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -729,16 +730,130 @@ func handleDomainIdentityRefresh(ctx context.Context, toolCtx *mcpctx.ToolContex
 		return nil, nil, mcpctx.NewNotFoundError(fmt.Sprintf("domain %s not found", input.ID))
 	}
 
-	// Note: In a real implementation, this would call AWS SES to check verification status
-	// For now, we just return the current status
-	return nil, DomainIdentityRefreshOutput{
+	// Get AWS credentials
+	region, accessKey, secretKey, err := getAWSCredentialsForMCP(ctx, toolCtx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("AWS not configured: %w", err)
+	}
+
+	// Check for org-specific AWS credentials
+	emailConfig, err := email.GetOrgEmailConfig(ctx, toolCtx.DB(), toolCtx.BrandID())
+	if err == nil && emailConfig.HasOwnAWSCredentials() {
+		region = emailConfig.AWSRegion
+		accessKey = emailConfig.AWSAccessKey
+		secretKey = emailConfig.AWSSecretKey
+	}
+
+	// Get the current status from AWS SES
+	status, err := email.GetDomainIdentityStatus(ctx, region, accessKey, secretKey, domain.Domain)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to check domain status with AWS SES: %w", err)
+	}
+
+	message := "Domain verification status refreshed from AWS SES."
+
+	// If status is "not_started", the domain was never registered with SES - register it now
+	if status.VerificationStatus == "not_started" {
+		result, verifyErr := email.VerifyDomainIdentity(ctx, region, accessKey, secretKey, domain.Domain)
+		if verifyErr != nil {
+			return nil, nil, fmt.Errorf("failed to initiate domain verification: %w", verifyErr)
+		}
+
+		// Update with new DNS records and pending status
+		dnsRecordsJSON, _ := email.DNSRecordsToJSON(result.DNSRecords)
+		updated, updateErr := toolCtx.DB().UpdateDomainIdentityFull(ctx, db.UpdateDomainIdentityFullParams{
+			ID:                 domain.ID,
+			VerificationStatus: sql.NullString{String: result.VerificationStatus, Valid: true},
+			DkimStatus:         sql.NullString{String: result.DKIMStatus, Valid: true},
+			VerificationToken:  sql.NullString{String: result.VerificationToken, Valid: result.VerificationToken != ""},
+			DnsRecords:         sql.NullString{String: dnsRecordsJSON, Valid: true},
+		})
+		if updateErr != nil {
+			return nil, nil, fmt.Errorf("failed to save domain verification data: %w", updateErr)
+		}
+
+		// Set up bounce notifications
+		svc := toolCtx.Svc()
+		if svc.Config.App.BaseURL != "" {
+			webhookURL := svc.Config.App.BaseURL + "/webhooks/ses/" + toolCtx.BrandID()
+			_ = email.SetupBounceNotifications(ctx, region, accessKey, secretKey, domain.Domain, webhookURL)
+		}
+
+		return nil, DomainIdentityRefreshOutput{
+			ID:                 updated.ID,
+			Domain:             updated.Domain,
+			VerificationStatus: updated.VerificationStatus.String,
+			DkimStatus:         updated.DkimStatus.String,
+			Refreshed:          true,
+			Message:            "Domain verification initiated. Add the DNS records shown in domain.get and check back later.",
+		}, nil
+	}
+
+	// Update the status in the database
+	updated, err := toolCtx.DB().UpdateDomainIdentityStatus(ctx, db.UpdateDomainIdentityStatusParams{
 		ID:                 domain.ID,
-		Domain:             domain.Domain,
-		VerificationStatus: domain.VerificationStatus.String,
-		DkimStatus:         domain.DkimStatus.String,
+		VerificationStatus: sql.NullString{String: status.VerificationStatus, Valid: true},
+		DkimStatus:         sql.NullString{String: status.DKIMStatus, Valid: true},
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to save domain status: %w", err)
+	}
+
+	return nil, DomainIdentityRefreshOutput{
+		ID:                 updated.ID,
+		Domain:             updated.Domain,
+		VerificationStatus: updated.VerificationStatus.String,
+		DkimStatus:         updated.DkimStatus.String,
 		Refreshed:          true,
-		Message:            "Domain verification status checked. Configure your DNS records and check again.",
+		Message:            message,
 	}, nil
+}
+
+// getAWSCredentialsForMCP retrieves AWS credentials from platform settings for MCP tools
+func getAWSCredentialsForMCP(ctx context.Context, toolCtx *mcpctx.ToolContext) (region, accessKey, secretKey string, err error) {
+	svc := toolCtx.Svc()
+
+	awsSettings, err := toolCtx.DB().GetPlatformSettingsByCategory(ctx, "aws")
+	if err != nil {
+		return "", "", "", err
+	}
+
+	region = "us-east-1" // default
+
+	for _, setting := range awsSettings {
+		switch setting.Key {
+		case "aws_access_key":
+			if setting.ValueEncrypted.Valid && setting.ValueEncrypted.String != "" {
+				if svc.CryptoService != nil {
+					decrypted, decErr := svc.CryptoService.DecryptString([]byte(setting.ValueEncrypted.String))
+					if decErr != nil {
+						return "", "", "", decErr
+					}
+					accessKey = decrypted
+				}
+			}
+		case "aws_secret_key":
+			if setting.ValueEncrypted.Valid && setting.ValueEncrypted.String != "" {
+				if svc.CryptoService != nil {
+					decrypted, decErr := svc.CryptoService.DecryptString([]byte(setting.ValueEncrypted.String))
+					if decErr != nil {
+						return "", "", "", decErr
+					}
+					secretKey = decrypted
+				}
+			}
+		case "aws_region":
+			if setting.ValueText.Valid && setting.ValueText.String != "" {
+				region = setting.ValueText.String
+			}
+		}
+	}
+
+	if accessKey == "" || secretKey == "" {
+		return "", "", "", fmt.Errorf("AWS credentials not configured")
+	}
+
+	return region, accessKey, secretKey, nil
 }
 
 func handleDomainIdentityDelete(ctx context.Context, toolCtx *mcpctx.ToolContext, input BrandInput) (*mcp.CallToolResult, any, error) {

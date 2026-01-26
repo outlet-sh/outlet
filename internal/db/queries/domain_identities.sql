@@ -27,6 +27,17 @@ SET verification_status = ?,
 WHERE id = ?
 RETURNING *;
 
+-- name: UpdateDomainIdentityFull :one
+UPDATE domain_identities
+SET verification_status = ?,
+    dkim_status = ?,
+    verification_token = ?,
+    dns_records = ?,
+    last_checked_at = datetime('now'),
+    updated_at = datetime('now')
+WHERE id = ?
+RETURNING *;
+
 -- name: UpdateDomainIdentityMailFrom :one
 UPDATE domain_identities
 SET mail_from_domain = ?,

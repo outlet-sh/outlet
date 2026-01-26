@@ -262,6 +262,53 @@ func (q *Queries) UpdateDomainIdentityDNSRecords(ctx context.Context, arg Update
 	return i, err
 }
 
+const updateDomainIdentityFull = `-- name: UpdateDomainIdentityFull :one
+UPDATE domain_identities
+SET verification_status = ?,
+    dkim_status = ?,
+    verification_token = ?,
+    dns_records = ?,
+    last_checked_at = datetime('now'),
+    updated_at = datetime('now')
+WHERE id = ?
+RETURNING id, org_id, domain, verification_status, dkim_status, verification_token, dkim_tokens, dns_records, mail_from_domain, mail_from_status, last_checked_at, created_at, updated_at
+`
+
+type UpdateDomainIdentityFullParams struct {
+	VerificationStatus sql.NullString `json:"verification_status"`
+	DkimStatus         sql.NullString `json:"dkim_status"`
+	VerificationToken  sql.NullString `json:"verification_token"`
+	DnsRecords         sql.NullString `json:"dns_records"`
+	ID                 string         `json:"id"`
+}
+
+func (q *Queries) UpdateDomainIdentityFull(ctx context.Context, arg UpdateDomainIdentityFullParams) (DomainIdentity, error) {
+	row := q.db.QueryRowContext(ctx, updateDomainIdentityFull,
+		arg.VerificationStatus,
+		arg.DkimStatus,
+		arg.VerificationToken,
+		arg.DnsRecords,
+		arg.ID,
+	)
+	var i DomainIdentity
+	err := row.Scan(
+		&i.ID,
+		&i.OrgID,
+		&i.Domain,
+		&i.VerificationStatus,
+		&i.DkimStatus,
+		&i.VerificationToken,
+		&i.DkimTokens,
+		&i.DnsRecords,
+		&i.MailFromDomain,
+		&i.MailFromStatus,
+		&i.LastCheckedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const updateDomainIdentityMailFrom = `-- name: UpdateDomainIdentityMailFrom :one
 UPDATE domain_identities
 SET mail_from_domain = ?,

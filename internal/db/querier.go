@@ -444,6 +444,7 @@ type Querier interface {
 	UpdateContactStatus(ctx context.Context, arg UpdateContactStatusParams) error
 	UpdateCustomField(ctx context.Context, arg UpdateCustomFieldParams) (CustomField, error)
 	UpdateDomainIdentityDNSRecords(ctx context.Context, arg UpdateDomainIdentityDNSRecordsParams) (DomainIdentity, error)
+	UpdateDomainIdentityFull(ctx context.Context, arg UpdateDomainIdentityFullParams) (DomainIdentity, error)
 	UpdateDomainIdentityMailFrom(ctx context.Context, arg UpdateDomainIdentityMailFromParams) (DomainIdentity, error)
 	UpdateDomainIdentityStatus(ctx context.Context, arg UpdateDomainIdentityStatusParams) (DomainIdentity, error)
 	UpdateEmailDesign(ctx context.Context, arg UpdateEmailDesignParams) (EmailDesign, error)

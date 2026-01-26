@@ -25,7 +25,7 @@
 	let org = $state<OrgInfo | null>(null);
 	let error = $state('');
 	let domainIdentities = $state<DomainIdentityInfo[]>([]);
-	let refreshingDomain = $state(false);
+	let refreshingDomainId = $state<string | null>(null);
 	let creatingDomain = $state(false);
 	let copiedRecord = $state<string | null>(null);
 
@@ -149,7 +149,7 @@
 	async function handleRefreshDomainIdentity(identityId: string) {
 		if (!org) return;
 
-		refreshingDomain = true;
+		refreshingDomainId = identityId;
 		error = '';
 
 		try {
@@ -159,7 +159,7 @@
 			console.error('Failed to refresh domain identity:', err);
 			error = err.message || 'Failed to refresh domain identity';
 		} finally {
-			refreshingDomain = false;
+			refreshingDomainId = null;
 		}
 	}
 
@@ -183,6 +183,9 @@
 			case 'failed':
 			case 'temporary_failure':
 				return { variant: 'error' as const, label: 'Failed' };
+			case 'not_started':
+			case 'NotStarted':
+				return { variant: 'default' as const, label: 'Not Started' };
 			default:
 				return { variant: 'default' as const, label: status || 'Unknown' };
 		}
@@ -385,10 +388,15 @@
 								variant="ghost"
 								size="sm"
 								onclick={() => handleRefreshDomainIdentity(identity.id)}
-								disabled={refreshingDomain}
+								disabled={refreshingDomainId !== null}
 							>
-								<RefreshCw class="h-4 w-4 {refreshingDomain ? 'animate-spin' : ''}" />
-								<span>Refresh</span>
+								{#if refreshingDomainId === identity.id}
+									<RefreshCw class="h-4 w-4 animate-spin" />
+									<span>Checking...</span>
+								{:else}
+									<RefreshCw class="h-4 w-4" />
+									<span>Refresh</span>
+								{/if}
 							</Button>
 						</div>
 
