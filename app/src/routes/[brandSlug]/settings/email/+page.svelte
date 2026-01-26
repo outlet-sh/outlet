@@ -8,13 +8,14 @@
 		listDomainIdentities,
 		createDomainIdentity,
 		refreshDomainIdentity,
+		deleteDomainIdentity,
 		type OrgInfo,
 		type DomainIdentityInfo,
 		type DNSRecord
 	} from '$lib/api';
 	import { getWebSocketClient } from '$lib/websocket/client';
-	import { Button, Card, Input, Alert, LoadingSpinner, SaveButton, Badge } from '$lib/components/ui';
-	import { Mail, Check, AlertCircle, RefreshCw, Copy, Shield, ExternalLink } from 'lucide-svelte';
+	import { Button, Card, Input, Alert, LoadingSpinner, SaveButton, Badge, AlertDialog } from '$lib/components/ui';
+	import { Mail, Check, AlertCircle, RefreshCw, Copy, Shield, ExternalLink, Trash2 } from 'lucide-svelte';
 
 	// Get brand slug from route params
 	let brandSlug = $derived($page.params.brandSlug);
@@ -28,6 +29,9 @@
 	let refreshingDomainId = $state<string | null>(null);
 	let creatingDomain = $state(false);
 	let copiedRecord = $state<string | null>(null);
+	let deletingDomainId = $state<string | null>(null);
+	let showDeleteConfirm = $state(false);
+	let domainToDelete = $state<DomainIdentityInfo | null>(null);
 
 	// Form state
 	let fromName = $state('');
@@ -160,6 +164,30 @@
 			error = err.message || 'Failed to refresh domain identity';
 		} finally {
 			refreshingDomainId = null;
+		}
+	}
+
+	function confirmDeleteDomain(identity: DomainIdentityInfo) {
+		domainToDelete = identity;
+		showDeleteConfirm = true;
+	}
+
+	async function handleDeleteDomainIdentity() {
+		if (!org || !domainToDelete) return;
+
+		deletingDomainId = domainToDelete.id;
+		error = '';
+
+		try {
+			await deleteDomainIdentity({}, org.id, domainToDelete.id);
+			domainIdentities = domainIdentities.filter((i) => i.id !== domainToDelete!.id);
+			domainToDelete = null;
+			showDeleteConfirm = false;
+		} catch (err: any) {
+			console.error('Failed to delete domain identity:', err);
+			error = err.message || 'Failed to delete domain identity';
+		} finally {
+			deletingDomainId = null;
 		}
 	}
 
@@ -384,20 +412,34 @@
 									</div>
 								</div>
 							</div>
-							<Button
-								variant="ghost"
-								size="sm"
-								onclick={() => handleRefreshDomainIdentity(identity.id)}
-								disabled={refreshingDomainId !== null}
-							>
-								{#if refreshingDomainId === identity.id}
-									<RefreshCw class="h-4 w-4 animate-spin" />
-									<span>Checking...</span>
-								{:else}
-									<RefreshCw class="h-4 w-4" />
-									<span>Refresh</span>
-								{/if}
-							</Button>
+							<div class="flex items-center gap-2">
+								<Button
+									variant="ghost"
+									size="sm"
+									onclick={() => handleRefreshDomainIdentity(identity.id)}
+									disabled={refreshingDomainId !== null || deletingDomainId !== null}
+								>
+									{#if refreshingDomainId === identity.id}
+										<RefreshCw class="h-4 w-4 animate-spin" />
+										<span>Checking...</span>
+									{:else}
+										<RefreshCw class="h-4 w-4" />
+										<span>Refresh</span>
+									{/if}
+								</Button>
+								<Button
+									variant="ghost"
+									size="sm"
+									onclick={() => confirmDeleteDomain(identity)}
+									disabled={refreshingDomainId !== null || deletingDomainId !== null}
+								>
+									{#if deletingDomainId === identity.id}
+										<LoadingSpinner size="normal" />
+									{:else}
+										<Trash2 class="h-4 w-4 text-error" />
+									{/if}
+								</Button>
+							</div>
 						</div>
 
 						<!-- DNS Records -->
@@ -485,3 +527,15 @@
 		</Card>
 	</div>
 {/if}
+
+<!-- Delete Confirmation Dialog -->
+<AlertDialog
+	open={showDeleteConfirm}
+	onclose={() => { showDeleteConfirm = false; domainToDelete = null; }}
+	title="Delete Domain Identity"
+	description="Are you sure you want to delete the domain identity for {domainToDelete?.domain}? You will need to set up DNS records again if you want to verify this domain later."
+	confirmLabel="Delete"
+	confirmVariant="error"
+	onconfirm={handleDeleteDomainIdentity}
+	loading={deletingDomainId !== null}
+/>
