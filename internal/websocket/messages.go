@@ -7,6 +7,7 @@ const (
 	TypePing                     = "ping"
 	TypePong                     = "pong"
 	TypeDomainIdentityUpdate     = "domain_identity_update"
+	TypeDomainIdentityCreated    = "domain_identity_created"
 	TypeDomainIdentityVerified   = "domain_identity_verified"
 	TypeSubscribe                = "subscribe"
 	TypeUnsubscribe              = "unsubscribe"

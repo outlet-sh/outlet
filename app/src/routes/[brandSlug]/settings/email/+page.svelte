@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { page } from '$app/stores';
 	import { onDestroy } from 'svelte';
 	import {
-		getOrganization,
+		getOrganizationBySlug,
 		updateOrgEmailSettings,
 		listDomainIdentities,
 		createDomainIdentity,
@@ -14,6 +15,9 @@
 	import { getWebSocketClient } from '$lib/websocket/client';
 	import { Button, Card, Input, Alert, LoadingSpinner, SaveButton, Badge } from '$lib/components/ui';
 	import { Mail, Check, AlertCircle, RefreshCw, Copy, Shield, ExternalLink } from 'lucide-svelte';
+
+	// Get brand slug from route params
+	let brandSlug = $derived($page.params.brandSlug);
 
 	let loading = $state(true);
 	let saving = $state(false);
@@ -35,7 +39,6 @@
 
 	$effect(() => {
 		loadData();
-		setupWebSocket();
 
 		return () => {
 			// Cleanup WebSocket subscription on destroy
@@ -45,11 +48,8 @@
 		};
 	});
 
-	function setupWebSocket() {
+	function setupWebSocket(orgId: string) {
 		if (!browser) return;
-
-		const orgId = localStorage.getItem('currentOrgId');
-		if (!orgId) return;
 
 		const ws = getWebSocketClient();
 
@@ -62,7 +62,7 @@
 		ws.send('subscribe', { org_id: orgId });
 
 		// Listen for domain identity updates
-		wsUnsubscribe = ws.on('domain_identity_update', (data: any) => {
+		const unsubUpdate = ws.on('domain_identity_update', (data: any) => {
 			console.log('[WebSocket] Domain identity update received:', data);
 
 			// Update the domain identity in our list
@@ -79,6 +79,18 @@
 				return identity;
 			});
 		});
+
+		// Listen for domain identity created events (auto-created when saving from_email)
+		const unsubCreated = ws.on('domain_identity_created', (data: any) => {
+			console.log('[WebSocket] Domain identity created:', data);
+			// Reload the domain identities list
+			loadData();
+		});
+
+		wsUnsubscribe = () => {
+			unsubUpdate();
+			unsubCreated();
+		};
 	}
 
 	async function loadData() {
@@ -86,14 +98,16 @@
 		error = '';
 
 		try {
-			const orgId = browser ? localStorage.getItem('currentOrgId') : null;
-			if (!orgId) {
-				error = 'No organization selected';
+			if (!brandSlug) {
+				error = 'No brand selected';
 				loading = false;
 				return;
 			}
 
-			org = await getOrganization({}, orgId);
+			org = await getOrganizationBySlug({}, brandSlug);
+
+			// Setup WebSocket with org ID once we have it
+			setupWebSocket(org.id);
 			// Populate form with existing values
 			fromName = org.from_name || '';
 			fromEmail = org.from_email || '';

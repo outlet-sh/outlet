@@ -114,6 +114,15 @@ func (h *Hub) BroadcastDomainIdentityUpdate(id, orgID, domain, verificationStatu
 	h.BroadcastToOrg(orgID, msg)
 }
 
+// BroadcastDomainIdentityCreated sends a domain identity created notification to relevant clients
+func (h *Hub) BroadcastDomainIdentityCreated(orgID, domain string) {
+	msg := NewMessage(TypeDomainIdentityCreated, map[string]string{
+		"org_id": orgID,
+		"domain": domain,
+	})
+	h.BroadcastToOrg(orgID, msg)
+}
+
 // ClientCount returns the number of connected clients
 func (h *Hub) ClientCount() int {
 	h.mu.RLock()
