@@ -159,6 +159,16 @@ func SetupBounceNotifications(ctx context.Context, region, accessKey, secretKey,
 		return fmt.Errorf("failed to set complaint notification topic: %w", err)
 	}
 
+	// Configure SES to send delivery notifications to the SNS topic
+	_, err = sesClient.SetIdentityNotificationTopic(ctx, &ses.SetIdentityNotificationTopicInput{
+		Identity:         aws.String(domain),
+		NotificationType: types.NotificationTypeDelivery,
+		SnsTopic:         aws.String(topicArn),
+	})
+	if err != nil {
+		// Non-fatal - delivery notifications are nice to have but not critical
+	}
+
 	// Disable email notifications for bounces/complaints (we're using SNS)
 	_, err = sesClient.SetIdentityFeedbackForwardingEnabled(ctx, &ses.SetIdentityFeedbackForwardingEnabledInput{
 		Identity:          aws.String(domain),

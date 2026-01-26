@@ -664,10 +664,10 @@ func registerEmailTrackingRoutes(server *rest.Server, ctx *svc.ServiceContext) {
 
 // registerWebhookRoutes adds webhook handlers that need raw body access
 func registerWebhookRoutes(server *rest.Server, ctx *svc.ServiceContext) {
-	// SES webhook (for bounces/complaints)
+	// SES webhook (for bounces/complaints) - includes org ID in path
 	server.AddRoute(rest.Route{
 		Method:  http.MethodPost,
-		Path:    "/webhooks/ses",
+		Path:    "/webhooks/ses/:orgId",
 		Handler: webhook.SESHandler(ctx),
 	})
 }

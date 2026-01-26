@@ -141,6 +141,7 @@ const (
 
 	// Email events
 	TopicEmailSent       = "email.sent"       // Email sent
+	TopicEmailDelivered  = "email.delivered"  // Email delivered to recipient
 	TopicEmailBounced    = "email.bounced"    // Email bounced (hard/soft)
 	TopicEmailComplained = "email.complained" // Email marked as spam
 	TopicEmailOpened     = "email.opened"     // Email opened (tracking pixel)

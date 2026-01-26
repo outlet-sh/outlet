@@ -252,49 +252,43 @@
 						</div>
 					</div>
 
-					<div class="space-y-2">
+					<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
 						{#each sortedOrganizations as org}
 							{@const stats = orgStats[org.id]}
 							<button
 								onclick={() => selectOrg(org)}
-								class="w-full text-left bg-bg border border-border rounded-lg p-4 hover:border-primary/50 hover:bg-bg-secondary transition-all group"
+								class="text-left bg-bg border border-border rounded-lg p-4 hover:border-primary/50 hover:bg-bg-secondary transition-all group"
 							>
-								<div class="flex items-center justify-between">
-									<div class="flex items-center gap-3">
-										<div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-											<span class="text-primary font-semibold">{org.name[0].toUpperCase()}</span>
-										</div>
-										<div>
-											<span class="font-medium text-text group-hover:text-primary transition-colors">{org.name}</span>
-											{#if org.from_email}
-												<p class="text-xs text-text-muted mt-0.5">{org.from_email}</p>
-											{:else}
-												<p class="text-xs text-warning mt-0.5">Email not configured</p>
-											{/if}
-										</div>
+								<div class="flex items-center gap-3 mb-3">
+									<div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+										<span class="text-primary font-semibold">{org.name[0].toUpperCase()}</span>
 									</div>
-									<div class="flex items-center gap-4">
-										<!-- Stats -->
-										{#if stats}
-											<div class="hidden sm:flex items-center gap-3 text-xs text-text-muted">
-												<span class="flex items-center gap-1" title="Contacts">
-													<Users class="w-3.5 h-3.5" />
-													{formatNumber(stats.total_contacts)}
-												</span>
-												<span class="flex items-center gap-1" title="Emails sent (30d)">
-													<Mail class="w-3.5 h-3.5" />
-													{formatNumber(stats.emails_sent_30d)}
-												</span>
-												<span class="flex items-center gap-1" title="Lists">
-													<List class="w-3.5 h-3.5" />
-													{stats.list_count}
-												</span>
-											</div>
+									<div class="min-w-0 flex-1">
+										<span class="font-medium text-text group-hover:text-primary transition-colors block truncate">{org.name}</span>
+										{#if org.from_email}
+											<p class="text-xs text-text-muted mt-0.5 truncate">{org.from_email}</p>
+										{:else}
+											<p class="text-xs text-warning mt-0.5">Email not configured</p>
 										{/if}
-										<span class="text-xs text-text-muted hidden lg:block">{formatDate(org.created_at)}</span>
-										<ChevronRight class="w-5 h-5 text-text-muted group-hover:text-primary transition-colors" />
 									</div>
+									<ChevronRight class="w-5 h-5 text-text-muted group-hover:text-primary transition-colors flex-shrink-0" />
 								</div>
+								{#if stats}
+									<div class="flex items-center gap-4 text-xs text-text-muted border-t border-border pt-3">
+										<span class="flex items-center gap-1" title="Contacts">
+											<Users class="w-3.5 h-3.5" />
+											{formatNumber(stats.total_contacts)}
+										</span>
+										<span class="flex items-center gap-1" title="Emails sent (30d)">
+											<Mail class="w-3.5 h-3.5" />
+											{formatNumber(stats.emails_sent_30d)}
+										</span>
+										<span class="flex items-center gap-1" title="Lists">
+											<List class="w-3.5 h-3.5" />
+											{stats.list_count}
+										</span>
+									</div>
+								{/if}
 							</button>
 						{/each}
 					</div>

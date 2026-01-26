@@ -58,7 +58,7 @@
 				listOrganizations()
 			]);
 			org = orgResult;
-			allOrgs = orgsResult.organizations || [];
+			allOrgs = (orgsResult.organizations || []).sort((a, b) => a.name.localeCompare(b.name));
 			localStorage.setItem('currentOrgId', org.id);
 			localStorage.setItem('currentOrgName', org.name);
 			localStorage.setItem('currentOrgSlug', org.slug);
