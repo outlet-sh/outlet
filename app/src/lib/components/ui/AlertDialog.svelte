@@ -14,8 +14,9 @@
 		actionLabel?: string;
 		cancelLabel?: string;
 		actionType?: 'primary' | 'danger';
+		loading?: boolean;
 		children?: any;
-		onAction?: () => void;
+		onAction?: () => void | Promise<void>;
 		onCancel?: () => void;
 		onclose?: () => void; // alias for onCancel
 		onOpenChange?: (open: boolean) => void;
@@ -28,6 +29,7 @@
 		actionLabel = 'Continue',
 		cancelLabel = 'Cancel',
 		actionType = 'primary',
+		loading = false,
 		children,
 		onAction,
 		onCancel,
@@ -47,8 +49,8 @@
 		}
 	});
 
-	function handleAction() {
-		onAction?.();
+	async function handleAction() {
+		await onAction?.();
 		close();
 	}
 
@@ -95,10 +97,10 @@
 		{/if}
 
 		<div class="modal-action">
-			<Button type="secondary" onclick={handleCancel}>
+			<Button type="secondary" onclick={handleCancel} disabled={loading}>
 				{cancelLabel}
 			</Button>
-			<Button type={actionType} onclick={handleAction}>
+			<Button type={actionType} onclick={handleAction} disabled={loading} {loading}>
 				{actionLabel}
 			</Button>
 		</div>

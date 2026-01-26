@@ -85,11 +85,13 @@ class WebSocketClient {
 	 */
 	connect(userId?: string): void {
 		// Get user ID from auth store if not provided
+		// Always update from authStore on each connect attempt to pick up login changes
 		if (userId) {
 			this.userId = userId;
 		} else if (authStore.user?.id) {
 			this.userId = authStore.user.id;
 		}
+		// If still anonymous, leave it - auth may not be ready yet
 
 		if (this.ws?.readyState === WebSocket.OPEN) {
 			return;

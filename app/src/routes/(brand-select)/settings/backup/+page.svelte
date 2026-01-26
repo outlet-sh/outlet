@@ -5,6 +5,7 @@
 	import { Button, Card, Input, Alert, LoadingSpinner, Badge, SaveButton, Toggle, AlertDialog } from '$lib/components/ui';
 	import { Plus, Download, Trash2, RefreshCw, HardDrive, Cloud, Copy, ExternalLink, CheckCircle, Pencil } from 'lucide-svelte';
 	import { getWebSocketClient } from '$lib/websocket/client';
+	import { authStore } from '$lib/stores/auth.svelte';
 	import { onDestroy, onMount } from 'svelte';
 
 	let loading = $state(true);
@@ -72,7 +73,7 @@
 	onMount(() => {
 		// Connect to WebSocket and listen for backup updates
 		const wsClient = getWebSocketClient();
-		wsClient.connect();
+		wsClient.connect(authStore.user?.id);
 
 		wsCleanup = wsClient.on('backup_update', (data: { id: string; status: string; filename: string; file_size: number; error?: string }) => {
 			console.log('[Backup] Received backup update:', data);

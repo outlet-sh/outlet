@@ -14,6 +14,7 @@
 		type DNSRecord
 	} from '$lib/api';
 	import { getWebSocketClient } from '$lib/websocket/client';
+	import { authStore } from '$lib/stores/auth.svelte';
 	import { Button, Card, Input, Alert, LoadingSpinner, SaveButton, Badge, AlertDialog, Modal } from '$lib/components/ui';
 	import { Mail, Check, AlertCircle, RefreshCw, Copy, Shield, ExternalLink, Trash2 } from 'lucide-svelte';
 
@@ -59,9 +60,9 @@
 
 		const ws = getWebSocketClient();
 
-		// Connect if not already connected
+		// Connect if not already connected, passing the user ID
 		if (!ws.isConnected()) {
-			ws.connect();
+			ws.connect(authStore.user?.id);
 		}
 
 		// Subscribe to org updates
@@ -186,19 +187,21 @@
 	async function handleDeleteDomainIdentity() {
 		if (!org || !domainToDelete) return;
 
-		deletingDomainId = domainToDelete.id;
+		const idToDelete = domainToDelete.id;
+		deletingDomainId = idToDelete;
 		error = '';
 
 		try {
-			await deleteDomainIdentity({}, org.id, domainToDelete.id);
-			domainIdentities = domainIdentities.filter((i) => i.id !== domainToDelete!.id);
-			domainToDelete = null;
-			showDeleteConfirm = false;
+			await deleteDomainIdentity({}, org.id, idToDelete);
+			domainIdentities = domainIdentities.filter((i) => i.id !== idToDelete);
+			// Dialog will auto-close after this async function completes
 		} catch (err: any) {
 			console.error('Failed to delete domain identity:', err);
 			error = err.message || 'Failed to delete domain identity';
+			throw err; // Re-throw so dialog knows action failed
 		} finally {
 			deletingDomainId = null;
+			domainToDelete = null;
 		}
 	}
 
@@ -599,8 +602,8 @@
 	onclose={() => { showDeleteConfirm = false; domainToDelete = null; }}
 	title="Delete Domain Identity"
 	description="Are you sure you want to delete the domain identity for {domainToDelete?.domain}? You will need to set up DNS records again if you want to verify this domain later."
-	confirmLabel="Delete"
-	confirmVariant="error"
-	onconfirm={handleDeleteDomainIdentity}
+	actionLabel="Delete"
+	actionType="danger"
+	onAction={handleDeleteDomainIdentity}
 	loading={deletingDomainId !== null}
 />
