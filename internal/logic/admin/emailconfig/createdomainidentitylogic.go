@@ -73,12 +73,21 @@ func (l *CreateDomainIdentityLogic) CreateDomainIdentity(req *types.CreateDomain
 		secretKey = emailConfig.AWSSecretKey
 	}
 
+	// Determine MAIL FROM subdomain (default to "mail" if not specified)
+	mailFromSubdomain := req.MailFromSubdomain
+	if mailFromSubdomain == "" {
+		mailFromSubdomain = "mail"
+	}
+
 	// Verify domain identity with AWS SES
-	result, err := email.VerifyDomainIdentity(l.ctx, region, accessKey, secretKey, domain)
+	result, err := email.VerifyDomainIdentity(l.ctx, region, accessKey, secretKey, domain, mailFromSubdomain)
 	if err != nil {
 		l.Errorf("Failed to verify domain identity: %v", err)
 		return nil, errorx.NewInternalError("Failed to verify domain identity with AWS SES: " + err.Error())
 	}
+
+	// Compute the full MAIL FROM domain
+	mailFromDomain := mailFromSubdomain + "." + domain
 
 	// Convert DNS records to JSON
 	dnsRecordsJSON, err := email.DNSRecordsToJSON(result.DNSRecords)
@@ -104,6 +113,7 @@ func (l *CreateDomainIdentityLogic) CreateDomainIdentity(req *types.CreateDomain
 		VerificationToken:  sql.NullString{String: result.VerificationToken, Valid: result.VerificationToken != ""},
 		DkimTokens:         sql.NullString{String: string(dkimTokensJSON), Valid: true},
 		DnsRecords:         sql.NullString{String: dnsRecordsJSON, Valid: true},
+		MailFromDomain:     sql.NullString{String: mailFromDomain, Valid: true},
 	})
 	if err != nil {
 		l.Errorf("Failed to create domain identity record: %v", err)
@@ -128,6 +138,7 @@ func (l *CreateDomainIdentityLogic) CreateDomainIdentity(req *types.CreateDomain
 		Domain:             identity.Domain,
 		VerificationStatus: identity.VerificationStatus.String,
 		DKIMStatus:         identity.DkimStatus.String,
+		MailFromDomain:     identity.MailFromDomain.String,
 		MailFromStatus:     "not_started",
 		DNSRecords:         dnsRecords,
 		CreatedAt:          identity.CreatedAt.String,

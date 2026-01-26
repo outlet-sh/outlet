@@ -56,6 +56,7 @@ func (l *ListDomainIdentitiesLogic) ListDomainIdentities(req *types.ListDomainId
 			Domain:             identity.Domain,
 			VerificationStatus: identity.VerificationStatus.String,
 			DKIMStatus:         identity.DkimStatus.String,
+			MailFromDomain:     identity.MailFromDomain.String,
 			MailFromStatus:     identity.MailFromStatus.String,
 			DNSRecords:         dnsRecords,
 			LastCheckedAt:      identity.LastCheckedAt.String,

@@ -292,6 +292,7 @@ export interface CreateCustomFieldRequestParams {
 
 export interface CreateDomainIdentityRequest {
 	domain: string // If empty, extracted from org's from_email
+	mail_from_subdomain?: string // Custom MAIL FROM subdomain (default: "mail")
 }
 export interface CreateDomainIdentityRequestParams {
 }
@@ -527,6 +528,7 @@ export interface DomainIdentityInfo {
 	domain: string
 	verification_status: string // pending, success, failed, temporary_failure, not_started
 	dkim_status: string
+	mail_from_domain?: string // The custom MAIL FROM subdomain (e.g., "mail.example.com")
 	mail_from_status: string
 	dns_records: Array<DNSRecord>
 	last_checked_at?: string

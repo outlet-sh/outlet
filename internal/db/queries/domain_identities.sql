@@ -1,8 +1,8 @@
 -- name: CreateDomainIdentity :one
 INSERT INTO domain_identities (
     id, org_id, domain, verification_status, dkim_status,
-    verification_token, dkim_tokens, dns_records
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    verification_token, dkim_tokens, dns_records, mail_from_domain
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: GetDomainIdentity :one

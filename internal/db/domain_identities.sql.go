@@ -13,8 +13,8 @@ import (
 const createDomainIdentity = `-- name: CreateDomainIdentity :one
 INSERT INTO domain_identities (
     id, org_id, domain, verification_status, dkim_status,
-    verification_token, dkim_tokens, dns_records
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    verification_token, dkim_tokens, dns_records, mail_from_domain
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING id, org_id, domain, verification_status, dkim_status, verification_token, dkim_tokens, dns_records, mail_from_domain, mail_from_status, last_checked_at, created_at, updated_at
 `
 
@@ -27,6 +27,7 @@ type CreateDomainIdentityParams struct {
 	VerificationToken  sql.NullString `json:"verification_token"`
 	DkimTokens         sql.NullString `json:"dkim_tokens"`
 	DnsRecords         sql.NullString `json:"dns_records"`
+	MailFromDomain     sql.NullString `json:"mail_from_domain"`
 }
 
 func (q *Queries) CreateDomainIdentity(ctx context.Context, arg CreateDomainIdentityParams) (DomainIdentity, error) {
@@ -39,6 +40,7 @@ func (q *Queries) CreateDomainIdentity(ctx context.Context, arg CreateDomainIden
 		arg.VerificationToken,
 		arg.DkimTokens,
 		arg.DnsRecords,
+		arg.MailFromDomain,
 	)
 	var i DomainIdentity
 	err := row.Scan(

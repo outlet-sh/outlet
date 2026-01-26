@@ -186,7 +186,9 @@ func SetupBounceNotifications(ctx context.Context, region, accessKey, secretKey,
 // 1. Domain verification (TXT record)
 // 2. DKIM signing (CNAME records)
 // 3. Custom MAIL FROM domain for SPF alignment (MX + TXT records)
-func VerifyDomainIdentity(ctx context.Context, region, accessKey, secretKey, domain string) (*DomainIdentityResult, error) {
+//
+// mailFromSubdomain is optional - defaults to "mail" if empty. Common alternatives: "bounce", "email", "ses"
+func VerifyDomainIdentity(ctx context.Context, region, accessKey, secretKey, domain string, mailFromSubdomain ...string) (*DomainIdentityResult, error) {
 	client, err := getSESClient(ctx, region, accessKey, secretKey)
 	if err != nil {
 		return nil, err
@@ -240,8 +242,11 @@ func VerifyDomainIdentity(ctx context.Context, region, accessKey, secretKey, dom
 	// Set up custom MAIL FROM domain for SPF alignment
 	// This ensures the envelope sender (Return-Path) uses your domain instead of amazonses.com
 	// Benefits: SPF alignment with your domain, better DMARC, cleaner bounce handling
-	mailFromSubdomain := "mail"
-	mailFromDomain := fmt.Sprintf("%s.%s", mailFromSubdomain, domain)
+	subdomain := "mail" // default
+	if len(mailFromSubdomain) > 0 && mailFromSubdomain[0] != "" {
+		subdomain = mailFromSubdomain[0]
+	}
+	mailFromDomain := fmt.Sprintf("%s.%s", subdomain, domain)
 
 	_, mailFromErr := client.SetIdentityMailFromDomain(ctx, &ses.SetIdentityMailFromDomainInput{
 		Identity:            aws.String(domain),

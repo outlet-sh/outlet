@@ -59,6 +59,7 @@ func (l *GetDomainIdentityLogic) GetDomainIdentity(req *types.GetDomainIdentityR
 		Domain:             identity.Domain,
 		VerificationStatus: identity.VerificationStatus.String,
 		DKIMStatus:         identity.DkimStatus.String,
+		MailFromDomain:     identity.MailFromDomain.String,
 		MailFromStatus:     identity.MailFromStatus.String,
 		DNSRecords:         dnsRecords,
 		LastCheckedAt:      identity.LastCheckedAt.String,

@@ -14,7 +14,7 @@
 		type DNSRecord
 	} from '$lib/api';
 	import { getWebSocketClient } from '$lib/websocket/client';
-	import { Button, Card, Input, Alert, LoadingSpinner, SaveButton, Badge, AlertDialog } from '$lib/components/ui';
+	import { Button, Card, Input, Alert, LoadingSpinner, SaveButton, Badge, AlertDialog, Modal } from '$lib/components/ui';
 	import { Mail, Check, AlertCircle, RefreshCw, Copy, Shield, ExternalLink, Trash2 } from 'lucide-svelte';
 
 	// Get brand slug from route params
@@ -32,6 +32,8 @@
 	let deletingDomainId = $state<string | null>(null);
 	let showDeleteConfirm = $state(false);
 	let domainToDelete = $state<DomainIdentityInfo | null>(null);
+	let showSetupDomainModal = $state(false);
+	let mailFromSubdomain = $state('mail');
 
 	// Form state
 	let fromName = $state('');
@@ -133,6 +135,11 @@
 		}
 	}
 
+	function openSetupDomainModal() {
+		mailFromSubdomain = 'mail'; // Reset to default
+		showSetupDomainModal = true;
+	}
+
 	async function handleCreateDomainIdentity() {
 		if (!org) return;
 
@@ -140,8 +147,12 @@
 		error = '';
 
 		try {
-			const identity = await createDomainIdentity({}, { domain: '' }, org.id);
+			const identity = await createDomainIdentity({}, {
+				domain: '',
+				mail_from_subdomain: mailFromSubdomain || 'mail'
+			}, org.id);
 			domainIdentities = [...domainIdentities, identity];
+			showSetupDomainModal = false;
 		} catch (err: any) {
 			console.error('Failed to create domain identity:', err);
 			error = err.message || 'Failed to create domain identity';
@@ -378,16 +389,10 @@
 					{#if fromEmail}
 						<Button
 							variant="primary"
-							onclick={handleCreateDomainIdentity}
-							disabled={creatingDomain}
+							onclick={openSetupDomainModal}
 						>
-							{#if creatingDomain}
-								<LoadingSpinner size="normal" />
-								<span>Setting up...</span>
-							{:else}
-								<Shield class="h-4 w-4" />
-								<span>Verify Domain</span>
-							{/if}
+							<Shield class="h-4 w-4" />
+							<span>Verify Domain</span>
 						</Button>
 					{/if}
 				</div>
@@ -527,6 +532,66 @@
 		</Card>
 	</div>
 {/if}
+
+<!-- Domain Setup Modal -->
+<Modal
+	open={showSetupDomainModal}
+	onclose={() => { showSetupDomainModal = false; }}
+	title="Domain Verification Setup"
+>
+	<div class="space-y-4">
+		<div class="p-4 bg-info/10 rounded-lg">
+			<h4 class="font-medium text-sm mb-2">What is MAIL FROM?</h4>
+			<p class="text-xs text-base-content/70">
+				The MAIL FROM domain (also called "envelope sender" or "Return-Path") is used for SPF authentication and bounce handling.
+				Setting a custom MAIL FROM domain ensures your emails pass SPF checks with your own domain instead of amazonses.com.
+			</p>
+		</div>
+
+		<div>
+			<label for="mail-from-subdomain" class="form-label">MAIL FROM Subdomain</label>
+			<div class="flex items-center gap-2">
+				<Input
+					id="mail-from-subdomain"
+					type="text"
+					bind:value={mailFromSubdomain}
+					placeholder="mail"
+					class="w-32"
+				/>
+				<span class="text-sm text-base-content/60">.{fromEmail?.split('@')[1] || 'yourdomain.com'}</span>
+			</div>
+			<p class="mt-1 text-xs text-text-muted">
+				Default is "mail". Use "bounce", "email", or "ses" if "mail" is already in use on your domain.
+			</p>
+		</div>
+
+		<div class="p-3 bg-warning/10 rounded-lg">
+			<p class="text-xs text-warning">
+				<strong>Note:</strong> Make sure the subdomain you choose isn't already used for other services (like your mail server).
+				You'll need to add DNS records for this subdomain.
+			</p>
+		</div>
+
+		<div class="flex justify-end gap-3 pt-2">
+			<Button variant="ghost" onclick={() => { showSetupDomainModal = false; }}>
+				Cancel
+			</Button>
+			<Button
+				variant="primary"
+				onclick={handleCreateDomainIdentity}
+				disabled={creatingDomain}
+			>
+				{#if creatingDomain}
+					<LoadingSpinner size="normal" />
+					<span>Setting up...</span>
+				{:else}
+					<Shield class="h-4 w-4" />
+					<span>Verify Domain</span>
+				{/if}
+			</Button>
+		</div>
+	</div>
+</Modal>
 
 <!-- Delete Confirmation Dialog -->
 <AlertDialog

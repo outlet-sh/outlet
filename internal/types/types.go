@@ -285,8 +285,9 @@ type CreateCustomFieldRequest struct {
 }
 
 type CreateDomainIdentityRequest struct {
-	OrgId  string `path:"org_id"`
-	Domain string `json:"domain"` // If empty, extracted from org's from_email
+	OrgId             string `path:"org_id"`
+	Domain            string `json:"domain"`                       // If empty, extracted from org's from_email
+	MailFromSubdomain string `json:"mail_from_subdomain,optional"` // Custom MAIL FROM subdomain (default: "mail")
 }
 
 type CreateEmailDesignRequest struct {
@@ -504,6 +505,7 @@ type DomainIdentityInfo struct {
 	Domain             string      `json:"domain"`
 	VerificationStatus string      `json:"verification_status"` // pending, success, failed, temporary_failure, not_started
 	DKIMStatus         string      `json:"dkim_status"`
+	MailFromDomain     string      `json:"mail_from_domain,optional"` // The custom MAIL FROM subdomain (e.g., "mail.example.com")
 	MailFromStatus     string      `json:"mail_from_status"`
 	DNSRecords         []DNSRecord `json:"dns_records"`
 	LastCheckedAt      string      `json:"last_checked_at,optional"`
