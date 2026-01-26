@@ -139,6 +139,17 @@ func (l *UpdateOrgEmailSettingsLogic) ensureDomainIdentity(orgID, fromEmail stri
 
 	l.Infof("Auto-created domain identity for %s", domain)
 
+	// Set up bounce/complaint notifications via SNS -> webhook
+	if l.svcCtx.Config.App.BaseURL != "" {
+		webhookURL := l.svcCtx.Config.App.BaseURL + "/webhooks/ses"
+		if err := email.SetupBounceNotifications(l.ctx, region, accessKey, secretKey, domain, webhookURL); err != nil {
+			l.Errorf("Failed to set up bounce notifications for %s: %v", domain, err)
+			// Don't fail - notifications can be set up later
+		} else {
+			l.Infof("Set up bounce/complaint notifications for %s", domain)
+		}
+	}
+
 	// Notify connected clients that a domain identity was created
 	if l.svcCtx.WebSocketHub != nil {
 		l.svcCtx.WebSocketHub.BroadcastDomainIdentityCreated(orgID, domain)

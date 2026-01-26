@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/ses"
 	"github.com/aws/aws-sdk-go-v2/service/ses/types"
+	"github.com/aws/aws-sdk-go-v2/service/sns"
 )
 
 // DNSRecord represents a DNS record that needs to be configured
@@ -65,7 +66,116 @@ func getSESClient(ctx context.Context, region, accessKey, secretKey string) (*se
 	return ses.NewFromConfig(cfg), nil
 }
 
+// getSNSClient creates an SNS client with the provided credentials
+func getSNSClient(ctx context.Context, region, accessKey, secretKey string) (*sns.Client, error) {
+	if region == "" {
+		region = "us-east-1"
+	}
+
+	var cfg aws.Config
+	var err error
+
+	if accessKey != "" && secretKey != "" {
+		cfg, err = config.LoadDefaultConfig(ctx,
+			config.WithRegion(region),
+			config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")),
+		)
+	} else {
+		cfg, err = config.LoadDefaultConfig(ctx, config.WithRegion(region))
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to load AWS config: %w", err)
+	}
+
+	return sns.NewFromConfig(cfg), nil
+}
+
+// SetupBounceNotifications configures SES to send bounce/complaint notifications to our webhook
+// This creates an SNS topic and subscribes our webhook endpoint, then configures SES to use it
+// If notifications are already configured, this is a no-op
+func SetupBounceNotifications(ctx context.Context, region, accessKey, secretKey, domain, webhookURL string) error {
+	sesClient, err := getSESClient(ctx, region, accessKey, secretKey)
+	if err != nil {
+		return err
+	}
+
+	// Check if bounce notifications are already configured
+	notifAttrs, err := sesClient.GetIdentityNotificationAttributes(ctx, &ses.GetIdentityNotificationAttributesInput{
+		Identities: []string{domain},
+	})
+	if err == nil {
+		if attrs, ok := notifAttrs.NotificationAttributes[domain]; ok {
+			// If bounce topic is already set, don't modify anything
+			if attrs.BounceTopic != nil && *attrs.BounceTopic != "" {
+				return nil
+			}
+		}
+	}
+
+	snsClient, err := getSNSClient(ctx, region, accessKey, secretKey)
+	if err != nil {
+		return err
+	}
+
+	// Create SNS topic for this domain (idempotent - returns existing topic if exists)
+	// Use a sanitized domain name for the topic name
+	topicName := fmt.Sprintf("outlet-ses-%s", strings.ReplaceAll(domain, ".", "-"))
+	createTopicResult, err := snsClient.CreateTopic(ctx, &sns.CreateTopicInput{
+		Name: aws.String(topicName),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create SNS topic: %w", err)
+	}
+	topicArn := aws.ToString(createTopicResult.TopicArn)
+
+	// Subscribe our webhook to the topic (idempotent)
+	_, err = snsClient.Subscribe(ctx, &sns.SubscribeInput{
+		TopicArn: aws.String(topicArn),
+		Protocol: aws.String("https"),
+		Endpoint: aws.String(webhookURL),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to subscribe webhook to SNS topic: %w", err)
+	}
+
+	// Configure SES to send bounce notifications to the SNS topic
+	_, err = sesClient.SetIdentityNotificationTopic(ctx, &ses.SetIdentityNotificationTopicInput{
+		Identity:         aws.String(domain),
+		NotificationType: types.NotificationTypeBounce,
+		SnsTopic:         aws.String(topicArn),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to set bounce notification topic: %w", err)
+	}
+
+	// Configure SES to send complaint notifications to the SNS topic
+	_, err = sesClient.SetIdentityNotificationTopic(ctx, &ses.SetIdentityNotificationTopicInput{
+		Identity:         aws.String(domain),
+		NotificationType: types.NotificationTypeComplaint,
+		SnsTopic:         aws.String(topicArn),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to set complaint notification topic: %w", err)
+	}
+
+	// Disable email notifications for bounces/complaints (we're using SNS)
+	_, err = sesClient.SetIdentityFeedbackForwardingEnabled(ctx, &ses.SetIdentityFeedbackForwardingEnabledInput{
+		Identity:          aws.String(domain),
+		ForwardingEnabled: false,
+	})
+	if err != nil {
+		// Non-fatal - email forwarding can still work alongside SNS
+	}
+
+	return nil
+}
+
 // VerifyDomainIdentity initiates domain verification with AWS SES and returns DNS records
+// This sets up:
+// 1. Domain verification (TXT record)
+// 2. DKIM signing (CNAME records)
+// 3. Custom MAIL FROM domain for SPF alignment (MX + TXT records)
 func VerifyDomainIdentity(ctx context.Context, region, accessKey, secretKey, domain string) (*DomainIdentityResult, error) {
 	client, err := getSESClient(ctx, region, accessKey, secretKey)
 	if err != nil {
@@ -116,6 +226,46 @@ func VerifyDomainIdentity(ctx context.Context, region, accessKey, secretKey, dom
 			})
 		}
 	}
+
+	// Set up custom MAIL FROM domain for SPF alignment
+	// This ensures the envelope sender (Return-Path) uses your domain instead of amazonses.com
+	// Benefits: SPF alignment with your domain, better DMARC, cleaner bounce handling
+	mailFromSubdomain := "mail"
+	mailFromDomain := fmt.Sprintf("%s.%s", mailFromSubdomain, domain)
+
+	_, mailFromErr := client.SetIdentityMailFromDomain(ctx, &ses.SetIdentityMailFromDomainInput{
+		Identity:            aws.String(domain),
+		MailFromDomain:      aws.String(mailFromDomain),
+		BehaviorOnMXFailure: types.BehaviorOnMXFailureUseDefaultValue,
+	})
+	if mailFromErr != nil {
+		// Log but don't fail - MAIL FROM can be set up later
+		// The domain will still work, just with amazonses.com as envelope sender
+	} else {
+		// Add DNS records for custom MAIL FROM
+		result.DNSRecords = append(result.DNSRecords, &DNSRecord{
+			Type:     "MX",
+			Name:     mailFromDomain,
+			Value:    fmt.Sprintf("feedback-smtp.%s.amazonses.com", region),
+			Priority: 10,
+			Purpose:  "mail_from",
+		})
+		result.DNSRecords = append(result.DNSRecords, &DNSRecord{
+			Type:    "TXT",
+			Name:    mailFromDomain,
+			Value:   "v=spf1 include:amazonses.com ~all",
+			Purpose: "mail_from",
+		})
+	}
+
+	// Add DMARC record for email authentication policy
+	// p=none allows monitoring without rejecting - recommended for initial setup
+	result.DNSRecords = append(result.DNSRecords, &DNSRecord{
+		Type:    "TXT",
+		Name:    fmt.Sprintf("_dmarc.%s", domain),
+		Value:   "v=DMARC1; p=none;",
+		Purpose: "dmarc",
+	})
 
 	return result, nil
 }

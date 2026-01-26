@@ -115,7 +115,7 @@
 
 			// Load domain identities
 			try {
-				const identitiesResponse = await listDomainIdentities({}, orgId);
+				const identitiesResponse = await listDomainIdentities({}, org.id);
 				domainIdentities = identitiesResponse.identities || [];
 			} catch (err) {
 				console.error('Failed to load domain identities:', err);
