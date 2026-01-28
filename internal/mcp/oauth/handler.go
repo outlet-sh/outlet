@@ -318,7 +318,7 @@ func (h *Handler) HandleAuthorizeSubmit(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Redirect back with code
+	// Build redirect URL with code
 	redirectURL, _ := url.Parse(req.RedirectURI)
 	q := redirectURL.Query()
 	q.Set("code", code)
@@ -327,7 +327,8 @@ func (h *Handler) HandleAuthorizeSubmit(w http.ResponseWriter, r *http.Request) 
 	}
 	redirectURL.RawQuery = q.Encode()
 
-	http.Redirect(w, r, redirectURL.String(), http.StatusFound)
+	// Show styled success page that auto-redirects
+	h.renderSuccessPage(w, redirectURL.String(), client.Name)
 }
 
 // handleToken handles token exchange and refresh
@@ -521,6 +522,52 @@ func (h *Handler) handleRefreshTokenGrant(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	json.NewEncoder(w).Encode(resp)
+}
+
+// renderSuccessPage renders a styled success page that auto-redirects
+func (h *Handler) renderSuccessPage(w http.ResponseWriter, redirectURL, clientName string) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Authentication Successful - Outlet</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f3f4f6; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .container { background: white; padding: 32px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%%; max-width: 400px; text-align: center; }
+        .success-icon { width: 64px; height: 64px; background: #10b981; border-radius: 50%%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; }
+        .success-icon svg { width: 32px; height: 32px; color: white; }
+        h1 { font-size: 24px; margin-bottom: 8px; color: #111827; }
+        .subtitle { color: #6b7280; margin-bottom: 24px; line-height: 1.5; }
+        .client-name { font-weight: 600; color: #111827; }
+        .redirect-note { font-size: 14px; color: #9ca3af; margin-top: 16px; }
+        .spinner { width: 20px; height: 20px; border: 2px solid #e5e7eb; border-top: 2px solid #2563eb; border-radius: 50%%; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px; }
+        @keyframes spin { 0%% { transform: rotate(0deg); } 100%% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+        </div>
+        <h1>Authentication Successful</h1>
+        <p class="subtitle">You've successfully signed in to <span class="client-name">%s</span>.</p>
+        <p class="redirect-note"><span class="spinner"></span>Redirecting back to the application...</p>
+    </div>
+    <script>
+        setTimeout(function() {
+            window.location.href = %q;
+        }, 1500);
+    </script>
+</body>
+</html>`, clientName, redirectURL)
+
+	w.Write([]byte(html))
 }
 
 // renderLoginPage renders the OAuth login page
