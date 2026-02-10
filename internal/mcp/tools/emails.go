@@ -64,9 +64,11 @@ type EmailInput struct {
 	ID string `json:"id,omitempty" jsonschema:"Resource ID (for get, update, delete)"`
 
 	// List fields
-	Name        string `json:"name,omitempty" jsonschema:"Name for list or sequence (create/update)"`
-	Description string `json:"description,omitempty" jsonschema:"List description"`
-	DoubleOptin *bool  `json:"double_optin,omitempty" jsonschema:"Require email confirmation (list)"`
+	Name                string `json:"name,omitempty" jsonschema:"Name for list or sequence (create/update)"`
+	Description         string `json:"description,omitempty" jsonschema:"List description"`
+	DoubleOptin         *bool  `json:"double_optin,omitempty" jsonschema:"Require email confirmation (list)"`
+	ConfirmationSubject string `json:"confirmation_subject,omitempty" jsonschema:"Custom subject for double opt-in confirmation email (list.update)"`
+	ConfirmationBody    string `json:"confirmation_body,omitempty" jsonschema:"Custom HTML body for double opt-in confirmation email. Use {{confirm_url}} for the confirmation link (list.update)"`
 
 	// Sequence fields
 	ListID       string `json:"list_id,omitempty" jsonschema:"List ID to attach sequence to (sequence.create) or filter by (sequence.list)"`
@@ -120,7 +122,7 @@ LIST RESOURCE:
 - list.create: Create an email list (requires: name)
 - list.list: List all email lists
 - list.get: Get an email list (requires: id)
-- list.update: Update an email list (requires: id)
+- list.update: Update an email list (requires: id, optional: name, description, double_optin, confirmation_subject, confirmation_body)
 - list.delete: Delete an email list (requires: id)
 - list.stats: Get list statistics (requires: id)
 - list.subscribers: List subscribers (requires: id, optional: page, page_size, status)
@@ -248,12 +250,14 @@ type ListGetOutput struct {
 
 // ListUpdateOutput defines output for list.update.
 type ListUpdateOutput struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Slug        string `json:"slug"`
-	Description string `json:"description,omitempty"`
-	DoubleOptin bool   `json:"double_optin"`
-	Updated     bool   `json:"updated"`
+	ID                  string `json:"id"`
+	Name                string `json:"name"`
+	Slug                string `json:"slug"`
+	Description         string `json:"description,omitempty"`
+	DoubleOptin         bool   `json:"double_optin"`
+	ConfirmationSubject string `json:"confirmation_subject,omitempty"`
+	ConfirmationBody    string `json:"confirmation_body,omitempty"`
+	Updated             bool   `json:"updated"`
 }
 
 // DeleteOutput defines output for delete actions.
@@ -468,25 +472,36 @@ func handleListUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, input Em
 		doubleOptin = *input.DoubleOptin
 	}
 
+	confirmSubject := list.ConfirmationEmailSubject
+	if input.ConfirmationSubject != "" {
+		confirmSubject = sql.NullString{String: input.ConfirmationSubject, Valid: true}
+	}
+	confirmBody := list.ConfirmationEmailBody
+	if input.ConfirmationBody != "" {
+		confirmBody = sql.NullString{String: input.ConfirmationBody, Valid: true}
+	}
+
 	updatedList, err := toolCtx.DB().UpdateEmailList(ctx, db.UpdateEmailListParams{
 		ID:                  listID,
 		Name:                name,
 		Description:         sql.NullString{String: description, Valid: description != ""},
 		DoubleOptin:         sql.NullInt64{Int64: boolToInt64(doubleOptin), Valid: true},
-		ConfirmationSubject: list.ConfirmationEmailSubject,
-		ConfirmationBody:    list.ConfirmationEmailBody,
+		ConfirmationSubject: confirmSubject,
+		ConfirmationBody:    confirmBody,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to update list: %w", err)
 	}
 
 	return nil, ListUpdateOutput{
-		ID:          input.ID,
-		Name:        updatedList.Name,
-		Slug:        updatedList.Slug,
-		Description: description,
-		DoubleOptin: doubleOptin,
-		Updated:     true,
+		ID:                  input.ID,
+		Name:                updatedList.Name,
+		Slug:                updatedList.Slug,
+		Description:         description,
+		DoubleOptin:         doubleOptin,
+		ConfirmationSubject: updatedList.ConfirmationEmailSubject.String,
+		ConfirmationBody:    updatedList.ConfirmationEmailBody.String,
+		Updated:             true,
 	}, nil
 }
 

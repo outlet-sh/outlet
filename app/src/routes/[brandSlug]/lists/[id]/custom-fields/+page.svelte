@@ -17,7 +17,8 @@
 		EmptyState,
 		Checkbox,
 		Select,
-		Modal
+		Modal,
+		AlertDialog
 	} from '$lib/components/ui';
 	import {
 		ListPlus,
@@ -130,11 +131,18 @@
 		}
 	}
 
-	async function handleDeleteField(fieldId: string) {
-		if (!confirm('Are you sure you want to delete this custom field? All data for this field will be lost.')) return;
-		deletingFieldId = fieldId;
+	let showDeleteFieldConfirm = $state(false);
+	let deleteFieldId = $state('');
+
+	function confirmDeleteField(fieldId: string) {
+		deleteFieldId = fieldId;
+		showDeleteFieldConfirm = true;
+	}
+
+	async function executeDeleteField() {
+		deletingFieldId = deleteFieldId;
 		try {
-			await deleteCustomField({}, listId, fieldId);
+			await deleteCustomField({}, listId, deleteFieldId);
 			await loadCustomFields();
 		} catch (err: any) {
 			error = err.message || 'Failed to delete custom field';
@@ -215,7 +223,7 @@
 										<Button
 											type="ghost"
 											size="sm"
-											onclick={() => handleDeleteField(field.id)}
+											onclick={() => confirmDeleteField(field.id)}
 											disabled={deletingFieldId === field.id}
 										>
 											{#if deletingFieldId === field.id}
@@ -346,3 +354,13 @@
 		</Button>
 	{/snippet}
 </Modal>
+
+<AlertDialog
+	bind:open={showDeleteFieldConfirm}
+	title="Delete Custom Field"
+	description="Are you sure you want to delete this custom field? All data for this field will be lost."
+	actionLabel={deletingFieldId ? 'Deleting...' : 'Delete'}
+	actionType="danger"
+	onAction={executeDeleteField}
+	onCancel={() => showDeleteFieldConfirm = false}
+/>

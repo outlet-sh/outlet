@@ -10,7 +10,8 @@
 		Input,
 		Modal,
 		Checkbox,
-		Table
+		Table,
+		AlertDialog
 	} from '$lib/components/ui';
 	import { Plus, Trash2, TestTube, Copy, Eye, EyeOff, Check, X, RefreshCw } from 'lucide-svelte';
 
@@ -33,6 +34,11 @@
 	let selectedWebhookId = $state('');
 	let webhookLogs = $state<api.WebhookLogInfo[]>([]);
 	let logsLoading = $state(false);
+
+	// Delete confirmation
+	let showDeleteConfirm = $state(false);
+	let deleteWebhookId = $state('');
+	let deleting = $state(false);
 
 	// Testing state
 	let testingWebhook = $state<string | null>(null);
@@ -123,15 +129,21 @@
 		}
 	}
 
-	async function deleteWebhook(id: string) {
-		if (!confirm('Are you sure you want to delete this webhook?')) return;
+	function confirmDeleteWebhook(id: string) {
+		deleteWebhookId = id;
+		showDeleteConfirm = true;
+	}
 
+	async function executeDeleteWebhook() {
+		deleting = true;
 		try {
-			await api.adminDeleteWebhook({}, id);
+			await api.adminDeleteWebhook({}, deleteWebhookId);
 			await loadWebhooks();
 		} catch (err: any) {
 			console.error('Failed to delete webhook:', err);
 			error = err.message || 'Failed to delete webhook';
+		} finally {
+			deleting = false;
 		}
 	}
 
@@ -300,7 +312,7 @@
 										variant="ghost"
 										size="sm"
 										class="text-red-600 hover:text-red-700"
-										onclick={() => deleteWebhook(webhook.id)}
+										onclick={() => confirmDeleteWebhook(webhook.id)}
 										title="Delete"
 									>
 										<Trash2 size={16} />
@@ -457,3 +469,13 @@
 		<Button variant="secondary" onclick={() => (showLogsModal = false)}>Close</Button>
 	{/snippet}
 </Modal>
+
+<AlertDialog
+	bind:open={showDeleteConfirm}
+	title="Delete Webhook"
+	description="Are you sure you want to delete this webhook?"
+	actionLabel={deleting ? 'Deleting...' : 'Delete'}
+	actionType="danger"
+	onAction={executeDeleteWebhook}
+	onCancel={() => showDeleteConfirm = false}
+/>

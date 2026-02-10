@@ -135,6 +135,9 @@ func (l *SubscribeToListLogic) SubscribeToList(req *types.SubscribeRequest) (res
 		fromEmail := org.FromEmail.String
 		fromName := org.FromName.String
 		appUrl := org.AppUrl.String
+		if appUrl == "" {
+			appUrl = l.svcCtx.Config.App.BaseURL
+		}
 		toEmail := req.Email
 		contactName := contact.Name
 		listName := list.Name
@@ -163,10 +166,7 @@ func (l *SubscribeToListLogic) SubscribeToList(req *types.SubscribeRequest) (res
 			}
 
 			// Build confirmation link
-			var confirmUrl string
-			if appUrl != "" {
-				confirmUrl = fmt.Sprintf("%s/confirm-email?token=%s", appUrl, verificationToken)
-			}
+			confirmUrl := fmt.Sprintf("%s/confirm-email?token=%s", appUrl, verificationToken)
 
 			// Determine subject
 			subject := customSubject
@@ -183,19 +183,13 @@ func (l *SubscribeToListLogic) SubscribeToList(req *types.SubscribeRequest) (res
 				body = replaceEmailVariables(customBody, name, firstName, toEmail, listName, confirmUrl)
 			} else {
 				// Use default email template
-				var confirmSection string
-				if confirmUrl != "" {
-					confirmSection = fmt.Sprintf(`
+				confirmSection := fmt.Sprintf(`
 <p style="margin: 30px 0;">
   <a href="%s" style="display: inline-block; background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500;">
     Confirm your Email
   </a>
 </p>
 <p style="color: #6b7280; font-size: 14px;">Or copy this link: <a href="%s" style="color: #4F46E5;">%s</a></p>`, confirmUrl, confirmUrl, confirmUrl)
-				} else {
-					// Fallback to token display if app_url not configured
-					confirmSection = fmt.Sprintf(`<p>Your confirmation token is: <code style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px;">%s</code></p>`, verificationToken)
-				}
 
 				body = fmt.Sprintf(`
 <!DOCTYPE html>

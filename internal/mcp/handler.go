@@ -39,6 +39,7 @@ type Handler struct {
 type sessionData struct {
 	server  *mcp.Server
 	toolCtx *mcpctx.ToolContext
+	userID  string // owner of this session, validated on cache hits
 }
 
 // NewHandler creates a new MCP handler with authentication.
@@ -146,11 +147,20 @@ func (h *Handler) getServerForRequest(r *http.Request) *mcp.Server {
 		return NewServer(h.svc, r)
 	}
 
+	// Extract requesting user's ID from token
+	requestingUserID, _ := tokenInfo.Extra["user_id"].(string)
+
 	// Check cache first - if we have this session, reuse it
 	if cached, ok := h.sessionCache.Load(sessionID); ok {
 		data := cached.(*sessionData)
-		fmt.Printf("[MCP] Using cached session: %s (hasBrand: %v)\n", sessionID, data.toolCtx != nil && data.toolCtx.HasBrand())
-		return data.server
+		// Validate that the requesting user owns this session
+		if data.userID != "" && requestingUserID != "" && data.userID != requestingUserID {
+			fmt.Printf("[MCP] Session %s belongs to user %s but requested by %s - invalidating\n", sessionID, data.userID, requestingUserID)
+			h.sessionCache.Delete(sessionID)
+		} else {
+			fmt.Printf("[MCP] Using cached session: %s (hasBrand: %v)\n", sessionID, data.toolCtx != nil && data.toolCtx.HasBrand())
+			return data.server
+		}
 	}
 
 	// Session not in cache - this is either a new session or after server restart
@@ -216,8 +226,8 @@ func (h *Handler) getServerForRequest(r *http.Request) *mcp.Server {
 		}
 	}
 
-	// Cache the session
-	h.sessionCache.Store(sessionID, &sessionData{server: server, toolCtx: toolCtx})
+	// Cache the session with user identity for security validation
+	h.sessionCache.Store(sessionID, &sessionData{server: server, toolCtx: toolCtx, userID: requestingUserID})
 
 	return server
 }

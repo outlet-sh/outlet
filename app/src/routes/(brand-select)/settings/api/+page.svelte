@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Card, Button, Input, Alert, LoadingSpinner, Badge, Modal, Tabs, CodeBlock } from '$lib/components/ui';
+	import { Card, Button, Input, Alert, LoadingSpinner, Badge, Modal, Tabs, CodeBlock, AlertDialog } from '$lib/components/ui';
 	import { Copy, Plus, Trash2, Key, CheckCircle, ExternalLink, Code, Package } from 'lucide-svelte';
 	import { listMCPAPIKeys, createMCPAPIKey, revokeMCPAPIKey, type MCPAPIKeyInfo } from '$lib/api';
 	import { onMount } from 'svelte';
@@ -21,6 +21,9 @@
 	let showCreateModal = $state(false);
 	let newKeyName = $state('');
 	let newKeyValue = $state('');
+	let showRevokeConfirm = $state(false);
+	let revokeKeyId = $state('');
+	let revoking = $state(false);
 
 	// Code example tabs
 	const codeTabs = [
@@ -235,17 +238,21 @@ apiRequest('POST', '/emails/send', [
 		}
 	}
 
-	async function revokeKey(id: string) {
-		if (!confirm('Are you sure you want to revoke this API key? This cannot be undone.')) {
-			return;
-		}
+	function confirmRevokeKey(id: string) {
+		revokeKeyId = id;
+		showRevokeConfirm = true;
+	}
 
+	async function executeRevokeKey() {
+		revoking = true;
 		try {
-			await revokeMCPAPIKey({}, id);
+			await revokeMCPAPIKey({}, revokeKeyId);
 			await loadKeys();
 			success = 'API key revoked';
 		} catch (err: any) {
 			error = err.message || 'Failed to revoke API key';
+		} finally {
+			revoking = false;
 		}
 	}
 
@@ -331,7 +338,7 @@ apiRequest('POST', '/emails/send', [
 								<td class="py-3 text-text-muted">{formatDate(key.last_used)}</td>
 								<td class="py-3 text-text-muted">{formatDate(key.created_at)}</td>
 								<td class="py-3 text-right">
-									<Button type="danger" size="icon" onclick={() => revokeKey(key.id)}>
+									<Button type="danger" size="icon" onclick={() => confirmRevokeKey(key.id)}>
 										<Trash2 class="h-4 w-4" />
 									</Button>
 								</td>
@@ -509,3 +516,13 @@ console.log('Message ID:', result.message_id);`}
 		</div>
 	{/snippet}
 </Modal>
+
+<AlertDialog
+	bind:open={showRevokeConfirm}
+	title="Revoke API Key"
+	description="Are you sure you want to revoke this API key? This cannot be undone."
+	actionLabel={revoking ? 'Revoking...' : 'Revoke'}
+	actionType="danger"
+	onAction={executeRevokeKey}
+	onCancel={() => showRevokeConfirm = false}
+/>
