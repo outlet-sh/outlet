@@ -189,7 +189,7 @@
 		navigator.clipboard.writeText(createdSecret);
 	}
 
-	function formatDate(dateStr: string): string {
+	function formatDate(dateStr?: string): string {
 		if (!dateStr) return 'Never';
 		return new Date(dateStr).toLocaleString();
 	}
@@ -453,7 +453,7 @@
 								{/if}
 							</td>
 							<td class="text-sm text-text-muted">
-								{log.duration || 0}ms
+								{log.duration_ms || 0}ms
 							</td>
 							<td class="text-sm text-text-muted">
 								{formatDate(log.delivered_at)}

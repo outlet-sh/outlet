@@ -10,6 +10,7 @@
 		disabled = false,
 		active = false,
 		outline = false,
+		loading = false,
 		onclick,
 		href,
 		external = false,
@@ -24,6 +25,7 @@
 		disabled?: boolean;
 		active?: boolean;
 		outline?: boolean;
+		loading?: boolean;
 		onclick?: () => void;
 		href?: string;
 		external?: boolean;

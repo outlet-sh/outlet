@@ -45,8 +45,8 @@
 	} from 'lucide-svelte';
 
 	// Route params
-	let listId = $derived($page.params.id);
-	let seqId = $derived($page.params.seqId);
+	let listId = $derived($page.params.id!);
+	let seqId = $derived($page.params.seqId!);
 	let basePath = $derived(`/${$page.params.brandSlug}`);
 
 	// State
@@ -137,7 +137,7 @@
 				trigger_event: editTrigger,
 				is_active: editActive,
 				list_id: editListId,
-				on_completion_sequence_id: editOnCompletionSequenceId || null
+				on_completion_sequence_id: editOnCompletionSequenceId || undefined
 			}, seqId);
 			sequence.name = editName.trim();
 			sequence.trigger_event = editTrigger;

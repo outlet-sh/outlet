@@ -19,7 +19,8 @@
 		class: extraClass = '',
 		oninput,
 		onblur,
-		onfocus
+		onfocus,
+		onkeydown
 	}: {
 		type?: string;
 		size?: 'xs' | 'sm' | 'md' | 'lg';
@@ -37,6 +38,7 @@
 		oninput?: (e: Event) => void;
 		onblur?: (e: Event) => void;
 		onfocus?: (e: Event) => void;
+		onkeydown?: (e: KeyboardEvent) => void;
 	} = $props();
 
 	// Ensure value is never undefined
@@ -67,4 +69,4 @@
 		<span class="label-text">{label}</span>
 	</label>
 {/if}
-<input class={className} {type} {placeholder} value={safeValue} oninput={handleInput} onblur={onblur} onfocus={onfocus} {disabled} {readonly} {required} {id} {min} {max} {step} />
+<input class={className} {type} {placeholder} value={safeValue} oninput={handleInput} onblur={onblur} onfocus={onfocus} {onkeydown} {disabled} {readonly} {required} {id} {min} {max} {step} />

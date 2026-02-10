@@ -15,7 +15,7 @@
 	import { getListContext } from '../listContext';
 
 	const ctx = getListContext();
-	let listId = $derived($page.params.id);
+	let listId = $derived($page.params.id!);
 
 	// State
 	let embedCode = $state<EmbedCodeResponse | null>(null);

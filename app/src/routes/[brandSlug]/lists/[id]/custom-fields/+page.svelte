@@ -29,7 +29,7 @@
 	import { getListContext } from '../listContext';
 
 	const ctx = getListContext();
-	let listId = $derived($page.params.id);
+	let listId = $derived($page.params.id!);
 
 	// State
 	let customFields = $state<CustomFieldInfo[]>([]);

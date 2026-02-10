@@ -8,7 +8,7 @@
 	let { children } = $props();
 
 	// Get list ID and org slug from URL
-	let listId = $derived($page.params.id);
+	let listId = $derived($page.params.id!);
 	let basePath = $derived(`/${$page.params.brandSlug}`);
 	let currentPath = $derived($page.url.pathname);
 

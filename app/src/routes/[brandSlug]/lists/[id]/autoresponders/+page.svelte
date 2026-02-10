@@ -95,7 +95,6 @@
 				slug: newSeqSlug,
 				list_id: listId,
 				trigger_event: newSeqTrigger,
-				is_active: newSeqActive,
 				sequence_type: 'lifecycle'
 			});
 			showCreateSequence = false;

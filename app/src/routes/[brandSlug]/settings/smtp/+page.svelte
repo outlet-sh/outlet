@@ -8,7 +8,7 @@
 	let copiedText = $state('');
 
 	// Get brandSlug from URL
-	let brandSlug = $derived($page.params.brandSlug);
+	let brandSlug = $derived($page.params.brandSlug!);
 
 	function copyToClipboard(text: string) {
 		navigator.clipboard.writeText(text);
