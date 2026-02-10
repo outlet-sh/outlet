@@ -412,6 +412,39 @@ func (q *Queries) RemoveUserFromOrganization(ctx context.Context, arg RemoveUser
 	return err
 }
 
+const updateOrgAppUrl = `-- name: UpdateOrgAppUrl :one
+UPDATE organizations
+SET app_url = ?1, updated_at = datetime('now')
+WHERE id = ?2
+RETURNING id, name, slug, api_key, api_key_created_at, from_name, from_email, reply_to, max_contacts, settings, app_url, created_at, updated_at
+`
+
+type UpdateOrgAppUrlParams struct {
+	AppUrl sql.NullString `json:"app_url"`
+	ID     string         `json:"id"`
+}
+
+func (q *Queries) UpdateOrgAppUrl(ctx context.Context, arg UpdateOrgAppUrlParams) (Organization, error) {
+	row := q.db.QueryRowContext(ctx, updateOrgAppUrl, arg.AppUrl, arg.ID)
+	var i Organization
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.ApiKey,
+		&i.ApiKeyCreatedAt,
+		&i.FromName,
+		&i.FromEmail,
+		&i.ReplyTo,
+		&i.MaxContacts,
+		&i.Settings,
+		&i.AppUrl,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const updateOrgEmailSettings = `-- name: UpdateOrgEmailSettings :one
 UPDATE organizations
 SET

@@ -89,6 +89,12 @@ SELECT from_name, from_email, reply_to
 FROM organizations
 WHERE id = sqlc.arg(id);
 
+-- name: UpdateOrgAppUrl :one
+UPDATE organizations
+SET app_url = sqlc.arg(app_url), updated_at = datetime('now')
+WHERE id = sqlc.arg(id)
+RETURNING *;
+
 -- name: UpdateOrgMaxContacts :one
 UPDATE organizations
 SET

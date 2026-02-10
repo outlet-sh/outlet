@@ -44,6 +44,9 @@ type BrandInput struct {
 	// Domain-specific
 	Domain string `json:"domain,omitempty" jsonschema:"Domain name (e.g., 'example.com'). For domain.create."`
 
+	// URLs
+	AppURL *string `json:"app_url,omitempty" jsonschema:"Public URL for this brand (e.g., 'https://mail.outlet.sh'). Used for confirmation email links. Set to empty string to clear and use platform default. For brand.update."`
+
 	// Limits
 	MaxContacts *int64 `json:"max_contacts,omitempty" jsonschema:"Set max contacts limit (0 or null for unlimited). For brand.update."`
 
@@ -69,7 +72,7 @@ BRAND RESOURCE:
 - brand.list: List all brands you have access to
 - brand.select: Select a brand to work with (OAuth only, requires: brand_id or slug)
 - brand.get: Get current brand details
-- brand.update: Update brand settings (optional: name, from_name, from_email, reply_to, max_contacts)
+- brand.update: Update brand settings (optional: name, from_name, from_email, reply_to, app_url, max_contacts)
 - brand.create: Create a new brand (requires: name)
 - brand.delete: Delete brand (requires: confirm=true)
 - brand.dashboard_stats: Get dashboard statistics
@@ -92,6 +95,8 @@ Examples:
   brand(resource: brand, action: get)
   brand(resource: brand, action: update, from_email: "hello@example.com")
   brand(resource: brand, action: update, max_contacts: 5000)
+  brand(resource: brand, action: update, app_url: "https://mail.outlet.sh")
+  brand(resource: brand, action: update, app_url: "")  # clear, use platform default
   brand(resource: brand, action: update, max_contacts: 0)  # unlimited
   brand(resource: brand, action: create, name: "New Company")
   brand(resource: brand, action: dashboard_stats)
@@ -174,6 +179,7 @@ type BrandGetOutput struct {
 	FromName    string `json:"from_name,omitempty"`
 	FromEmail   string `json:"from_email,omitempty"`
 	ReplyTo     string `json:"reply_to,omitempty"`
+	AppURL      string `json:"app_url,omitempty"`
 }
 
 // BrandUpdateOutput defines output for brand.update.
@@ -183,6 +189,7 @@ type BrandUpdateOutput struct {
 	FromName    string `json:"from_name,omitempty"`
 	FromEmail   string `json:"from_email,omitempty"`
 	ReplyTo     string `json:"reply_to,omitempty"`
+	AppURL      string `json:"app_url,omitempty"`
 	MaxContacts *int64 `json:"max_contacts,omitempty"`
 	Updated     bool   `json:"updated"`
 }
@@ -320,6 +327,7 @@ func handleBrandGet(ctx context.Context, toolCtx *mcpctx.ToolContext, input Bran
 		FromName:    brand.FromName.String,
 		FromEmail:   brand.FromEmail.String,
 		ReplyTo:     brand.ReplyTo.String,
+		AppURL:      brand.AppUrl.String,
 	}, nil
 }
 
@@ -356,6 +364,17 @@ func handleBrandUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, input B
 		}
 	}
 
+	// Update app_url if explicitly provided (pointer distinguishes "not set" from "clear")
+	if input.AppURL != nil {
+		_, err := toolCtx.DB().UpdateOrgAppUrl(ctx, db.UpdateOrgAppUrlParams{
+			ID:     toolCtx.BrandID(),
+			AppUrl: sql.NullString{String: *input.AppURL, Valid: *input.AppURL != ""},
+		})
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to update app_url: %w", err)
+		}
+	}
+
 	// Update name if provided
 	if input.Name != "" {
 		_, err := toolCtx.DB().UpdateOrganization(ctx, db.UpdateOrganizationParams{
@@ -375,6 +394,7 @@ func handleBrandUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, input B
 			FromName:  brand.FromName.String,
 			FromEmail: brand.FromEmail.String,
 			ReplyTo:   brand.ReplyTo.String,
+			AppURL:    brand.AppUrl.String,
 			Updated:   true,
 		}, nil
 	}
@@ -391,6 +411,7 @@ func handleBrandUpdate(ctx context.Context, toolCtx *mcpctx.ToolContext, input B
 		FromName:    updatedBrand.FromName.String,
 		FromEmail:   updatedBrand.FromEmail.String,
 		ReplyTo:     updatedBrand.ReplyTo.String,
+		AppURL:      updatedBrand.AppUrl.String,
 		MaxContacts: maxContacts,
 		Updated:     true,
 	}, nil
