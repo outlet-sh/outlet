@@ -18,7 +18,8 @@
 		EmptyState,
 		SearchInput,
 		Select,
-		Modal
+		Modal,
+		AlertDialog
 	} from '$lib/components/ui';
 	import {
 		Users,
@@ -95,13 +96,25 @@
 		}
 	}
 
-	async function handleRemoveSubscriber(subscriber: ListSubscriberInfo) {
-		if (!confirm(`Remove ${subscriber.email} from this list?`)) return;
+	let showRemoveConfirm = $state(false);
+	let removeSubscriber = $state<ListSubscriberInfo | null>(null);
+	let removing = $state(false);
+
+	function confirmRemoveSubscriber(subscriber: ListSubscriberInfo) {
+		removeSubscriber = subscriber;
+		showRemoveConfirm = true;
+	}
+
+	async function executeRemoveSubscriber() {
+		if (!removeSubscriber) return;
+		removing = true;
 		try {
-			await removeListSubscriber({}, listId, subscriber.id);
+			await removeListSubscriber({}, listId, removeSubscriber.id);
 			await loadSubscribers();
 		} catch (err: any) {
 			error = err.message || 'Failed to remove subscriber';
+		} finally {
+			removing = false;
 		}
 	}
 
@@ -326,7 +339,7 @@
 						onclick={() => {
 							if (selectedSubscriber) {
 								showSubscriberDetail = false;
-								handleRemoveSubscriber(selectedSubscriber);
+								confirmRemoveSubscriber(selectedSubscriber);
 							}
 						}}
 					>
@@ -541,3 +554,13 @@
 		</div>
 	</div>
 {/if}
+
+<AlertDialog
+	bind:open={showRemoveConfirm}
+	title="Remove Subscriber"
+	description={`Remove ${removeSubscriber?.email || ''} from this list?`}
+	actionLabel={removing ? 'Removing...' : 'Remove'}
+	actionType="danger"
+	onAction={executeRemoveSubscriber}
+	onCancel={() => showRemoveConfirm = false}
+/>

@@ -121,10 +121,18 @@
 		}
 	}
 
-	async function handleDeleteEmail(email: SuppressedEmailInfo) {
-		if (!confirm(`Remove ${email.email} from the suppression list?`)) return;
+	let showDeleteEmailConfirm = $state(false);
+	let deleteEmailItem = $state<SuppressedEmailInfo | null>(null);
+
+	function confirmDeleteEmail(email: SuppressedEmailInfo) {
+		deleteEmailItem = email;
+		showDeleteEmailConfirm = true;
+	}
+
+	async function executeDeleteEmail() {
+		if (!deleteEmailItem) return;
 		try {
-			await deleteSuppressedEmail({}, email.id);
+			await deleteSuppressedEmail({}, deleteEmailItem.id);
 			await loadEmails();
 		} catch (err: any) {
 			error = err.message || 'Failed to remove email';
@@ -150,10 +158,18 @@
 		}
 	}
 
-	async function handleDeleteDomain(domain: BlockedDomainInfo) {
-		if (!confirm(`Unblock domain ${domain.domain}?`)) return;
+	let showDeleteDomainConfirm = $state(false);
+	let deleteDomainItem = $state<BlockedDomainInfo | null>(null);
+
+	function confirmDeleteDomain(domain: BlockedDomainInfo) {
+		deleteDomainItem = domain;
+		showDeleteDomainConfirm = true;
+	}
+
+	async function executeDeleteDomain() {
+		if (!deleteDomainItem) return;
 		try {
-			await deleteBlockedDomain({}, domain.id);
+			await deleteBlockedDomain({}, deleteDomainItem.id);
 			await loadDomains();
 		} catch (err: any) {
 			error = err.message || 'Failed to unblock domain';
@@ -274,7 +290,7 @@
 									<Button
 										type="ghost"
 										size="sm"
-										onclick={() => handleDeleteEmail(email)}
+										onclick={() => confirmDeleteEmail(email)}
 										class="text-text-muted hover:text-error"
 									>
 										<Trash2 class="h-4 w-4" />
@@ -365,7 +381,7 @@
 									<Button
 										type="ghost"
 										size="sm"
-										onclick={() => handleDeleteDomain(domain)}
+										onclick={() => confirmDeleteDomain(domain)}
 										class="text-text-muted hover:text-error"
 									>
 										<Trash2 class="h-4 w-4" />
@@ -379,3 +395,23 @@
 		{/if}
 	{/if}
 </div>
+
+<AlertDialog
+	bind:open={showDeleteEmailConfirm}
+	title="Remove Suppressed Email"
+	description={`Remove ${deleteEmailItem?.email || ''} from the suppression list?`}
+	actionLabel="Remove"
+	actionType="danger"
+	onAction={executeDeleteEmail}
+	onCancel={() => showDeleteEmailConfirm = false}
+/>
+
+<AlertDialog
+	bind:open={showDeleteDomainConfirm}
+	title="Unblock Domain"
+	description={`Unblock domain ${deleteDomainItem?.domain || ''}?`}
+	actionLabel="Unblock"
+	actionType="danger"
+	onAction={executeDeleteDomain}
+	onCancel={() => showDeleteDomainConfirm = false}
+/>

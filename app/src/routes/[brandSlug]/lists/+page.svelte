@@ -18,7 +18,8 @@
 		Checkbox,
 		Modal,
 		SearchInput,
-		DropdownMenu
+		DropdownMenu,
+		AlertDialog
 	} from '$lib/components/ui';
 	import { Plus, Mail, Users, MoreVertical, Trash2, Edit, ExternalLink } from 'lucide-svelte';
 
@@ -110,15 +111,26 @@
 		}
 	}
 
-	async function handleDelete(list: ListInfo) {
-		if (!confirm(`Delete "${list.name}"? This cannot be undone.`)) return;
+	let showDeleteConfirm = $state(false);
+	let deleteListItem = $state<ListInfo | null>(null);
+	let deleting = $state(false);
 
+	function confirmDelete(list: ListInfo) {
+		deleteListItem = list;
+		showDeleteConfirm = true;
+	}
+
+	async function executeDelete() {
+		if (!deleteListItem) return;
+		deleting = true;
 		try {
-			await deleteList({}, list.id);
+			await deleteList({}, deleteListItem.id);
 			await loadData();
 		} catch (err: any) {
 			console.error('Failed to delete list:', err);
 			error = err.message || 'Failed to delete list';
+		} finally {
+			deleting = false;
 		}
 	}
 </script>
@@ -285,7 +297,7 @@
 											label: 'Delete',
 											icon: Trash2,
 											variant: 'danger',
-											onclick: () => handleDelete(list)
+											onclick: () => confirmDelete(list)
 										}
 									]}
 								/>
@@ -303,3 +315,13 @@
 		{/if}
 	{/if}
 </div>
+
+<AlertDialog
+	bind:open={showDeleteConfirm}
+	title="Delete List"
+	description={`Delete "${deleteListItem?.name || ''}"? This cannot be undone.`}
+	actionLabel={deleting ? 'Deleting...' : 'Delete'}
+	actionType="danger"
+	onAction={executeDelete}
+	onCancel={() => showDeleteConfirm = false}
+/>

@@ -10,7 +10,8 @@
 		Card,
 		Alert,
 		LoadingSpinner,
-		Badge
+		Badge,
+		AlertDialog
 	} from '$lib/components/ui';
 	import {
 		Trash2,
@@ -36,6 +37,10 @@
 	// Error state
 	let error = $state('');
 
+	// Confirmation dialogs
+	let showInactiveConfirm = $state(false);
+	let showUnconfirmedConfirm = $state(false);
+
 	async function previewInactive() {
 		inactiveLoading = true;
 		error = '';
@@ -54,7 +59,6 @@
 	}
 
 	async function executeInactive() {
-		if (!confirm(`This will permanently delete ${inactiveResult?.affected_count || 0} contacts. This action cannot be undone. Continue?`)) return;
 		inactiveLoading = true;
 		error = '';
 		try {
@@ -87,7 +91,6 @@
 	}
 
 	async function executeUnconfirmed() {
-		if (!confirm(`This will permanently delete ${unconfirmedResult?.affected_count || 0} unconfirmed subscriptions. This action cannot be undone. Continue?`)) return;
 		unconfirmedLoading = true;
 		error = '';
 		try {
@@ -197,7 +200,7 @@
 						{#if inactiveResult?.dry_run && inactiveResult.affected_count > 0}
 							<Button
 								type="danger"
-								onclick={executeInactive}
+								onclick={() => showInactiveConfirm = true}
 								disabled={inactiveLoading}
 							>
 								{#if inactiveLoading}
@@ -274,7 +277,7 @@
 						{#if unconfirmedResult?.dry_run && unconfirmedResult.affected_count > 0}
 							<Button
 								type="danger"
-								onclick={executeUnconfirmed}
+								onclick={() => showUnconfirmedConfirm = true}
 								disabled={unconfirmedLoading}
 							>
 								{#if unconfirmedLoading}
@@ -299,3 +302,23 @@
 		</Alert>
 	</div>
 </div>
+
+<AlertDialog
+	bind:open={showInactiveConfirm}
+	title="Delete Inactive Contacts"
+	description={`This will permanently delete ${inactiveResult?.affected_count || 0} contacts. This action cannot be undone.`}
+	actionLabel={inactiveLoading ? 'Deleting...' : 'Delete'}
+	actionType="danger"
+	onAction={executeInactive}
+	onCancel={() => showInactiveConfirm = false}
+/>
+
+<AlertDialog
+	bind:open={showUnconfirmedConfirm}
+	title="Delete Unconfirmed Subscriptions"
+	description={`This will permanently delete ${unconfirmedResult?.affected_count || 0} unconfirmed subscriptions. This action cannot be undone.`}
+	actionLabel={unconfirmedLoading ? 'Deleting...' : 'Delete'}
+	actionType="danger"
+	onAction={executeUnconfirmed}
+	onCancel={() => showUnconfirmedConfirm = false}
+/>

@@ -17,7 +17,8 @@
 		DropdownMenu,
 		SlideForm,
 		Input,
-		Select
+		Select,
+		AlertDialog
 	} from '$lib/components/ui';
 	import { Plus, FileText, MoreVertical, Trash2, Edit, Copy } from 'lucide-svelte';
 
@@ -120,15 +121,26 @@
 		}
 	}
 
-	async function handleDelete(template: EmailDesignInfo) {
-		if (!confirm(`Delete "${template.name}"? This cannot be undone.`)) return;
+	let showDeleteConfirm = $state(false);
+	let deleteTemplateItem = $state<EmailDesignInfo | null>(null);
+	let deleting = $state(false);
 
+	function confirmDelete(template: EmailDesignInfo) {
+		deleteTemplateItem = template;
+		showDeleteConfirm = true;
+	}
+
+	async function executeDelete() {
+		if (!deleteTemplateItem) return;
+		deleting = true;
 		try {
-			await deleteEmailDesign({}, template.id);
+			await deleteEmailDesign({}, deleteTemplateItem.id);
 			await loadData();
 		} catch (err: any) {
 			console.error('Failed to delete template:', err);
 			error = err.message || 'Failed to delete template';
+		} finally {
+			deleting = false;
 		}
 	}
 
@@ -314,7 +326,7 @@
 											label: 'Delete',
 											icon: Trash2,
 											variant: 'danger',
-											onclick: () => handleDelete(template)
+											onclick: () => confirmDelete(template)
 										}
 									]}
 								/>
@@ -332,3 +344,13 @@
 		{/if}
 	{/if}
 </div>
+
+<AlertDialog
+	bind:open={showDeleteConfirm}
+	title="Delete Template"
+	description={`Delete "${deleteTemplateItem?.name || ''}"? This cannot be undone.`}
+	actionLabel={deleting ? 'Deleting...' : 'Delete'}
+	actionType="danger"
+	onAction={executeDelete}
+	onCancel={() => showDeleteConfirm = false}
+/>

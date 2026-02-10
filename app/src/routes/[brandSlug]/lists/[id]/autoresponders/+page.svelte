@@ -19,7 +19,8 @@
 		DropdownMenu,
 		Select,
 		Toggle,
-		Modal
+		Modal,
+		AlertDialog
 	} from '$lib/components/ui';
 	import {
 		Workflow,
@@ -106,13 +107,25 @@
 		}
 	}
 
-	async function handleDeleteSequence(sequence: SequenceInfo) {
-		if (!confirm(`Delete "${sequence.name}"? This cannot be undone.`)) return;
+	let showDeleteConfirm = $state(false);
+	let deleteSequenceItem = $state<SequenceInfo | null>(null);
+	let deleting = $state(false);
+
+	function confirmDeleteSequence(sequence: SequenceInfo) {
+		deleteSequenceItem = sequence;
+		showDeleteConfirm = true;
+	}
+
+	async function executeDeleteSequence() {
+		if (!deleteSequenceItem) return;
+		deleting = true;
 		try {
-			await deleteSequence({}, sequence.id);
+			await deleteSequence({}, deleteSequenceItem.id);
 			await loadSequences();
 		} catch (err: any) {
 			error = err.message || 'Failed to delete autoresponder';
+		} finally {
+			deleting = false;
 		}
 	}
 
@@ -229,7 +242,7 @@
 										label: 'Delete',
 										icon: Trash2,
 										variant: 'danger',
-										onclick: () => handleDeleteSequence(sequence)
+										onclick: () => confirmDeleteSequence(sequence)
 									}
 								]}
 							/>
@@ -293,3 +306,13 @@
 		</Button>
 	{/snippet}
 </Modal>
+
+<AlertDialog
+	bind:open={showDeleteConfirm}
+	title="Delete Autoresponder"
+	description={`Delete "${deleteSequenceItem?.name || ''}"? This cannot be undone.`}
+	actionLabel={deleting ? 'Deleting...' : 'Delete'}
+	actionType="danger"
+	onAction={executeDeleteSequence}
+	onCancel={() => showDeleteConfirm = false}
+/>

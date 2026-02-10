@@ -14,7 +14,8 @@
 		EmptyState,
 		SearchInput,
 		DropdownMenu,
-		Tabs
+		Tabs,
+		AlertDialog
 	} from '$lib/components/ui';
 	import { Plus, Send, MoreVertical, Trash2, Edit, Copy, Play, Pause, BarChart3 } from 'lucide-svelte';
 
@@ -85,15 +86,26 @@
 		}
 	}
 
-	async function handleDelete(campaign: CampaignInfo) {
-		if (!confirm(`Delete "${campaign.name}"? This cannot be undone.`)) return;
+	let showDeleteConfirm = $state(false);
+	let deleteCampaignItem = $state<CampaignInfo | null>(null);
+	let deleting = $state(false);
 
+	function confirmDelete(campaign: CampaignInfo) {
+		deleteCampaignItem = campaign;
+		showDeleteConfirm = true;
+	}
+
+	async function executeDelete() {
+		if (!deleteCampaignItem) return;
+		deleting = true;
 		try {
-			await deleteCampaign({}, campaign.id);
+			await deleteCampaign({}, deleteCampaignItem.id);
 			await loadData();
 		} catch (err: any) {
 			console.error('Failed to delete campaign:', err);
 			error = err.message || 'Failed to delete campaign';
+		} finally {
+			deleting = false;
 		}
 	}
 
@@ -288,7 +300,7 @@
 											label: 'Delete',
 											icon: Trash2,
 											variant: 'danger',
-											onclick: () => handleDelete(campaign)
+											onclick: () => confirmDelete(campaign)
 										}
 									]}
 								/>
@@ -306,3 +318,13 @@
 		{/if}
 	{/if}
 </div>
+
+<AlertDialog
+	bind:open={showDeleteConfirm}
+	title="Delete Campaign"
+	description={`Delete "${deleteCampaignItem?.name || ''}"? This cannot be undone.`}
+	actionLabel={deleting ? 'Deleting...' : 'Delete'}
+	actionType="danger"
+	onAction={executeDelete}
+	onCancel={() => showDeleteConfirm = false}
+/>
