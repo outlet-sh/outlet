@@ -33,7 +33,9 @@ type Config struct {
 		RateBurst   int     `json:",default=50"`  // Max burst size
 		BatchSize   int     `json:",default=100"` // Emails per batch fetch
 	}
-	SMTP SMTPConfig
+	SMTP       SMTPConfig
+	Validation ValidationConfig `json:",optional"`
+	SignalNet  SignalNetConfig  `json:",optional"`
 	Encryption struct {
 		Key string // 32-byte hex-encoded key for AES-256 encryption
 	}
@@ -108,4 +110,22 @@ func (c SMTPConfig) GetPort() int {
 // IsAllowInsecureAuth returns true if insecure auth is allowed
 func (c SMTPConfig) IsAllowInsecureAuth() bool {
 	return strings.ToLower(c.AllowInsecureAuth) == "true" || c.AllowInsecureAuth == "1"
+}
+
+// ValidationConfig configures email validation probing.
+type ValidationConfig struct {
+	Proxies      []string `json:",optional"`             // socks5:// URLs of dedicated probe hosts; empty = probe directly
+	HeloHostname string   `json:",optional"`             // EHLO name; must match the probe IPs' reverse DNS
+	FromDomain   string   `json:",optional"`             // MAIL FROM domain (defaults to HeloHostname)
+	SMTPCheck    bool     `json:",optional"`             // enable mailbox probing (needs outbound port 25 or Proxies)
+	Concurrency  int      `json:",default=20"`           // domains probed in parallel by the job worker
+	CacheDays    int      `json:",default=30"`           // reuse a probe result for this many days
+}
+
+// SignalNetConfig configures the Outlet Signal Network: pooled, hashed deliverability
+// signals shared across instances. The hub is run by outlet.sh; an instance key is the subscription.
+type SignalNetConfig struct {
+	HubURL      string `json:",optional"` // e.g. https://signals.outlet.sh; empty = disabled
+	InstanceKey string `json:",optional"` // subscription key issued by the hub
+	Hub         bool   `json:",optional"` // run this instance as the hub (serves /network/v1)
 }
