@@ -1120,6 +1120,22 @@ export function verifyEmail(params: components.VerifyEmailRequestParams) {
 
 /**
  * @description 
+ * @param req
+ */
+export function networkLookup(req: components.NetworkLookupRequest) {
+	return webapi.post<components.NetworkLookupResponse>(`/network/v1/lookup`, req)
+}
+
+/**
+ * @description 
+ * @param req
+ */
+export function networkReport(req: components.NetworkReportRequest) {
+	return webapi.post<components.NetworkReportResponse>(`/network/v1/report`, req)
+}
+
+/**
+ * @description 
  */
 export function health() {
 	return webapi.get<components.HealthResponse>(`/api/v1/health`)

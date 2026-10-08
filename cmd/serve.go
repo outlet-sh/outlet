@@ -29,6 +29,7 @@ import (
 	"github.com/outlet-sh/outlet/internal/svc"
 	"github.com/outlet-sh/outlet/internal/types"
 	"github.com/outlet-sh/outlet/internal/webhook"
+	"github.com/outlet-sh/outlet/internal/services/signalnet"
 	"github.com/outlet-sh/outlet/internal/workers"
 	outletsmtp "github.com/outlet-sh/outlet/internal/smtp"
 	outletws "github.com/outlet-sh/outlet/internal/websocket"
@@ -196,6 +197,12 @@ func runServe(cmd *cobra.Command, args []string) {
 	domainVerificationWorker := workers.StartDomainVerificationWorker(ctx)
 	fmt.Println("Domain verification worker started")
 
+	// Start Signal Network reporter (nil unless SignalNet.HubURL and InstanceKey are set)
+	signalReporter := signalnet.StartReporter(&signalnet.Client{HubURL: c.SignalNet.HubURL, InstanceKey: c.SignalNet.InstanceKey}, ctx.Events)
+	if signalReporter != nil {
+		fmt.Println("Signal Network reporter started")
+	}
+
 	// Start MCP session cleanup job (runs every hour, cleans sessions older than 30 days)
 	cleanupCtx, cleanupCancel := context.WithCancel(context.Background())
 	go func() {
@@ -270,6 +277,7 @@ func runServe(cmd *cobra.Command, args []string) {
 				domainVerificationWorker.Stop()
 				fmt.Println("Domain verification worker stopped")
 			}
+			signalReporter.Stop()
 			if smtpServer != nil {
 				smtpServer.Stop()
 				fmt.Println("SMTP server stopped")
@@ -503,6 +511,7 @@ func runServe(cmd *cobra.Command, args []string) {
 		domainVerificationWorker.Stop()
 		fmt.Println("Domain verification worker stopped")
 	}
+	signalReporter.Stop()
 	if smtpServer != nil {
 		smtpServer.Stop()
 		fmt.Println("SMTP server stopped")

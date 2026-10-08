@@ -14,6 +14,7 @@ import (
 	"github.com/outlet-sh/outlet/internal/middleware"
 	"github.com/outlet-sh/outlet/internal/services/crypto"
 	"github.com/outlet-sh/outlet/internal/services/email"
+	"github.com/outlet-sh/outlet/internal/services/signalnet"
 	"github.com/outlet-sh/outlet/internal/services/tracking"
 	"github.com/outlet-sh/outlet/internal/services/webhook"
 	"github.com/outlet-sh/outlet/internal/websocket"
@@ -35,6 +36,10 @@ type ServiceContext struct {
 	Events            *events.Subject
 	WebhookDispatcher *webhook.Dispatcher
 	WebSocketHub      *websocket.Hub
+
+	// Signal Network hub (nil unless SignalNet.Hub is true; its routes then 404)
+	NetworkHub  *signalnet.Hub
+	NetworkAuth rest.Middleware
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -104,9 +109,6 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		emailService.SetBaseURL(c.App.BaseURL)
 	}
 
-	// Initialize Tracking service
-	trackingService := tracking.New(store.Queries)
-
 	// Initialize rate limit middleware for auth endpoints
 	authRateLimiter := middleware.NewRateLimitMiddleware(middleware.DefaultAuthRateLimitConfig())
 
@@ -119,6 +121,9 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		events.WithReplay(100),
 	)
 	log.Printf("Event bus initialized")
+
+	// Initialize Tracking service (publishes opens and clicks on the event bus)
+	trackingService := tracking.New(store.Queries, eventSubject)
 
 	// Initialize and start Webhook Dispatcher for outbound webhook delivery
 	webhookDispatcher := webhook.NewDispatcher(store.Queries, eventSubject)
@@ -133,6 +138,12 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	go wsHub.Run()
 	log.Printf("WebSocket hub initialized")
 
+	var networkHub *signalnet.Hub
+	if c.SignalNet.Hub {
+		networkHub = signalnet.NewHub(store)
+		log.Printf("Signal Network hub enabled at /network/v1")
+	}
+
 	return &ServiceContext{
 		Config:            c,
 		DB:                store,
@@ -146,5 +157,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		Events:            eventSubject,
 		WebhookDispatcher: webhookDispatcher,
 		WebSocketHub:      wsHub,
+		NetworkHub:        networkHub,
+		NetworkAuth:       middleware.NewNetworkAuthMiddleware(networkHub).Handle,
 	}
 }

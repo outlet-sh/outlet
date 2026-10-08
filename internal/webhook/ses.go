@@ -224,6 +224,7 @@ func processBounce(ctx context.Context, svcCtx *svc.ServiceContext, orgID string
 				OrgID:      orgID,
 				EmailID:    notif.Mail.MessageId,
 				ContactID:  "", // contact_id not available from SES notification
+				Email:      recipient.EmailAddress,
 				Status:     "bounced",
 				BounceType: bounceType,
 				Timestamp:  time.Now(),
@@ -268,6 +269,7 @@ func processComplaint(ctx context.Context, svcCtx *svc.ServiceContext, orgID str
 				OrgID:     orgID,
 				EmailID:   notif.Mail.MessageId,
 				ContactID: "", // contact_id not available from SES notification
+				Email:     recipient.EmailAddress,
 				Status:    "complained",
 				Timestamp: time.Now(),
 			})
@@ -294,6 +296,7 @@ func processDelivery(ctx context.Context, svcCtx *svc.ServiceContext, orgID stri
 				OrgID:     orgID,
 				EmailID:   notif.Mail.MessageId,
 				ContactID: "", // contact_id not available from SES notification
+				Email:     recipient,
 				Status:    "delivered",
 				Timestamp: time.Now(),
 			})
