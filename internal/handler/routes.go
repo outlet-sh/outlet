@@ -27,6 +27,7 @@ import (
 	adminvalidation "github.com/outlet-sh/outlet/internal/handler/admin/validation"
 	adminwebhooks "github.com/outlet-sh/outlet/internal/handler/admin/webhooks"
 	auth "github.com/outlet-sh/outlet/internal/handler/auth"
+	network "github.com/outlet-sh/outlet/internal/handler/network"
 	public "github.com/outlet-sh/outlet/internal/handler/public"
 	sdk "github.com/outlet-sh/outlet/internal/handler/sdk"
 	sdkcontacts "github.com/outlet-sh/outlet/internal/handler/sdk/contacts"
@@ -931,6 +932,25 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 			}...,
 		),
 		rest.WithPrefix("/api/v1"),
+	)
+
+	server.AddRoutes(
+		rest.WithMiddlewares(
+			[]rest.Middleware{serverCtx.NetworkAuth},
+			[]rest.Route{
+				{
+					Method:  http.MethodPost,
+					Path:    "/lookup",
+					Handler: network.NetworkLookupHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/report",
+					Handler: network.NetworkReportHandler(serverCtx),
+				},
+			}...,
+		),
+		rest.WithPrefix("/network/v1"),
 	)
 
 	server.AddRoutes(

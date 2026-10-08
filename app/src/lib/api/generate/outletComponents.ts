@@ -1280,6 +1280,40 @@ export interface MarkContactReadResponse {
 	success: boolean
 }
 
+export interface NetworkEvent {
+	hash: string
+	kind: string // delivered, hard_bounce, complaint, open, click
+	at: string
+}
+
+export interface NetworkLookupRequest {
+	hashes: Array<string> // max 100
+}
+
+export interface NetworkLookupResponse {
+	signals: Array<NetworkSignal> // unknown hashes are omitted
+}
+
+export interface NetworkReportRequest {
+	events: Array<NetworkEvent> // max 1000
+}
+
+export interface NetworkReportResponse {
+	accepted: number
+}
+
+export interface NetworkSignal {
+	hash: string
+	senders: number
+	delivered: number
+	hard_bounces: number
+	complaints: number
+	engaged: number
+	last_engaged_at: string
+	trap_score: number
+	toxic: boolean
+}
+
 export interface NewsletterResponse {
 	success: boolean
 	message: string

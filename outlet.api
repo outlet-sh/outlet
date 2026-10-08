@@ -1532,6 +1532,36 @@ type (
 		Total    int            `json:"total"`
 		BySource map[string]int `json:"by_source"` // api, admin, job, mcp
 	}
+	// ========== Signal Network Hub Types ==========
+	// Hashes are SHA-256 hex (64 chars) of the trimmed, lowercased address. Times are RFC 3339.
+	NetworkLookupRequest {
+		Hashes []string `json:"hashes"` // max 100
+	}
+	NetworkSignal {
+		Hash          string  `json:"hash"`
+		Senders       int     `json:"senders"`
+		Delivered     int     `json:"delivered"`
+		HardBounces   int     `json:"hard_bounces"`
+		Complaints    int     `json:"complaints"`
+		Engaged       int     `json:"engaged"`
+		LastEngagedAt string  `json:"last_engaged_at"`
+		TrapScore     float64 `json:"trap_score"`
+		Toxic         bool    `json:"toxic"`
+	}
+	NetworkLookupResponse {
+		Signals []NetworkSignal `json:"signals"` // unknown hashes are omitted
+	}
+	NetworkEvent {
+		Hash string `json:"hash"`
+		Kind string `json:"kind"` // delivered, hard_bounce, complaint, open, click
+		At   string `json:"at"`
+	}
+	NetworkReportRequest {
+		Events []NetworkEvent `json:"events"` // max 1000
+	}
+	NetworkReportResponse {
+		Accepted int `json:"accepted"`
+	}
 	// ========== CSV Export Types ==========
 	ExportSubscribersRequest {
 		ListId string `path:"list_id"`
@@ -2577,5 +2607,19 @@ service outlet {
 
 	@handler ValidateBatch
 	post /batch (ValidateBatchRequest) returns (ValidateBatchResponse)
+}
+
+// Signal Network hub (only served when SignalNet.Hub is true; 404 otherwise)
+@server (
+	group:      network
+	prefix:     /network/v1
+	middleware: NetworkAuth
+)
+service outlet {
+	@handler NetworkLookup
+	post /lookup (NetworkLookupRequest) returns (NetworkLookupResponse)
+
+	@handler NetworkReport
+	post /report (NetworkReportRequest) returns (NetworkReportResponse)
 }
 

@@ -1189,6 +1189,40 @@ type MarkContactReadResponse struct {
 	Success bool `json:"success"`
 }
 
+type NetworkEvent struct {
+	Hash string `json:"hash"`
+	Kind string `json:"kind"` // delivered, hard_bounce, complaint, open, click
+	At   string `json:"at"`
+}
+
+type NetworkLookupRequest struct {
+	Hashes []string `json:"hashes"` // max 100
+}
+
+type NetworkLookupResponse struct {
+	Signals []NetworkSignal `json:"signals"` // unknown hashes are omitted
+}
+
+type NetworkReportRequest struct {
+	Events []NetworkEvent `json:"events"` // max 1000
+}
+
+type NetworkReportResponse struct {
+	Accepted int `json:"accepted"`
+}
+
+type NetworkSignal struct {
+	Hash          string  `json:"hash"`
+	Senders       int     `json:"senders"`
+	Delivered     int     `json:"delivered"`
+	HardBounces   int     `json:"hard_bounces"`
+	Complaints    int     `json:"complaints"`
+	Engaged       int     `json:"engaged"`
+	LastEngagedAt string  `json:"last_engaged_at"`
+	TrapScore     float64 `json:"trap_score"`
+	Toxic         bool    `json:"toxic"`
+}
+
 type NewsletterResponse struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
