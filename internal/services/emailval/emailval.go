@@ -43,6 +43,13 @@ type Options struct {
 	// SMTP configures the HELO hostname and MAIL FROM domain for SMTP checks.
 	// Defaults to DefaultSMTPConfig() (localhost), which most MX servers reject.
 	SMTP *SMTPConfig
+
+	// Proxies are SOCKS5 URLs (socks5://user:pass@host:1080) of dedicated probe hosts.
+	// Probes rotate across healthy proxies; empty means dial directly from this host.
+	Proxies []string
+
+	// CheckDomainAge looks up domain registration age over RDAP.
+	CheckDomainAge bool
 }
 
 // Result is a structured report of validation.
@@ -64,6 +71,18 @@ type Result struct {
 
 	// Messages contains human readable reasons for failures or warnings.
 	Messages []string
+
+	// ZeroBounce-compatible verdict (see status.go).
+	Status        string `json:"status"`
+	SubStatus     string `json:"sub_status"`
+	FreeEmail     bool   `json:"free_email"`
+	DidYouMean    string `json:"did_you_mean"`
+	Account       string `json:"account"`
+	Domain        string `json:"domain"`
+	DomainAgeDays int    `json:"domain_age_days"` // 0 = unknown
+	SMTPProvider  string `json:"smtp_provider"`   // google, microsoft, yahoo, proofpoint, mimecast, ... or ""
+	MXRecord      string `json:"mx_record"`       // preferred MX host
+	CatchAll      bool   `json:"catch_all"`
 }
 
 func (r *Result) addMessage(msg string, args ...any) {
@@ -87,6 +106,7 @@ func Validate(ctx context.Context, email string, opts *Options) (*Result, error)
 		Input:      email,
 		Normalized: normalize(email),
 	}
+	defer setVerdict(res)
 
 	if res.Normalized == "" {
 		lvl := LevelSyntax
@@ -169,4 +189,24 @@ func Validate(ctx context.Context, email string, opts *Options) (*Result, error)
 	}
 
 	return res, nil
+}
+
+// setVerdict fills Status and SubStatus from the layer results.
+func setVerdict(r *Result) {
+	switch {
+	case r.FailedAt != nil && *r.FailedAt == LevelSyntax:
+		r.Status, r.SubStatus = StatusInvalid, SubFailedSyntaxCheck
+	case r.FailedAt != nil && *r.FailedAt == LevelDomain:
+		r.Status, r.SubStatus = StatusInvalid, SubNoDNSEntries
+	case r.SMTPDeliverable != nil && !*r.SMTPDeliverable:
+		r.Status, r.SubStatus = StatusInvalid, SubMailboxNotFound
+	case r.Disposable:
+		r.Status, r.SubStatus = StatusDoNotMail, SubDisposable
+	case r.RoleBased:
+		r.Status, r.SubStatus = StatusDoNotMail, SubRoleBased
+	case r.SMTPChecked && r.SMTPDeliverable == nil:
+		r.Status, r.SubStatus = StatusUnknown, SubExceptionOccurred
+	default:
+		r.Status = StatusValid
+	}
 }

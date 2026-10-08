@@ -56,6 +56,22 @@ export interface AnalyticsResponse {
 	message?: string
 }
 
+export interface AppendValidationJobEmailsRequest {
+	emails: Array<string> // max 10000 per call
+}
+export interface AppendValidationJobEmailsRequestParams {
+}
+
+export interface ApplyValidationJobRequest {
+	statuses: Array<string> // results with these statuses are added to the suppression list
+}
+export interface ApplyValidationJobRequestParams {
+}
+
+export interface ApplyValidationJobResponse {
+	suppressed: number
+}
+
 export interface BackupInfo {
 	id: string
 	filename: string
@@ -402,6 +418,12 @@ export interface CreateUserRequest {
 
 export interface CreateUserResponse {
 	user: UserInfo
+}
+
+export interface CreateValidationJobRequest {
+	name?: string
+	list_id?: string // validate a list's subscribers; starts immediately
+	emails?: Array<string> // upload source; max 10000 per call, append more, then start
 }
 
 export interface CustomFieldInfo {
@@ -1143,6 +1165,8 @@ export interface ListSubscriberInfo {
 	status: string
 	subscribed_at: string
 	unsubscribed_at?: string
+	validation_status?: string
+	validation_sub_status?: string
 }
 
 export interface ListSubscribersRequest {
@@ -1180,6 +1204,35 @@ export interface ListTransactionalEmailsRequest {
 export interface ListTransactionalEmailsResponse {
 	templates: Array<TransactionalEmailInfo>
 	total: number
+}
+
+export interface ListValidationJobsRequest {
+}
+export interface ListValidationJobsRequestParams {
+	page?: number
+	limit?: number
+}
+
+export interface ListValidationJobsResponse {
+	jobs: Array<ValidationJobInfo>
+	total: number
+	page: number
+	limit: number
+}
+
+export interface ListValidationResultsRequest {
+}
+export interface ListValidationResultsRequestParams {
+	status?: string
+	page?: number
+	limit?: number
+}
+
+export interface ListValidationResultsResponse {
+	results: Array<ValidationResult>
+	total: number
+	page: number
+	limit: number
 }
 
 export interface ListWebhookLogsRequest {
@@ -1591,6 +1644,8 @@ export interface SubscriberInfo {
 	verified_at?: string
 	unsubscribed_at?: string
 	blocked_at?: string
+	validation_status?: string
+	validation_sub_status?: string
 }
 
 export interface SuppressedEmailInfo {
@@ -1911,6 +1966,18 @@ export interface UserListResponse {
 	total: number
 }
 
+export interface ValidateBatchRequest {
+	emails: Array<string> // max 100
+}
+
+export interface ValidateBatchResponse {
+	results: Array<ValidationResult>
+}
+
+export interface ValidateEmailRequest {
+	email: string
+}
+
 export interface ValidateInvitationRequest {
 }
 export interface ValidateInvitationRequestParams {
@@ -1925,6 +1992,61 @@ export interface ValidateInvitationResponse {
 	role: string
 	valid: boolean
 	message?: string
+}
+
+export interface ValidationJobIdRequest {
+}
+export interface ValidationJobIdRequestParams {
+}
+
+export interface ValidationJobInfo {
+	id: string
+	name: string
+	list_id?: string
+	source: string // list, upload
+	status: string // pending, processing, completed, failed, cancelled
+	total: number
+	processed: number
+	valid: number
+	invalid: number
+	catch_all: number
+	unknown: number
+	spamtrap: number
+	abuse: number
+	do_not_mail: number
+	error?: string
+	started_at?: string
+	completed_at?: string
+	created_at: string
+}
+
+export interface ValidationResult {
+	address: string
+	status: string
+	sub_status: string
+	free_email: boolean
+	did_you_mean: string
+	account: string
+	domain: string
+	domain_age_days?: number // 0 = unknown
+	smtp_provider: string
+	mx_found: boolean
+	mx_record: string
+	processed_at: string
+}
+
+export interface ValidationUsageRequest {
+}
+export interface ValidationUsageRequestParams {
+	from?: string // YYYY-MM-DD, default first of this month
+	to?: string // YYYY-MM-DD inclusive, default today
+}
+
+export interface ValidationUsageResponse {
+	from: string
+	to: string
+	total: number
+	by_source: { [key: string]: number } // api, admin, job, mcp
 }
 
 export interface VerifyEmailRequest {

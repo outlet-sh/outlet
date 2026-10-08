@@ -2,9 +2,7 @@ package cmd
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/csv"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"hash/fnv"
@@ -30,7 +28,8 @@ var validateCmd = &cobra.Command{
 	Use:   "validate",
 	Short: "Validate a CSV of email addresses",
 	Long: `Validate every address in a CSV and write it back out with validation_status
-(valid, risky, invalid, disposable, unknown) and validation_reason columns.
+(valid, invalid, catch-all, unknown, spamtrap, abuse, do_not_mail), validation_sub_status
+and validation_reason columns.
 
 Run it on a separate host with outbound port 25 open and reverse DNS matching --helo,
 never on the IP that sends mail. Re-running with the same --out resumes where it stopped.
@@ -113,7 +112,7 @@ func runValidate(ctx context.Context) error {
 	w := csv.NewWriter(outFile)
 	if len(done) == 0 {
 		if st, _ := outFile.Stat(); st.Size() == 0 {
-			_ = w.Write(append(append([]string{}, header...), "validation_status", "validation_reason"))
+			_ = w.Write(append(append([]string{}, header...), "validation_status", "validation_sub_status", "validation_reason"))
 		}
 	}
 
@@ -135,10 +134,10 @@ func runValidate(ctx context.Context) error {
 		finished int
 		counts   = map[string]int{}
 	)
-	write := func(row []string, status, reason string) {
+	write := func(row []string, status, subStatus, reason string) {
 		mu.Lock()
 		defer mu.Unlock()
-		_ = w.Write(append(append([]string{}, row...), status, reason))
+		_ = w.Write(append(append([]string{}, row...), status, subStatus, reason))
 		w.Flush()
 		counts[status]++
 		finished++
@@ -168,22 +167,10 @@ func runValidate(ctx context.Context) error {
 	return w.Error()
 }
 
-func validateDomain(ctx context.Context, domain string, rows [][]string, col int, opts *emailval.Options, write func([]string, string, string)) {
-	// A domain that accepts a random mailbox accepts everything; its RCPT answers prove nothing.
-	catchAll := false
-	if opts.CheckSMTP {
-		b := make([]byte, 6)
-		_, _ = rand.Read(b)
-		probe, _ := emailval.Validate(ctx, "outlet-"+hex.EncodeToString(b)+"@"+domain, opts)
-		catchAll = probe.SMTPDeliverable != nil && *probe.SMTPDeliverable
-	}
+func validateDomain(ctx context.Context, domain string, rows [][]string, col int, opts *emailval.Options, write func([]string, string, string, string)) {
 	for _, row := range rows {
 		res, _ := emailval.Validate(ctx, row[col], opts)
-		reason := strings.Join(res.Messages, "; ")
-		if catchAll {
-			reason = strings.TrimPrefix(reason+"; catch-all domain", "; ")
-		}
-		write(row, emailval.Classify(res, catchAll), reason)
+		write(row, res.Status, res.SubStatus, strings.Join(res.Messages, "; "))
 	}
 }
 
