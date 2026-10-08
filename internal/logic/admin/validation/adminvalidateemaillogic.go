@@ -3,6 +3,8 @@ package validation
 import (
 	"context"
 
+	"github.com/outlet-sh/outlet/internal/errorx"
+
 	"github.com/outlet-sh/outlet/internal/svc"
 	"github.com/outlet-sh/outlet/internal/types"
 
@@ -24,7 +26,12 @@ func NewAdminValidateEmailLogic(ctx context.Context, svcCtx *svc.ServiceContext)
 }
 
 func (l *AdminValidateEmailLogic) AdminValidateEmail(req *types.ValidateEmailRequest) (resp *types.ValidationResult, err error) {
-	// todo: add your logic here and delete this line
-
-	return
+	orgID, err := orgIDFrom(l.ctx)
+	if err != nil {
+		return nil, err
+	}
+	if req.Email == "" {
+		return nil, errorx.NewBadRequestError("email is required")
+	}
+	return l.svcCtx.Validation.Validate(l.ctx, orgID, req.Email, "admin")
 }

@@ -87,6 +87,7 @@ func NewRegistryWithTools(toolCtx *mcpctx.ToolContext) *ToolRegistry {
 	registerStatsToolToRegistry(registry, toolCtx)
 	registerBlocklistToolToRegistry(registry, toolCtx)
 	registerGDPRToolToRegistry(registry, toolCtx)
+	registerValidationToolToRegistry(registry, toolCtx)
 
 	return registry
 }

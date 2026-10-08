@@ -82,6 +82,7 @@ func NewServerWithContext(svc *svc.ServiceContext, r *http.Request, onBrandSelec
 	tools.RegisterStatsTool(server, toolCtx)
 	tools.RegisterBlocklistTool(server, toolCtx)
 	tools.RegisterGDPRTool(server, toolCtx)
+	tools.RegisterValidationTool(server, toolCtx)
 
 	return server, toolCtx
 }

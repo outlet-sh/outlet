@@ -14,7 +14,9 @@ import (
 	"github.com/outlet-sh/outlet/internal/middleware"
 	"github.com/outlet-sh/outlet/internal/services/crypto"
 	"github.com/outlet-sh/outlet/internal/services/email"
+	"github.com/outlet-sh/outlet/internal/services/signalnet"
 	"github.com/outlet-sh/outlet/internal/services/tracking"
+	"github.com/outlet-sh/outlet/internal/services/validation"
 	"github.com/outlet-sh/outlet/internal/services/webhook"
 	"github.com/outlet-sh/outlet/internal/websocket"
 
@@ -35,6 +37,10 @@ type ServiceContext struct {
 	Events            *events.Subject
 	WebhookDispatcher *webhook.Dispatcher
 	WebSocketHub      *websocket.Hub
+
+	// Email validation
+	SignalNet  *signalnet.Client // nil when Signal Network is not configured
+	Validation *validation.Service
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -133,6 +139,13 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	go wsHub.Run()
 	log.Printf("WebSocket hub initialized")
 
+	// Email validation, with the Signal Network client when a hub is configured
+	var signalNet *signalnet.Client
+	if c.SignalNet.HubURL != "" {
+		signalNet = &signalnet.Client{HubURL: c.SignalNet.HubURL, InstanceKey: c.SignalNet.InstanceKey}
+	}
+	validationService := validation.New(store, c.Validation, signalNet)
+
 	return &ServiceContext{
 		Config:            c,
 		DB:                store,
@@ -146,5 +159,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		Events:            eventSubject,
 		WebhookDispatcher: webhookDispatcher,
 		WebSocketHub:      wsHub,
+		SignalNet:         signalNet,
+		Validation:        validationService,
 	}
 }

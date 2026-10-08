@@ -3,6 +3,9 @@ package validation
 import (
 	"context"
 
+	"github.com/outlet-sh/outlet/internal/errorx"
+	"github.com/outlet-sh/outlet/internal/middleware"
+
 	"github.com/outlet-sh/outlet/internal/svc"
 	"github.com/outlet-sh/outlet/internal/types"
 
@@ -24,7 +27,12 @@ func NewValidateEmailLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Val
 }
 
 func (l *ValidateEmailLogic) ValidateEmail(req *types.ValidateEmailRequest) (resp *types.ValidationResult, err error) {
-	// todo: add your logic here and delete this line
-
-	return
+	orgID, ok := l.ctx.Value(middleware.OrgIDKey).(string)
+	if !ok || orgID == "" {
+		return nil, errorx.NewUnauthorizedError("invalid API key")
+	}
+	if req.Email == "" {
+		return nil, errorx.NewBadRequestError("email is required")
+	}
+	return l.svcCtx.Validation.Validate(l.ctx, orgID, req.Email, "api")
 }

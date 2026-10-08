@@ -24,7 +24,9 @@ func NewAppendValidationJobEmailsLogic(ctx context.Context, svcCtx *svc.ServiceC
 }
 
 func (l *AppendValidationJobEmailsLogic) AppendValidationJobEmails(req *types.AppendValidationJobEmailsRequest) (resp *types.ValidationJobInfo, err error) {
-	// todo: add your logic here and delete this line
-
-	return
+	orgID, err := orgIDFrom(l.ctx)
+	if err != nil {
+		return nil, err
+	}
+	return l.svcCtx.Validation.AppendEmails(l.ctx, orgID, req.Id, req.Emails)
 }

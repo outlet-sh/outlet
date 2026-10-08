@@ -24,7 +24,9 @@ func NewStartValidationJobLogic(ctx context.Context, svcCtx *svc.ServiceContext)
 }
 
 func (l *StartValidationJobLogic) StartValidationJob(req *types.ValidationJobIdRequest) (resp *types.ValidationJobInfo, err error) {
-	// todo: add your logic here and delete this line
-
-	return
+	orgID, err := orgIDFrom(l.ctx)
+	if err != nil {
+		return nil, err
+	}
+	return l.svcCtx.Validation.StartJob(l.ctx, orgID, req.Id)
 }
