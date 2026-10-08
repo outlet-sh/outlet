@@ -27,17 +27,21 @@ type Querier interface {
 	CancelEmailsForContact(ctx context.Context, contactID sql.NullString) error
 	CancelImportJob(ctx context.Context, arg CancelImportJobParams) error
 	CancelPendingEmailsForContactSequence(ctx context.Context, arg CancelPendingEmailsForContactSequenceParams) error
+	CancelValidationJob(ctx context.Context, arg CancelValidationJobParams) (int64, error)
 	CheckCampaignSendExists(ctx context.Context, arg CheckCampaignSendExistsParams) (int64, error)
 	CheckEmailExists(ctx context.Context, email string) (int64, error)
 	// Check if an event has already been processed by a rule
 	CheckEventProcessed(ctx context.Context, arg CheckEventProcessedParams) (int64, error)
 	CheckListSubscription(ctx context.Context, arg CheckListSubscriptionParams) (int64, error)
+	// Leases due pending rows of a job for 10 minutes so a crash mid-batch only delays them.
+	ClaimPendingValidations(ctx context.Context, arg ClaimPendingValidationsParams) ([]EmailValidation, error)
 	CleanupExpiredMCPOAuthCodes(ctx context.Context) error
 	CleanupExpiredMCPOAuthTokens(ctx context.Context) error
 	// Delete sessions older than 30 days
 	CleanupOldMCPSessions(ctx context.Context) error
 	ClearSuppressionList(ctx context.Context, orgID string) error
 	CompleteContactSequence(ctx context.Context, arg CompleteContactSequenceParams) error
+	CompleteValidationJob(ctx context.Context, id string) error
 	ConfirmListSubscription(ctx context.Context, token sql.NullString) (ListSubscriber, error)
 	CountActiveSequencesForContact(ctx context.Context, contactID sql.NullString) (int64, error)
 	CountActiveSubscribers(ctx context.Context, listID int64) (int64, error)
@@ -62,6 +66,7 @@ type Querier interface {
 	// Count rules with optional filters
 	CountOrgRules(ctx context.Context, arg CountOrgRulesParams) (int64, error)
 	CountPendingCampaignSends(ctx context.Context, campaignID string) (int64, error)
+	CountPendingValidations(ctx context.Context, jobID sql.NullString) (int64, error)
 	CountSentCampaignSends(ctx context.Context, campaignID string) (int64, error)
 	CountSuppressedEmails(ctx context.Context, orgID string) (int64, error)
 	CountTemplatesBySequence(ctx context.Context, sequenceID sql.NullString) (int64, error)
@@ -69,6 +74,11 @@ type Querier interface {
 	CountTransactionalSends(ctx context.Context, templateID string) (int64, error)
 	CountUnconfirmedContactsOlderThan(ctx context.Context, arg CountUnconfirmedContactsOlderThanParams) (int64, error)
 	CountUsers(ctx context.Context, arg CountUsersParams) (int64, error)
+	CountValidationJobStatuses(ctx context.Context, jobID sql.NullString) ([]CountValidationJobStatusesRow, error)
+	CountValidationJobs(ctx context.Context, orgID string) (int64, error)
+	CountValidationResults(ctx context.Context, arg CountValidationResultsParams) (int64, error)
+	// Checks completed in [from_time, until_time), grouped by source.
+	CountValidationUsageBySource(ctx context.Context, arg CountValidationUsageBySourceParams) ([]CountValidationUsageBySourceRow, error)
 	CountWebhookLogs(ctx context.Context, webhookID string) (int64, error)
 	CreateAuthToken(ctx context.Context, arg CreateAuthTokenParams) (AuthToken, error)
 	CreateBackupRecord(ctx context.Context, arg CreateBackupRecordParams) (BackupHistory, error)
@@ -124,6 +134,8 @@ type Querier interface {
 	// Sends (Logging)
 	CreateTransactionalSend(ctx context.Context, arg CreateTransactionalSendParams) (TransactionalSend, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
+	// ========== VALIDATION JOBS ==========
+	CreateValidationJob(ctx context.Context, arg CreateValidationJobParams) (ValidationJob, error)
 	CreateWebhook(ctx context.Context, arg CreateWebhookParams) (Webhook, error)
 	CreateWebhookLog(ctx context.Context, arg CreateWebhookLogParams) (WebhookLog, error)
 	DeactivateMCPOAuthClient(ctx context.Context, id string) error
@@ -225,6 +237,9 @@ type Querier interface {
 	GetDashboardSubscriberStats(ctx context.Context, orgID sql.NullString) (GetDashboardSubscriberStatsRow, error)
 	// Get all rule templates marked as defaults
 	GetDefaultRuleTemplates(ctx context.Context) ([]RuleTemplate, error)
+	// Campaign outcomes for every contact on a domain across all orgs. 'sent' counts as
+	// delivered because SMTP sending never reports delivery, only bounces.
+	GetDomainDeliveryStats(ctx context.Context, domain string) (GetDomainDeliveryStatsRow, error)
 	GetDomainIdentity(ctx context.Context, id string) (DomainIdentity, error)
 	GetDomainIdentityByDomain(ctx context.Context, arg GetDomainIdentityByDomainParams) (DomainIdentity, error)
 	GetEmailBounce(ctx context.Context, email string) (EmailBounce, error)
@@ -232,6 +247,8 @@ type Querier interface {
 	GetEmailComplaint(ctx context.Context, email string) (EmailComplaint, error)
 	GetEmailDesign(ctx context.Context, arg GetEmailDesignParams) (EmailDesign, error)
 	GetEmailDesignBySlug(ctx context.Context, arg GetEmailDesignBySlugParams) (EmailDesign, error)
+	// Campaign sends to this address across all orgs in the last 12 months, and its last open/click.
+	GetEmailEngagement(ctx context.Context, email string) (GetEmailEngagementRow, error)
 	GetEmailList(ctx context.Context, id int64) (EmailList, error)
 	GetEmailListByOrgAndSlug(ctx context.Context, arg GetEmailListByOrgAndSlugParams) (EmailList, error)
 	GetEmailListByPublicID(ctx context.Context, publicID string) (EmailList, error)
@@ -326,10 +343,15 @@ type Querier interface {
 	GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error)
 	GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error)
 	GetUserOrganizations(ctx context.Context, userID string) ([]GetUserOrganizationsRow, error)
+	// ========== CACHE ==========
+	GetValidationCache(ctx context.Context, arg GetValidationCacheParams) (string, error)
+	GetValidationJob(ctx context.Context, arg GetValidationJobParams) (ValidationJob, error)
 	GetWebhook(ctx context.Context, arg GetWebhookParams) (Webhook, error)
 	GetWebhookByID(ctx context.Context, id string) (Webhook, error)
 	GlobalUnsubscribeByOrgAndEmail(ctx context.Context, arg GlobalUnsubscribeByOrgAndEmailParams) error
 	HasContactTag(ctx context.Context, arg HasContactTagParams) (int64, error)
+	// ========== INSTANCE-WIDE SIGNALS (all orgs on this instance) ==========
+	HasEmailComplaint(ctx context.Context, email string) (int64, error)
 	IncrementBlockedDomainAttempts(ctx context.Context, arg IncrementBlockedDomainAttemptsParams) error
 	IncrementCampaignClicked(ctx context.Context, id string) error
 	IncrementCampaignOpened(ctx context.Context, id string) error
@@ -337,6 +359,10 @@ type Querier interface {
 	IncrementCampaignSent(ctx context.Context, id string) error
 	IncrementFailedLogins(ctx context.Context, id string) error
 	IncrementSuppressionAttempts(ctx context.Context, arg IncrementSuppressionAttemptsParams) error
+	InsertEmailValidation(ctx context.Context, arg InsertEmailValidationParams) error
+	// ========== VALIDATION ROWS ==========
+	// Queues one address in a job; duplicates within the job are skipped.
+	InsertValidationJobEmail(ctx context.Context, arg InsertValidationJobEmailParams) (int64, error)
 	IsDomainBlocked(ctx context.Context, arg IsDomainBlockedParams) (int64, error)
 	// ========== COMBINED CHECK ==========
 	IsEmailBlocked(ctx context.Context, arg IsEmailBlockedParams) (int64, error)
@@ -344,8 +370,12 @@ type Querier interface {
 	IsEmailComplaint(ctx context.Context, email string) (int64, error)
 	// ========== COMBINED BLOCK CHECK (Enhanced) ==========
 	IsEmailFullyBlocked(ctx context.Context, arg IsEmailFullyBlockedParams) (int64, error)
+	// Permanent hard bounce, or suppressed by any org. Suppressions created by validation
+	// itself are ignored so a validation verdict never feeds back into the next one.
+	IsEmailGloballySuppressed(ctx context.Context, email string) (int64, error)
 	IsEmailSuppressed(ctx context.Context, arg IsEmailSuppressedParams) (int64, error)
 	ListActiveAgents(ctx context.Context) ([]ListActiveAgentsRow, error)
+	ListActiveListSubscriberEmails(ctx context.Context, listID int64) ([]string, error)
 	ListAllContactTags(ctx context.Context) ([]ListAllContactTagsRow, error)
 	ListAllSequences(ctx context.Context) ([]ListAllSequencesRow, error)
 	ListBackups(ctx context.Context, arg ListBackupsParams) ([]BackupHistory, error)
@@ -375,6 +405,7 @@ type Querier interface {
 	ListPendingDomainIdentities(ctx context.Context) ([]DomainIdentity, error)
 	ListPendingImportJobs(ctx context.Context) ([]ImportJob, error)
 	ListPlatformSettings(ctx context.Context) ([]PlatformSetting, error)
+	ListProcessingValidationJobs(ctx context.Context) ([]ValidationJob, error)
 	ListRecentBounces(ctx context.Context, arg ListRecentBouncesParams) ([]EmailBounce, error)
 	ListRecentComplaints(ctx context.Context, arg ListRecentComplaintsParams) ([]EmailComplaint, error)
 	ListSequencesByList(ctx context.Context, listID sql.NullInt64) ([]ListSequencesByListRow, error)
@@ -385,6 +416,8 @@ type Querier interface {
 	ListTransactionalSends(ctx context.Context, arg ListTransactionalSendsParams) ([]TransactionalSend, error)
 	ListTransactionalSendsByOrg(ctx context.Context, arg ListTransactionalSendsByOrgParams) ([]ListTransactionalSendsByOrgRow, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]ListUsersRow, error)
+	ListValidationJobs(ctx context.Context, arg ListValidationJobsParams) ([]ValidationJob, error)
+	ListValidationResults(ctx context.Context, arg ListValidationResultsParams) ([]EmailValidation, error)
 	ListWebhookLogs(ctx context.Context, arg ListWebhookLogsParams) ([]WebhookLog, error)
 	ListWebhooks(ctx context.Context, orgID string) ([]Webhook, error)
 	// =====================================================
@@ -413,6 +446,7 @@ type Querier interface {
 	RecordNetworkSender(ctx context.Context, arg RecordNetworkSenderParams) error
 	RecordTransactionalClick(ctx context.Context, id string) error
 	RecordTransactionalOpen(ctx context.Context, id string) error
+	RefreshValidationJobProgress(ctx context.Context, id string) error
 	RegenerateAPIKey(ctx context.Context, arg RegenerateAPIKeyParams) (Organization, error)
 	RemoveContactTag(ctx context.Context, arg RemoveContactTagParams) error
 	RemoveSubscriberFromList(ctx context.Context, arg RemoveSubscriberFromListParams) error
@@ -430,8 +464,11 @@ type Querier interface {
 	SetImportJobErrors(ctx context.Context, arg SetImportJobErrorsParams) error
 	SetImportJobTotalRows(ctx context.Context, arg SetImportJobTotalRowsParams) error
 	SetUserEmailVerified(ctx context.Context, id string) error
+	StartValidationJob(ctx context.Context, arg StartValidationJobParams) (int64, error)
 	SubscribeToList(ctx context.Context, arg SubscribeToListParams) (ListSubscriber, error)
 	SubscribeToListPending(ctx context.Context, arg SubscribeToListPendingParams) (ListSubscriber, error)
+	// Adds a job's results with the given statuses to the org's suppression list.
+	SuppressValidationJobResults(ctx context.Context, arg SuppressValidationJobResultsParams) (int64, error)
 	// Toggle enabled state of a rule
 	ToggleOrgRule(ctx context.Context, arg ToggleOrgRuleParams) (OrgRule, error)
 	UnblockContact(ctx context.Context, id string) error
@@ -450,6 +487,8 @@ type Querier interface {
 	UpdateContactName(ctx context.Context, arg UpdateContactNameParams) error
 	UpdateContactSequencePosition(ctx context.Context, arg UpdateContactSequencePositionParams) error
 	UpdateContactStatus(ctx context.Context, arg UpdateContactStatusParams) error
+	// ========== CONTACTS ==========
+	UpdateContactValidation(ctx context.Context, arg UpdateContactValidationParams) error
 	UpdateCustomField(ctx context.Context, arg UpdateCustomFieldParams) (CustomField, error)
 	UpdateDomainIdentityDNSRecords(ctx context.Context, arg UpdateDomainIdentityDNSRecordsParams) (DomainIdentity, error)
 	UpdateDomainIdentityFull(ctx context.Context, arg UpdateDomainIdentityFullParams) (DomainIdentity, error)
@@ -457,6 +496,8 @@ type Querier interface {
 	UpdateDomainIdentityStatus(ctx context.Context, arg UpdateDomainIdentityStatusParams) (DomainIdentity, error)
 	UpdateEmailDesign(ctx context.Context, arg UpdateEmailDesignParams) (EmailDesign, error)
 	UpdateEmailList(ctx context.Context, arg UpdateEmailListParams) (EmailList, error)
+	// status 'pending' with a retry_at schedules a retry; any other status finalizes the row.
+	UpdateEmailValidationResult(ctx context.Context, arg UpdateEmailValidationResultParams) error
 	UpdateEntryRule(ctx context.Context, arg UpdateEntryRuleParams) error
 	UpdateImportJobProgress(ctx context.Context, arg UpdateImportJobProgressParams) error
 	UpdateImportJobStatus(ctx context.Context, arg UpdateImportJobStatusParams) error
@@ -488,6 +529,7 @@ type Querier interface {
 	// MCP Sessions (for persisting org selection across server restarts)
 	UpsertMCPSession(ctx context.Context, arg UpsertMCPSessionParams) error
 	UpsertPlatformSetting(ctx context.Context, arg UpsertPlatformSettingParams) (PlatformSetting, error)
+	UpsertValidationCache(ctx context.Context, arg UpsertValidationCacheParams) error
 	VerifyContact(ctx context.Context, id string) error
 	VerifyContactEmail(ctx context.Context, id string) error
 }

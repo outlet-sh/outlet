@@ -78,7 +78,7 @@ SELECT * FROM list_subscribers
 WHERE list_id = sqlc.arg(list_id) AND contact_id = sqlc.arg(contact_id);
 
 -- name: ListListSubscribers :many
-SELECT ls.*, c.email, c.name
+SELECT ls.*, c.email, c.name, c.validation_status, c.validation_sub_status
 FROM list_subscribers ls
 JOIN contacts c ON c.id = ls.contact_id
 WHERE ls.list_id = sqlc.arg(list_id)

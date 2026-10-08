@@ -202,6 +202,9 @@ func runServe(cmd *cobra.Command, args []string) {
 	if signalReporter != nil {
 		fmt.Println("Signal Network reporter started")
 	}
+	// Start email validation job worker in background
+	validationWorker := workers.StartValidationWorker(ctx)
+	fmt.Println("Validation worker started")
 
 	// Start MCP session cleanup job (runs every hour, cleans sessions older than 30 days)
 	cleanupCtx, cleanupCancel := context.WithCancel(context.Background())
@@ -278,6 +281,10 @@ func runServe(cmd *cobra.Command, args []string) {
 				fmt.Println("Domain verification worker stopped")
 			}
 			signalReporter.Stop()
+			if validationWorker != nil {
+				validationWorker.Stop()
+				fmt.Println("Validation worker stopped")
+			}
 			if smtpServer != nil {
 				smtpServer.Stop()
 				fmt.Println("SMTP server stopped")
@@ -512,6 +519,10 @@ func runServe(cmd *cobra.Command, args []string) {
 		fmt.Println("Domain verification worker stopped")
 	}
 	signalReporter.Stop()
+	if validationWorker != nil {
+		validationWorker.Stop()
+		fmt.Println("Validation worker stopped")
+	}
 	if smtpServer != nil {
 		smtpServer.Stop()
 		fmt.Println("SMTP server stopped")
