@@ -11,7 +11,8 @@
 		ChevronRight,
 		Mail,
 		Ban,
-		Trash2
+		Trash2,
+		MailCheck
 	} from 'lucide-svelte';
 
 	interface Props {
@@ -48,6 +49,7 @@
 		{ id: 'dashboard', label: 'Dashboard', href: '', icon: LayoutDashboard, exact: true },
 		{ id: 'campaigns', label: 'Campaigns', href: '/campaigns', icon: Send },
 		{ id: 'lists', label: 'Lists', href: '/lists', icon: Users },
+		{ id: 'validation', label: 'Validation', href: '/validation', icon: MailCheck },
 		{ id: 'templates', label: 'Templates', href: '/templates', icon: FileText },
 		{ id: 'housekeeping', label: 'Housekeeping', href: '/housekeeping', icon: Trash2 },
 		{ id: 'blocklist', label: 'Blocklist', href: '/blocklist', icon: Ban },
