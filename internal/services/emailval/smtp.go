@@ -128,7 +128,10 @@ func checkSMTPMailbox(ctx context.Context, domain, fullEmail string, opts *Optio
 		dialer = DefaultSMTPDialer{Timeout: opts.Timeout}
 	}
 
-	smtpCfg := DefaultSMTPConfig()
+	smtpCfg := opts.SMTP
+	if smtpCfg == nil {
+		smtpCfg = DefaultSMTPConfig()
+	}
 	maxRetries := smtpCfg.MaxRetries
 	if maxRetries <= 0 {
 		maxRetries = 2
@@ -152,11 +155,9 @@ func checkSMTPMailbox(ctx context.Context, domain, fullEmail string, opts *Optio
 			return deliverable, nil
 		}
 
-		// Check if this is a greylisting response - don't count as failure.
+		// Greylisting means retry later; the mailbox is unknown, not deliverable.
 		if isGreylistError(err) {
-			// Greylisting means the server is probably valid but wants us to retry later.
-			// Treat as "unknown but likely valid".
-			return true, nil
+			return false, fmt.Errorf("greylisted: %w", err)
 		}
 
 		lastErr = err

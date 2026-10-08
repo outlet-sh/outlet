@@ -39,6 +39,10 @@ type Options struct {
 
 	// SMTPDialer is an optional custom SMTP dialer (for testing or proxying).
 	SMTPDialer SMTPDialer
+
+	// SMTP configures the HELO hostname and MAIL FROM domain for SMTP checks.
+	// Defaults to DefaultSMTPConfig() (localhost), which most MX servers reject.
+	SMTP *SMTPConfig
 }
 
 // Result is a structured report of validation.
