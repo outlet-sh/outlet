@@ -224,6 +224,9 @@ func (l *SendEmailLogic) SendEmail(req *types.SendEmailRequest) (resp *types.Sen
 	if len(attachments) > 0 {
 		sendOpts = append(sendOpts, email.WithAttachments(attachments))
 	}
+	if plainText != "" {
+		sendOpts = append(sendOpts, email.WithText(plainText))
+	}
 	sendErr := l.svcCtx.EmailService.SendEmailFrom(l.ctx, fromEmail, fromName, req.To, subject, htmlBody, sendOpts...)
 
 	if sendErr != nil {
