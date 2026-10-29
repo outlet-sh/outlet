@@ -210,7 +210,7 @@ func (s *Service) sendEmail(to, subject, htmlBody string) error {
 	// Try AWS SES first (preferred for high-volume sending)
 	sesConfig, err := s.getSESConfig(ctx)
 	if err == nil && s.hasSESConfig(sesConfig) {
-		return SendEmailViaSES(ctx, sesConfig, to, subject, htmlBody)
+		return SendEmailViaSES(ctx, sesConfig, to, subject, htmlBody, "")
 	}
 
 	// Fall back to SMTP if SES not configured
@@ -430,7 +430,7 @@ func (s *Service) SendEmailFrom(ctx context.Context, fromEmail, fromName, to, su
 			}
 			return SendRawEmailViaSES(ctx, sesConfig, raw)
 		}
-		return SendEmailViaSES(ctx, sesConfig, to, subject, htmlBody)
+		return SendEmailViaSES(ctx, sesConfig, to, subject, htmlBody, o.text)
 	}
 
 	// Fall back to SMTP
@@ -497,7 +497,7 @@ func (s *Service) SendCampaignEmail(to, subject, htmlBody, fromName, fromEmail, 
 		if replyTo != "" {
 			sesConfig.ReplyTo = replyTo
 		}
-		return SendEmailViaSES(ctx, sesConfig, to, subject, htmlBody)
+		return SendEmailViaSES(ctx, sesConfig, to, subject, htmlBody, "")
 	}
 
 	// Fall back to SMTP

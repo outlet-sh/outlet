@@ -23,7 +23,7 @@ type SESConfig struct {
 
 // SendEmailViaSES sends an email using the AWS SES API directly
 // This is the preferred method when AWS credentials are configured
-func SendEmailViaSES(ctx context.Context, sesConfig *SESConfig, to, subject, htmlBody string) error {
+func SendEmailViaSES(ctx context.Context, sesConfig *SESConfig, to, subject, htmlBody, textBody string) error {
 	client, err := newSESClient(ctx, sesConfig)
 	if err != nil {
 		return err
@@ -59,6 +59,13 @@ func SendEmailViaSES(ctx context.Context, sesConfig *SESConfig, to, subject, htm
 		},
 		Source:           aws.String(from),
 		ReplyToAddresses: replyToAddresses,
+	}
+
+	if textBody != "" {
+		input.Message.Body.Text = &types.Content{
+			Charset: aws.String("UTF-8"),
+			Data:    aws.String(textBody),
+		}
 	}
 
 	_, err = client.SendEmail(ctx, input)

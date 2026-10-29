@@ -18,6 +18,7 @@ type Attachment struct {
 // sendOpts holds optional, backward-compatible send behavior.
 type sendOpts struct {
 	attachments []Attachment
+	text        string
 }
 
 // SendOption configures an email send (e.g. attachments) without changing the
@@ -28,6 +29,12 @@ type SendOption func(*sendOpts)
 // as a multipart/mixed MIME (SES SendRawEmail / raw SMTP) instead of body-only.
 func WithAttachments(atts []Attachment) SendOption {
 	return func(o *sendOpts) { o.attachments = atts }
+}
+
+// WithText adds a plain-text alternative to the HTML body. HTML-only mail scores
+// worse with spam filters, so transactional sends should always carry one.
+func WithText(text string) SendOption {
+	return func(o *sendOpts) { o.text = text }
 }
 
 func applyOpts(opts []SendOption) sendOpts {
