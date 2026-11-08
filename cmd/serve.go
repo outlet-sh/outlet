@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -598,35 +599,18 @@ func registerEmailTrackingRoutes(server *rest.Server, ctx *svc.ServiceContext) {
 				}
 			}
 
-			// Track the click (fire and forget)
-			go func(token string) {
-				_ = ctx.Tracking.RecordClick(context.Background(), token)
-			}(token)
-
-			http.Redirect(w, r, redirectUrl, http.StatusTemporaryRedirect)
-		},
-	})
-
-	// Email unsubscribe
-	server.AddRoute(rest.Route{
-		Method: http.MethodGet,
-		Path:   "/api/e/u/:token",
-		Handler: func(w http.ResponseWriter, r *http.Request) {
-			token := r.PathValue("token")
-			if token == "" {
-				parts := strings.Split(r.URL.Path, "/")
-				if len(parts) >= 4 {
-					token = parts[len(parts)-1]
-				}
-			}
-
-			if token == "" {
-				http.Error(w, "Invalid unsubscribe link", http.StatusBadRequest)
+			// Only follow links Outlet signed, so this is never an open redirect
+			if !ctx.EmailService.VerifyClickLink(token, redirectUrl, r.URL.Query().Get("sig")) {
+				http.Error(w, "Invalid link", http.StatusBadRequest)
 				return
 			}
 
-			_ = ctx.Tracking.Unsubscribe(context.Background(), token)
-			http.Redirect(w, r, "/unsubscribed", http.StatusTemporaryRedirect)
+			// Track the click (fire and forget)
+			go func(token, target string) {
+				_ = ctx.Tracking.RecordClick(context.Background(), token, target)
+			}(token, redirectUrl)
+
+			http.Redirect(w, r, redirectUrl, http.StatusFound)
 		},
 	})
 
@@ -823,7 +807,7 @@ func proxyWebSocket(w http.ResponseWriter, r *http.Request, backendHost string, 
 		return
 	}
 
-	backendAddr := fmt.Sprintf("%s:%d", backendHost, backendPort)
+	backendAddr := net.JoinHostPort(backendHost, strconv.Itoa(backendPort))
 	fmt.Printf("[WS Proxy] Dialing backend: %s\n", backendAddr)
 	backendConn, err := net.Dial("tcp", backendAddr)
 	if err != nil {
@@ -935,7 +919,7 @@ func registerWebSocketRoute(server *rest.Server, ctx *svc.ServiceContext) {
 	server.AddRoute(rest.Route{
 		Method:  http.MethodGet,
 		Path:    "/ws",
-		Handler: outletws.Handler(ctx.WebSocketHub),
+		Handler: outletws.Handler(ctx.WebSocketHub, ctx.Config.Auth.AccessSecret),
 	})
 	fmt.Println("WebSocket endpoint registered at /ws")
 }

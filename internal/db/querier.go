@@ -33,6 +33,11 @@ type Querier interface {
 	// Check if an event has already been processed by a rule
 	CheckEventProcessed(ctx context.Context, arg CheckEventProcessedParams) (int64, error)
 	CheckListSubscription(ctx context.Context, arg CheckListSubscriptionParams) (int64, error)
+	// Claims up to limit_count pending sends of campaigns that are sending.
+	ClaimPendingCampaignSends(ctx context.Context, arg ClaimPendingCampaignSendsParams) error
+	// Claims up to limit_count due sequence emails. Skips unsubscribed or blocked
+	// contacts, paused or stopped sequences, and contacts who left the list.
+	ClaimPendingEmails(ctx context.Context, arg ClaimPendingEmailsParams) error
 	// Leases due pending rows of a job for 10 minutes so a crash mid-batch only delays them.
 	ClaimPendingValidations(ctx context.Context, arg ClaimPendingValidationsParams) ([]EmailValidation, error)
 	CleanupExpiredMCPOAuthCodes(ctx context.Context) error
@@ -42,6 +47,8 @@ type Querier interface {
 	ClearSuppressionList(ctx context.Context, orgID string) error
 	CompleteContactSequence(ctx context.Context, arg CompleteContactSequenceParams) error
 	CompleteValidationJob(ctx context.Context, id string) error
+	// The token is kept so opening the link again (a link scanner often opens
+	// it first) shows "confirmed" instead of "invalid link"
 	ConfirmListSubscription(ctx context.Context, token sql.NullString) (ListSubscriber, error)
 	CountActiveSequencesForContact(ctx context.Context, contactID sql.NullString) (int64, error)
 	CountActiveSubscribers(ctx context.Context, listID int64) (int64, error)
@@ -99,12 +106,14 @@ type Querier interface {
 	CreateDomainIdentity(ctx context.Context, arg CreateDomainIdentityParams) (DomainIdentity, error)
 	// Email blocklist queries for bounce and complaint management
 	// ========== BOUNCES ==========
+	// A permanent bounce stays permanent; a later transient one must not unblock it
 	CreateEmailBounce(ctx context.Context, arg CreateEmailBounceParams) (EmailBounce, error)
 	CreateEmailClick(ctx context.Context, arg CreateEmailClickParams) (EmailClick, error)
 	// ========== COMPLAINTS ==========
 	CreateEmailComplaint(ctx context.Context, arg CreateEmailComplaintParams) (EmailComplaint, error)
 	// Email Designs (Global Templates)
 	// Reusable email designs at org level
+	// id is AUTOINCREMENT; passing one made every insert use 0
 	CreateEmailDesign(ctx context.Context, arg CreateEmailDesignParams) (EmailDesign, error)
 	CreateEmailList(ctx context.Context, arg CreateEmailListParams) (EmailList, error)
 	CreateEntryRule(ctx context.Context, arg CreateEntryRuleParams) (SequenceEntryRule, error)
@@ -303,8 +312,10 @@ type Querier interface {
 	GetOrganizationBySlug(ctx context.Context, slug string) (Organization, error)
 	GetOrganizationUsers(ctx context.Context, orgID string) ([]GetOrganizationUsersRow, error)
 	GetPendingAuthToken(ctx context.Context, arg GetPendingAuthTokenParams) (AuthToken, error)
-	GetPendingCampaignSends(ctx context.Context, limitCount int64) ([]GetPendingCampaignSendsRow, error)
-	GetPendingEmails(ctx context.Context, arg GetPendingEmailsParams) ([]GetPendingEmailsRow, error)
+	// Returns the sends claimed with claim_token.
+	GetPendingCampaignSends(ctx context.Context, claimToken sql.NullString) ([]GetPendingCampaignSendsRow, error)
+	// Returns the sequence emails claimed with claim_token.
+	GetPendingEmails(ctx context.Context, claimToken sql.NullString) ([]GetPendingEmailsRow, error)
 	GetPlatformSetting(ctx context.Context, key string) (PlatformSetting, error)
 	GetPlatformSettingValue(ctx context.Context, key string) (GetPlatformSettingValueRow, error)
 	GetPlatformSettingsByCategory(ctx context.Context, category string) ([]PlatformSetting, error)
@@ -320,6 +331,8 @@ type Querier interface {
 	GetRuleTemplatesByCategory(ctx context.Context, category string) ([]RuleTemplate, error)
 	// Get rules that need revalidation (hash doesn't match content)
 	GetRulesWithStaleValidation(ctx context.Context, orgID string) ([]OrgRule, error)
+	// datetime() normalizes ISO 8601 values ("2026-11-08T09:00:00Z"), which
+	// would otherwise compare as later than datetime('now') all day.
 	GetScheduledCampaigns(ctx context.Context) ([]EmailCampaign, error)
 	GetSequenceByID(ctx context.Context, id string) (GetSequenceByIDRow, error)
 	GetSequenceByListAndSlug(ctx context.Context, arg GetSequenceByListAndSlugParams) (GetSequenceByListAndSlugRow, error)
@@ -364,6 +377,8 @@ type Querier interface {
 	// Queues one address in a job; duplicates within the job are skipped.
 	InsertValidationJobEmail(ctx context.Context, arg InsertValidationJobEmailParams) (int64, error)
 	IsDomainBlocked(ctx context.Context, arg IsDomainBlockedParams) (int64, error)
+	// A brand may not send from a domain another brand has added as its identity.
+	IsDomainClaimedByOtherOrg(ctx context.Context, arg IsDomainClaimedByOtherOrgParams) (int64, error)
 	// ========== COMBINED CHECK ==========
 	IsEmailBlocked(ctx context.Context, arg IsEmailBlockedParams) (int64, error)
 	IsEmailBounced(ctx context.Context, email string) (int64, error)
@@ -374,6 +389,10 @@ type Querier interface {
 	// itself are ignored so a validation verdict never feeds back into the next one.
 	IsEmailGloballySuppressed(ctx context.Context, email string) (int64, error)
 	IsEmailSuppressed(ctx context.Context, arg IsEmailSuppressedParams) (int64, error)
+	// ========== SEND GATE ==========
+	// Every send checks this first: a permanent bounce or a complaint anywhere, or
+	// the brand's own suppression list or blocked domains. Transient bounces do not block.
+	IsSendBlocked(ctx context.Context, arg IsSendBlockedParams) (int64, error)
 	ListActiveAgents(ctx context.Context) ([]ListActiveAgentsRow, error)
 	ListActiveListSubscriberEmails(ctx context.Context, listID int64) ([]string, error)
 	ListAllContactTags(ctx context.Context) ([]ListAllContactTagsRow, error)
@@ -428,6 +447,8 @@ type Querier interface {
 	ManuallyVerifyContact(ctx context.Context, id string) error
 	MarkAuthTokenUsed(ctx context.Context, id string) error
 	MarkCampaignSendFailed(ctx context.Context, arg MarkCampaignSendFailedParams) error
+	// Stays 'failed' (the status CHECK allows nothing else); retry_count 3 takes
+	// it out of the retry queue for good.
 	MarkCampaignSendPermanentlyFailed(ctx context.Context, id string) error
 	MarkCampaignSendSent(ctx context.Context, id string) error
 	MarkEmailFailed(ctx context.Context, arg MarkEmailFailedParams) error
@@ -446,6 +467,9 @@ type Querier interface {
 	RecordNetworkSender(ctx context.Context, arg RecordNetworkSenderParams) error
 	RecordTransactionalClick(ctx context.Context, id string) error
 	RecordTransactionalOpen(ctx context.Context, id string) error
+	// Recounts a campaign's unique opens, clicks and unsubscribes from its sends,
+	// so the totals never drift from what each recipient did.
+	RefreshCampaignEngagement(ctx context.Context, id string) error
 	RefreshValidationJobProgress(ctx context.Context, id string) error
 	RegenerateAPIKey(ctx context.Context, arg RegenerateAPIKeyParams) (Organization, error)
 	RemoveContactTag(ctx context.Context, arg RemoveContactTagParams) error
@@ -459,6 +483,9 @@ type Querier interface {
 	RevokeMCPOAuthTokensByUser(ctx context.Context, userID string) error
 	RevokeNetworkInstance(ctx context.Context, id string) (int64, error)
 	ScheduleCampaign(ctx context.Context, arg ScheduleCampaignParams) (EmailCampaign, error)
+	// Schedules a draft or scheduled campaign for now; the scheduler expands it
+	// into sends on its next check.
+	SendCampaignNow(ctx context.Context, arg SendCampaignNowParams) (EmailCampaign, error)
 	SetCampaignRecipientsCount(ctx context.Context, arg SetCampaignRecipientsCountParams) error
 	SetContactVerificationToken(ctx context.Context, arg SetContactVerificationTokenParams) error
 	SetImportJobErrors(ctx context.Context, arg SetImportJobErrorsParams) error

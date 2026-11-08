@@ -59,21 +59,11 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		log.Fatalf("Failed to create database directory: %v", err)
 	}
 
-	// Open SQLite database with WAL mode for better concurrency
-	conn, err := sql.Open("sqlite", dbPath)
+	// Open SQLite with WAL mode. The pragmas go in the DSN so every pooled
+	// connection gets them; PRAGMA statements through Exec reach only one.
+	conn, err := sql.Open("sqlite", dbPath+"?_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)")
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
-	}
-
-	// Enable WAL mode and other SQLite optimizations
-	if _, err := conn.Exec("PRAGMA journal_mode=WAL"); err != nil {
-		log.Printf("Warning: Failed to enable WAL mode: %v", err)
-	}
-	if _, err := conn.Exec("PRAGMA foreign_keys=ON"); err != nil {
-		log.Printf("Warning: Failed to enable foreign keys: %v", err)
-	}
-	if _, err := conn.Exec("PRAGMA busy_timeout=5000"); err != nil {
-		log.Printf("Warning: Failed to set busy timeout: %v", err)
 	}
 
 	// Test database connection
@@ -109,6 +99,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 
 	// Initialize Email service (AWS SES preferred, SMTP fallback - config from platform_settings)
 	emailService := email.NewService(store, cryptoService)
+	emailService.SetLinkSecret(c.Auth.AccessSecret)
 	if c.App.BaseURL != "" {
 		emailService.SetBaseURL(c.App.BaseURL)
 	}
@@ -157,7 +148,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	return &ServiceContext{
 		Config:            c,
 		DB:                store,
-		Auth:              middleware.NewAuthMiddleware().Handle,
+		Auth:              middleware.NewAuthMiddleware(c.Auth.AccessSecret).Handle,
 		APIKeyAuth:        apiKeyMiddleware.Handle,
 		APIKeyMiddleware:  apiKeyMiddleware,
 		AuthRateLimit:     authRateLimiter.Handle,
